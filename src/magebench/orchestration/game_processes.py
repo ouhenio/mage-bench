@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,18 +20,35 @@ logger = get_logger(__name__)
 
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
 _SPECTATOR_GAME_STARTED = "AI Puppeteer: all players joined"
+# Matches the spectator's table announcement, which carries the table uuid.
+_SPECTATOR_TABLE_ID_RE = re.compile(
+    r"AI Puppeteer: waiting for .*? to join table ([0-9a-fA-F-]{36})"
+)
 
 
-def wait_for_spectator_table(log_path: Path, proc: subprocess.Popen, timeout: int = 300) -> None:
-    """Block until the spectator log indicates the game table is ready."""
+def wait_for_spectator_table(log_path: Path, proc: subprocess.Popen, timeout: int = 300) -> str:
+    """Block until the game table is ready, and return its id.
+
+    The id matters because a bridge client launched without ``-Dxmage.bridge.tableId``
+    joins the *first* table it finds in state WAITING with an open seat. That is
+    correct only while exactly one table is open at a time, which is why batch setup
+    has to be serialised. Returning the id here is what lets a caller pin each bridge
+    to its own table and start games concurrently.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             raise RuntimeError("Spectator process exited before creating the game table")
         if log_path.exists():
             text = log_path.read_text()
-            if _SPECTATOR_TABLE_READY in text:
-                return
+            match = _SPECTATOR_TABLE_ID_RE.search(text)
+            if match:
+                return match.group(1)
+            assert _SPECTATOR_TABLE_READY not in text, (
+                f"spectator announced a table but no id could be parsed from {log_path}; "
+                f"the log format changed and pinning would silently fall back to "
+                f"join-any-table"
+            )
         time.sleep(2)
     raise TimeoutError(f"Spectator did not create a table within {timeout}s — check {log_path}")
 
@@ -265,6 +283,7 @@ def start_pilot_client(
     player: PilotPlayer,
     log_path: Path,
     game_dir: Path | None = None,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start an LLM-powered pilot client via MCP."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -322,6 +341,8 @@ def start_pilot_client(
         args.extend(["--cache-control", json.dumps(player.cache_control)])
     if game_dir:
         args.extend(["--game-dir", str(game_dir)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,

@@ -147,7 +147,7 @@ def setup_game(
 
     try:
         if bridge_count > 0:
-            wait_for_spectator_table(spectator_log, spectator_proc, timeout=300)
+            table_id = wait_for_spectator_table(spectator_log, spectator_proc, timeout=300)
 
             for sleepwalker_player in game_config.sleepwalker_players:
                 log_path = game_dir / f"{sleepwalker_player.name}_mcp.log"
@@ -176,6 +176,7 @@ def setup_game(
                     pilot_player,
                     log_path,
                     game_dir=game_dir,
+                    table_id=table_id,
                 )
                 session.pilot_procs.append((pilot_player.name, proc))
 
