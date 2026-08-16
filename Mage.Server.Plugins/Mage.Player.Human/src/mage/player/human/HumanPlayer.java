@@ -1235,7 +1235,6 @@ public class HumanPlayer extends PlayerImpl {
 
     @Override
     public boolean priority(Game game) {
-        aiHint(game, "priority");
         passed = false;
         // TODO: fix problems with turn under out control:
         // TODO: change pass and other states like passedUntilStackResolved for controlling player, not for "this"
@@ -1402,6 +1401,13 @@ public class HumanPlayer extends PlayerImpl {
             while (canRespond()) {
                 holdingPriority = false;
 
+                // Hint HERE, not at method entry. priority() is called on every
+                // priority pass, but 16 skip/auto-pass branches above return before
+                // the seat is ever asked anything: measured 95 priority calls against
+                // 4 actual prompts in one game. Hinting at entry produced a stream 24x
+                // denser than the prompts it was meant to label, which no positional
+                // join can survive. Here it is one hint per published query.
+                aiHint(game, "priority");
                 prepareForResponse(game);
                 if (!isExecutingMacro()) {
                     game.firePriorityEvent(playerId);
