@@ -132,14 +132,21 @@ def start_gui_client(
     game_dir: Path | None = None,
 ) -> subprocess.Popen:
     """Start the GUI spectator client."""
-    del game_dir
+    assert game_dir is not None, "start_gui_client requires game_dir to record the terminal result"
     config_json = config.get_players_config_json()
 
+    # Without this the authoritative win/loss record is never written and the outcome has to be
+    # inferred from last-seen life totals, which yields "unresolved" whenever neither player is
+    # at or below 0. TablesPanel:1761 reads this property and calls MatchOptions.setGameLogDir;
+    # that reaches the server via TableController:684, and ServerGameEventLogCollector:72-76
+    # silently no-ops while gameLogDir is null -- which is why server_game_events.jsonl was
+    # absent from every game directory. start_observer_client already passes this.
     jvm_args = " ".join(
         [
             config.jvm_opens,
             config.jvm_rendering,
             "-Xmx1536m",
+            f"-Dxmage.observer.gameDir={game_dir}",
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",

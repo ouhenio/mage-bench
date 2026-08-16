@@ -837,8 +837,15 @@ async def test_repeated_timeout_resets_board_context():
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_no_prefetch")
-async def test_transient_error_reset_preserves_board_context():
-    """Transient LLM errors should keep the last board cursor for the next pass."""
+async def test_transient_llm_error_aborts_the_game(tmp_path):
+    """A transient LLM error must abort, not fabricate a move and carry on.
+
+    The old behaviour blind-fired pass_priority and wiped the conversation for any
+    error that was not a 401/402/403/404, then kept playing -- recording an action
+    the policy never chose, with nothing to distinguish the game from a clean one.
+    Observed in practice on context-overflow 400s and on APIConnectionError during a
+    server restart, where one game reached GAME_OVER having made zero LLM calls.
+    """
     session = MagicMock()
     tool_calls: list[tuple[str, dict]] = []
     pass_call_count = 0
@@ -879,8 +886,13 @@ async def test_transient_error_reset_preserves_board_context():
 
     fake_create.calls = 0
     client.chat.completions.create = AsyncMock(side_effect=fake_create)
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
 
-    with patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock):
+    with (
+        patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock),
+        pytest.raises(PermanentLLMError),
+    ):
         await asyncio.wait_for(
             run_pilot_loop(
                 session=session,
@@ -890,12 +902,20 @@ async def test_transient_error_reset_preserves_board_context():
                 tools=_TOOLS,
                 prices={},
                 username="test-player",
+                game_dir=game_dir,
             ),
             timeout=2,
         )
 
+    # Exactly the one pass_priority the policy actually asked for -- no blind extra.
     pass_calls = [args for name, args in tool_calls if name == "pass_priority"]
-    assert pass_calls == [{}, {}, {"board_cursor": 5}]
+    assert pass_calls == [{}]
+
+    # The marker file is what a consumer scanning game dirs can see; the log and the
+    # exit code are invisible to it.
+    marker = json.loads((game_dir / "ABORTED.json").read_text())
+    assert marker["aborted"] is True
+    assert marker["error_type"] == "OpenAIError"
 
 
 @pytest.mark.asyncio
@@ -963,7 +983,14 @@ async def test_stall_recovery_preserves_board_context():
 
     pass_calls = [args for name, args in tool_calls if name == "pass_priority"]
     assert pass_calls == [{}, {}, {"board_cursor": 9}]
-    game_log.emit.assert_any_call("stall", turns_without_progress=1, last_tools=["pass_priority"])
+    # harness_action marks the auto-pass as chosen by the harness rather than the
+    # policy, so training data can exclude it.
+    game_log.emit.assert_any_call(
+        "stall",
+        turns_without_progress=1,
+        last_tools=["pass_priority"],
+        harness_action=True,
+    )
 
 
 # --- Chat rate limiting tests ---

@@ -55,7 +55,7 @@ from magebench.pilot.pilot_rendering import (
     render_context,
     render_for_pilot,
 )
-from magebench.pilot.pilot_state import PilotLoopState, PilotTurnState, reset_context
+from magebench.pilot.pilot_state import PilotLoopState, PilotTurnState
 from magebench.pilot.prompts import load_prompts
 from magebench.pilot.tool_error import ToolExecutionError
 
@@ -71,11 +71,24 @@ PERMANENT_FAILURE_EXIT_CODE = 3
 # vLLM validates prompt_tokens + max_tokens <= max_model_len, so this value is
 # subtracted from the usable prompt budget on every request. At 20_000 against a
 # 32768 context the real prompt ceiling was 12,768 tokens, and games were walking
-# into it: prompts grow ~50 tok/call, so long games hit a 400 that is NOT in
-# _classify_permanent_llm_failure's permanent set, get "recovered" with a blind
-# pass_priority and a wiped conversation, and finish looking healthy. Measured
-# completion length with thinking disabled is ~21 tokens mean, ~102 max.
+# into it: prompts grow ~50 tok/call, and the peak observed was 12,758 -- ten
+# tokens of headroom. Seven 400s fired across four games of a live baseline.
+#
+# Those 400s used to be swallowed. A 400 is not in _classify_permanent_llm_failure's
+# permanent set, so the pilot fired a blind pass_priority, wiped the conversation,
+# and finished the game looking healthy. That recovery path is gone -- any LLM error
+# now aborts, see the OpenAIError handler in run_pilot_loop -- so an overflow would
+# fail loudly today rather than silently. 1024 keeps it from arising at all:
+# measured completion length with thinking disabled is ~21 tokens mean, ~102 max,
+# so this is ~10x headroom while returning ~19k tokens of prompt budget.
 MAX_TOKENS = 1024
+
+# Ask the serving engine for exact prompt/completion token ids, for RL rollouts.
+# vLLM-only: `return_token_ids` / `return_prompt_text` are vLLM extensions and other
+# providers reject unknown request fields. Gated on an env var rather than on
+# `provider == "local"` because run_pilot_loop is not passed the provider; if that
+# changes, prefer the provider check.
+CAPTURE_TOKEN_IDS = os.environ.get("MAGEBENCH_CAPTURE_TOKEN_IDS") == "1"
 LLM_REQUEST_TIMEOUT_SECS = 120
 MAX_CONSECUTIVE_TIMEOUTS = 3
 MAX_CONSECUTIVE_EMPTY_CHOICES = 5
@@ -135,6 +148,27 @@ def _record_tool_execution_failure(
         logger=logger,
         log_error_fn=log_error,
     )
+
+
+def _mark_game_aborted(game_dir: Path | None, username: str, reason: str, error_type: str) -> None:
+    """Drop a marker file so a consumer cannot mistake an aborted game for a completed one.
+
+    The game log and the exit code both already say the game died, but a downstream reader
+    scanning game directories sees neither. A file whose presence is the signal survives being
+    read by something that only knows how to glob.
+    """
+    if game_dir is None:
+        return
+    marker = game_dir / "ABORTED.json"
+    payload = {
+        "aborted": True,
+        "player": username,
+        "reason": reason,
+        "error_type": error_type,
+        "note": "Trajectory is incomplete. Do not use for training or scoring.",
+    }
+    marker.write_text(json.dumps(payload, indent=2) + "\n")
+    log_error(logger, game_dir, username, f"game aborted: {reason}")
 
 
 def _handle_truncated_response(
@@ -517,8 +551,16 @@ async def run_pilot_loop(
     ignore_providers: list[str] | None = None,
     provider_order: list[str] | None = None,
     cache_control: dict | None = None,
+    *,
+    capture_token_ids: bool = False,
 ) -> None:
-    """Run the LLM-driven game-playing loop."""
+    """Run the LLM-driven game-playing loop.
+
+    `capture_token_ids` asks the serving engine to return the exact prompt and
+    completion token ids for every call, for RL rollouts. It is vLLM-specific
+    (`return_token_ids` / `return_prompt_text`) and must stay off for providers that
+    reject unknown request fields.
+    """
     try:
         initial_message = await _prefetch_first_action(session)
     except ToolExecutionError as exc:
@@ -553,6 +595,27 @@ async def run_pilot_loop(
             # being generated, so the cost is invisible in the logs and real on the clock.
             if os.environ.get("MAGEBENCH_DISABLE_THINKING") == "1":
                 extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+            if capture_token_ids:
+                # RL rollouts train on these. Ask the serving engine for the exact token
+                # sequence it prompted with and sampled, so the training path never has to
+                # re-tokenize a re-rendered transcript. Re-rendering is not an identity here:
+                # the chat template rebuilds history each turn, vLLM's hermes parser rewrites
+                # tool-call arguments through json.dumps, and tool_call ids are regenerated
+                # per response. Re-tokenizing any of that yields a sequence the policy never
+                # produced, and the resulting GRPO importance ratio is silently wrong.
+                #
+                # WARNING: both of these are silently nulled if `include_reasoning` is False.
+                # vLLM computes `suppress_metadata = not include_reasoning and parser is not
+                # None` and uses it to gate token_ids and logprobs off the response
+                # (entrypoints/openai/chat_completion/serving.py:899,1003). A parser IS active
+                # here (--tool-call-parser hermes, --reasoning-parser qwen3), so leaving
+                # include_reasoning at its default True is load-bearing. Thinking is disabled
+                # via chat_template_kwargs above, NOT via include_reasoning -- do not "simplify"
+                # those into one another or the training signal disappears with no error.
+                extra_body["return_token_ids"] = True
+                # AUDIT ONLY. Never feed prompt_text to the trainer: it is the rendered string,
+                # and tokenizing it is exactly the round trip return_token_ids exists to avoid.
+                extra_body["return_prompt_text"] = True
             if reasoning_effort:
                 extra_body["reasoning"] = {"effort": reasoning_effort}
             if ignore_providers or provider_order:
@@ -569,6 +632,19 @@ async def run_pilot_loop(
                 timeout=LLM_REQUEST_TIMEOUT_SECS,
             )
             state.consecutive_timeouts = 0
+            if capture_token_ids:
+                # Fires the moment a tokenizer or chat template shifts under us, which would
+                # otherwise show up only as a quietly wrong policy six weeks into training.
+                prompt_token_ids = response.prompt_token_ids
+                assert prompt_token_ids is not None, (
+                    "return_token_ids was requested but the server returned no prompt_token_ids; "
+                    "check that include_reasoning is not set to False"
+                )
+                assert response.usage is not None, "expected usage alongside prompt_token_ids"
+                assert len(prompt_token_ids) == response.usage.prompt_tokens, (
+                    f"prompt_token_ids length {len(prompt_token_ids)} != "
+                    f"usage.prompt_tokens {response.usage.prompt_tokens}"
+                )
             if not response.choices:
                 state.consecutive_empty_choices += 1
                 logger.warning(
@@ -746,31 +822,38 @@ async def run_pilot_loop(
                     error_message=error_str[:500],
                 )
 
-            reason = _classify_permanent_llm_failure(error_str)
-            if reason is not None:
-                logger.warning("[pilot] %s, aborting", reason)
-                if game_log:
-                    game_log.emit("permanent_llm_failure", reason=reason)
-                try:
-                    await execute_tool(
-                        session,
-                        "send_chat_message",
-                        {"message": f"{reason}... aborting game. GG!"},
-                    )
-                except ToolExecutionError:
-                    pass
-                raise PermanentLLMError(reason) from None
-
+            # Any LLM error aborts the game. There is deliberately no recovery path.
+            #
+            # This used to blind-fire pass_priority and reset_context for every error that was
+            # not a 401/402/403/404, then keep playing. That records an action the policy never
+            # chose, as though it had, with no marker at any level: the game finishes, the batch
+            # summary is clean, and the trajectory is silently mislabelled. It fired in practice
+            # on context-overflow 400s and, worse, on APIConnectionError -- one game reached
+            # GAME_OVER having made zero LLM calls, played entirely by this path.
+            #
+            # For RL data a fabricated action is worse than a missing one: losing a rollout costs
+            # one episode, poisoning one corrupts the gradient and is invisible downstream.
+            # Fail-fast is also what AGENTS.md requires; the old branch was a graceful fallback
+            # that continued with degraded behaviour.
+            reason = _classify_permanent_llm_failure(error_str) or f"LLM error ({type(exc).__name__})"
+            logger.error("[pilot] %s, aborting game", reason)
+            if game_log:
+                game_log.emit(
+                    "permanent_llm_failure",
+                    reason=reason,
+                    error_type=type(exc).__name__,
+                    error_message=error_str[:500],
+                )
+            _mark_game_aborted(game_dir, username, reason, type(exc).__name__)
             try:
-                await execute_tool(session, "pass_priority", {})
+                await execute_tool(
+                    session,
+                    "send_chat_message",
+                    {"message": f"{reason}... aborting game. GG!"},
+                )
             except ToolExecutionError:
-                await asyncio.sleep(5)
-
-            reset_context(
-                state,
-                "Continue playing. Call pass_priority.",
-                reset_board_context=False,
-            )
+                pass
+            raise PermanentLLMError(reason) from None
 
 
 async def run_pilot(
@@ -888,6 +971,7 @@ async def run_pilot(
                     ignore_providers=ignore_providers,
                     provider_order=provider_order,
                     cache_control=cache_control,
+                    capture_token_ids=CAPTURE_TOKEN_IDS,
                 )
         finally:
             if game_log:
