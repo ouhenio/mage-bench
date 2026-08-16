@@ -18,8 +18,10 @@ from magebench.common.process_manager import ProcessManager, jvm_oom_preexec_fn
 from magebench.leaderboard.website_data import generate_all_website_data
 from magebench.orchestration.batch_coordination import (
     GameSession,
+    attach_game,
+    await_game_start,
     finalize_game,
-    setup_game,
+    launch_game,
     wait_for_all_games,
 )
 from magebench.orchestration.config import Config
@@ -339,27 +341,82 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
         used_player_names: set[str] = set()
         cross_game_round_robin: list[tuple[str, ...]] = []
         cross_game_format_picks: list[str] = []
+        # Set the batch up in three passes rather than one game at a time.
+        #
+        # Each game's setup blocks twice -- ~16 s waiting for the spectator to boot
+        # Swing and create its table, then ~7 s waiting for the bridge to join it.
+        # Done per game those waits serialise, costing ~24 s of ramp per additional
+        # game (measured: 24 s, 24 s, 26 s across a 4-game batch; ~29% of its wall
+        # clock, and worse at higher --parallel).
+        #
+        # Launching every spectator before waiting on any of them makes the waits
+        # overlap, so the batch pays roughly one wait instead of N. No threads are
+        # needed: the concurrency comes from the JVMs already running while we
+        # block. That keeps config resolution sequential, which it must be -- it
+        # mutates shared cross-game state.
+        #
+        # Safe only because each bridge is now pinned to its own table id. An
+        # unpinned bridge joins the first table in state WAITING, so with several
+        # tables open at once games would silently cross-wire.
+        skipped: list[tuple[int, str]] = []
+
+        def _skip(index: int, phase: str, exc: Exception) -> None:
+            if not batch:
+                raise exc
+            skipped.append((index + 1, phase))
+            logger.error(
+                "Game %d/%d: failed to %s, skipping: %s", index + 1, config.num_games, phase, exc
+            )
+
+        launched: list[GameSession] = []
         for index in range(config.num_games):
             try:
-                session = setup_game(
-                    index,
-                    config.num_games,
-                    config,
-                    pm,
-                    project_root,
-                    log_dir,
-                    config.timestamp,
-                    used_player_names=used_player_names if batch else None,
-                    cross_game_round_robin=cross_game_round_robin if batch else None,
-                    cross_game_format_picks=cross_game_format_picks if batch else None,
+                launched.append(
+                    launch_game(
+                        index,
+                        config.num_games,
+                        config,
+                        pm,
+                        project_root,
+                        log_dir,
+                        config.timestamp,
+                        used_player_names=used_player_names if batch else None,
+                        cross_game_round_robin=cross_game_round_robin if batch else None,
+                        cross_game_format_picks=cross_game_format_picks if batch else None,
+                    )
                 )
             except (TimeoutError, RuntimeError) as exc:
-                if not batch:
-                    raise
-                game_label = f"Game {index + 1}/{config.num_games}"
-                logger.error("%s: failed to launch, skipping: %s", game_label, exc)
+                _skip(index, "launch", exc)
+
+        attached: list[GameSession] = []
+        for session in launched:
+            try:
+                attach_game(session, config.num_games, pm, project_root)
+            except (TimeoutError, RuntimeError) as exc:
+                _skip(session.index, "start its clients", exc)
+                continue
+            attached.append(session)
+
+        for session in attached:
+            try:
+                await_game_start(session, config.num_games)
+            except (TimeoutError, RuntimeError) as exc:
+                _skip(session.index, "start", exc)
                 continue
             sessions.append(session)
+
+        if batch and skipped:
+            # Say it once, at the end, where it cannot be lost. A skip is a single error line
+            # emitted up to 300s and thousands of lines into the run, and the summary that
+            # follows reports only the survivors -- so a 6-game batch that ran 4 otherwise
+            # reads as success. A runner consuming this has already been silently truncated
+            # once tonight; do not make it infer the count.
+            logger.error(
+                "Ran %d of %d requested games. Skipped: %s",
+                len(sessions),
+                config.num_games,
+                ", ".join(f"game {i} ({phase})" for i, phase in skipped),
+            )
 
         if batch and not sessions:
             logger.error("No games launched successfully")

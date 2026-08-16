@@ -209,6 +209,7 @@ def start_sleepwalker_client(
     name: str,
     deck_path: str | None,
     log_path: Path,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start a sleepwalker client."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -227,6 +228,8 @@ def start_sleepwalker_client(
     ]
     if deck_path:
         args.extend(["--deck", str(project_root / deck_path)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,
@@ -245,6 +248,7 @@ def start_replay_client(
     script_path: str | None,
     log_path: Path,
     game_dir: Path | None = None,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start a replay client."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -267,6 +271,8 @@ def start_replay_client(
         args.extend(["--script", str(project_root / script_path)])
     if game_dir:
         args.extend(["--game-dir", str(game_dir)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,
