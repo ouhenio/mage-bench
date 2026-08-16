@@ -1,0 +1,19 @@
+{
+  "_comment": "Step 1 re-measure: thinking disabled (MAGEBENCH_DISABLE_THINKING=1) and chat stripped. Same fixed mirror deck as local-q38b-vs-cpu.json so the numbers are comparable against that run.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {
+      "type": "pilot",
+      "preset": "q38b-local-notalk",
+      "provider": "local",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    }
+  ]
+}
