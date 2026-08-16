@@ -15,6 +15,17 @@ from magebench.common.log import get_logger
 from magebench.common.process_manager import ProcessManager
 from magebench.orchestration.config import Config, PilotPlayer
 
+# Every `mvn exec:java` below inherits the DEFAULT ~/.m2 unless told otherwise, so a
+# worktree built against an isolated repository still RUNS the shared jars. That makes
+# an isolated build silently ineffective: the code is compiled, installed, and never
+# loaded. Set MAVEN_REPO_LOCAL to point the runtime at the same repository the build
+# used.
+_MVN_REPO_ARGS = (
+    [f"-Dmaven.repo.local={os.environ['MAVEN_REPO_LOCAL']}"]
+    if os.environ.get("MAVEN_REPO_LOCAL")
+    else []
+)
+
 logger = get_logger(__name__)
 
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
@@ -98,11 +109,31 @@ def start_server(
     log_path: Path,
 ) -> subprocess.Popen:
     """Start the XMage server."""
+    # AiDecisionRecorder lives in ComputerPlayer6, which runs HERE in the server
+    # JVM -- not in the Swing client. System properties do not travel over the
+    # wire, so this has to be set on the server process. (AI skill is different:
+    # the client reads it and passes it through joinTable as a parameter.)
+    ai_record_dir = os.environ.get("MAGEBENCH_AI_RECORD_DIR", "")
+    # AiHintProvider runs in the same place and for the same reason: it hooks
+    # HumanPlayer, which lives in the server JVM. Naming the seats rather than a
+    # boolean keeps the cost on the one seat being labelled -- each hint is a full
+    # AI search, so hinting every seat would double the engine work per game.
+    hint_seats = os.environ.get("MAGEBENCH_HINT_SEATS", "")
+    hint_dir = os.environ.get("MAGEBENCH_HINT_DIR", "")
+    hint_skill = os.environ.get("MAGEBENCH_HINT_SKILL", "")
+    assert not hint_seats or hint_dir, (
+        "MAGEBENCH_HINT_SEATS is set but MAGEBENCH_HINT_DIR is not -- hints would go to "
+        "the server log instead of a file, which no consumer reads"
+    )
     jvm_args = " ".join(
         [
             config.jvm_bridge_opts,
             "-Xmx1024m",
             f"-Dxmage.config.path={config_path}",
+            *([f"-Dxmage.ai.recordDir={ai_record_dir}"] if ai_record_dir else []),
+            *([f"-Dxmage.hint.seats={hint_seats}"] if hint_seats else []),
+            *([f"-Dxmage.hint.dir={hint_dir}"] if hint_seats else []),
+            *([f"-Dxmage.hint.skill={hint_skill}"] if hint_seats and hint_skill else []),
         ]
     )
 
@@ -117,7 +148,7 @@ def start_server(
     }
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", "exec:java"],
+        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Server",
         env=env,
         log_file=log_path,
@@ -132,14 +163,26 @@ def start_gui_client(
     game_dir: Path | None = None,
 ) -> subprocess.Popen:
     """Start the GUI spectator client."""
-    del game_dir
+    # The Swing client already reads this property (TablesPanel.java:1761) and sets
+    # MatchOptions.gameLogDir, which is the only thing gating
+    # ServerGameEventLogCollector: it returns early while gameLogDir is null, and
+    # otherwise writes server_game_events.jsonl. Dropping game_dir here is why that
+    # file exists in zero game directories, and why the winner has to be
+    # reconstructed from life totals rather than read. The same file carries the
+    # per-decision query/response record for BOTH seats, including the engine AI --
+    # which is what makes AI-vs-AI games usable as a teacher dataset.
+    assert game_dir is not None, "game_dir is required to record server game events"
     config_json = config.get_players_config_json()
+
+    ai_skills = os.environ.get("MAGEBENCH_AI_SKILLS", "")
 
     jvm_args = " ".join(
         [
             config.jvm_opens,
             config.jvm_rendering,
             "-Xmx1536m",
+            f"-Dxmage.observer.gameDir={game_dir}",
+            *([f"-Dxmage.ai.skills={ai_skills}"] if ai_skills else []),
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",
@@ -170,7 +213,7 @@ def start_gui_client(
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", "exec:java"],
+        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Client",
         env=env,
         log_file=log_path,
@@ -373,7 +416,7 @@ def start_observer_client(
     if config.skip_init_shuffling:
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
-    args = ["mvn", "-q", "exec:java"]
+    args = ["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"]
     if sys.platform == "linux" and "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
         xvfb = shutil.which("xvfb-run")
         assert xvfb is not None, (
