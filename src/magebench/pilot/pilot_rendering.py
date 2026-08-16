@@ -47,7 +47,10 @@ def render_for_pilot(
     else:
         board = last_board
 
-    decision = build_pilot_decision(data)
+    # `board` is already resolved above (this result's, or the last one carried
+    # forward). The decision must see the same board the snapshot does, or it
+    # cannot identify which player is the pilot.
+    decision = build_pilot_decision(data, board)
     snapshot = build_pilot_snapshot(data, board, decision)
 
     oracle_texts = extract_oracle_texts_from_board(board) if board else {}
