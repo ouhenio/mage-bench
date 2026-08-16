@@ -50,7 +50,7 @@ class GameSession:
     pilot_procs: list[tuple[str, subprocess.Popen]] = field(default_factory=list)
 
 
-def setup_game(
+def launch_game(
     index: int,
     num_games: int,
     base_config: Config,
@@ -62,7 +62,18 @@ def setup_game(
     cross_game_round_robin: list[tuple[str, ...]] | None = None,
     cross_game_format_picks: list[str] | None = None,
 ) -> GameSession:
-    """Set up a single game: create dir, load config, start spectator and clients."""
+    """Resolve config, create the game dir, and start the spectator JVM.
+
+    Phase one of three. Returns as soon as the spectator process is spawned,
+    without waiting for it to create its table -- that wait is `attach_game`.
+    Splitting them lets a batch launch every spectator before blocking on any of
+    them, which is what removes the ~24 s per-game serial ramp.
+
+    Config resolution stays here and stays sequential: it mutates the shared
+    `used_player_names`, `cross_game_round_robin` and `cross_game_format_picks`
+    across games, and duplicate player names would put two bridge clients on one
+    XMage username, where they kick each other off the server forever.
+    """
     batch = num_games > 1
     game_label = f"Game {index + 1}/{num_games}: " if batch else ""
 
@@ -134,77 +145,160 @@ def setup_game(
         start_spectator_client = start_gui_client
 
     spectator_proc = start_spectator_client(pm, project_root, game_config, spectator_log, game_dir=game_dir)
-    session = GameSession(
+    return GameSession(
         index=index,
         game_dir=game_dir,
         config=game_config,
         spectator_proc=spectator_proc,
     )
 
+
+def _terminate_session(session: GameSession) -> None:
+    """Stop a half-set-up game so a failure in one game does not leak JVMs."""
+    if session.spectator_proc is not None and session.spectator_proc.poll() is None:
+        session.spectator_proc.terminate()
+    for _, proc in session.pilot_procs:
+        if proc.poll() is None:
+            proc.terminate()
+
+
+def attach_game(
+    session: GameSession,
+    num_games: int,
+    pm: ProcessManager,
+    project_root: Path,
+) -> None:
+    """Wait for this game's table, then start its bridge clients pinned to it.
+
+    Separated from `launch_game` so a batch can start every spectator first and
+    then wait on them. The waits are the expensive part (~16 s of Swing boot and
+    table creation each), and once all the spectators are running they elapse
+    concurrently, so N games cost roughly one wait rather than N.
+
+    Pinning is what makes that safe: an unpinned bridge joins the first table it
+    finds in state WAITING, so with several tables open at once games would
+    cross-wire instead of failing. See `wait_for_spectator_table`.
+    """
+    batch = num_games > 1
+    game_label = f"Game {session.index + 1}/{num_games}: " if batch else ""
+    game_config = session.config
+    game_dir = session.game_dir
+    spectator_log = game_dir / "spectator.log"
+    assert session.spectator_proc is not None, "attach_game requires a launched spectator"
+
     bridge_count = (
         len(game_config.sleepwalker_players) + len(game_config.pilot_players) + len(game_config.replay_players)
     )
+    if bridge_count == 0:
+        return
 
     try:
-        if bridge_count > 0:
-            table_id = wait_for_spectator_table(spectator_log, spectator_proc, timeout=300)
+        table_id = wait_for_spectator_table(spectator_log, session.spectator_proc, timeout=300)
 
-            for sleepwalker_player in game_config.sleepwalker_players:
-                log_path = game_dir / f"{sleepwalker_player.name}_mcp.log"
-                logger.info(
-                    "%sSleepwalker (%s) log: %s",
-                    game_label,
-                    sleepwalker_player.name,
-                    log_path,
-                )
-                start_sleepwalker_client(
-                    pm,
-                    project_root,
-                    game_config,
-                    sleepwalker_player.name,
-                    sleepwalker_player.deck,
-                    log_path,
-                )
+        for sleepwalker_player in game_config.sleepwalker_players:
+            log_path = game_dir / f"{sleepwalker_player.name}_mcp.log"
+            logger.info(
+                "%sSleepwalker (%s) log: %s",
+                game_label,
+                sleepwalker_player.name,
+                log_path,
+            )
+            start_sleepwalker_client(
+                pm,
+                project_root,
+                game_config,
+                sleepwalker_player.name,
+                sleepwalker_player.deck,
+                log_path,
+            )
 
-            for pilot_player in game_config.pilot_players:
-                log_path = game_dir / f"{pilot_player.name}_pilot.log"
-                logger.info("%sPilot (%s) log: %s", game_label, pilot_player.name, log_path)
-                proc = start_pilot_client(
-                    pm,
-                    project_root,
-                    game_config,
-                    pilot_player,
-                    log_path,
-                    game_dir=game_dir,
-                    table_id=table_id,
-                )
-                session.pilot_procs.append((pilot_player.name, proc))
+        for pilot_player in game_config.pilot_players:
+            log_path = game_dir / f"{pilot_player.name}_pilot.log"
+            logger.info("%sPilot (%s) log: %s", game_label, pilot_player.name, log_path)
+            proc = start_pilot_client(
+                pm,
+                project_root,
+                game_config,
+                pilot_player,
+                log_path,
+                game_dir=game_dir,
+                table_id=table_id,
+            )
+            session.pilot_procs.append((pilot_player.name, proc))
 
-            for replay_player in game_config.replay_players:
-                log_path = game_dir / f"{replay_player.name}_replay.log"
-                logger.info("%sReplay (%s) log: %s", game_label, replay_player.name, log_path)
-                proc = start_replay_client(
-                    pm,
-                    project_root,
-                    game_config,
-                    replay_player.name,
-                    replay_player.deck,
-                    replay_player.script,
-                    log_path,
-                    game_dir=game_dir,
-                )
-                session.pilot_procs.append((replay_player.name, proc))
-
-            if batch:
-                wait_for_game_start(spectator_log, spectator_proc)
+        for replay_player in game_config.replay_players:
+            log_path = game_dir / f"{replay_player.name}_replay.log"
+            logger.info("%sReplay (%s) log: %s", game_label, replay_player.name, log_path)
+            proc = start_replay_client(
+                pm,
+                project_root,
+                game_config,
+                replay_player.name,
+                replay_player.deck,
+                replay_player.script,
+                log_path,
+                game_dir=game_dir,
+            )
+            session.pilot_procs.append((replay_player.name, proc))
     except (TimeoutError, RuntimeError):
-        if spectator_proc.poll() is None:
-            spectator_proc.terminate()
-        for _, proc in session.pilot_procs:
-            if proc.poll() is None:
-                proc.terminate()
+        _terminate_session(session)
         raise
 
+
+def await_game_start(session: GameSession, num_games: int) -> None:
+    """Block until this game reports that every player has joined.
+
+    Run as its own pass over the batch, after every game has its clients started,
+    so these waits overlap too.
+    """
+    if num_games <= 1:
+        return
+    bridge_count = (
+        len(session.config.sleepwalker_players)
+        + len(session.config.pilot_players)
+        + len(session.config.replay_players)
+    )
+    if bridge_count == 0:
+        return
+    assert session.spectator_proc is not None, "await_game_start requires a launched spectator"
+    try:
+        wait_for_game_start(session.game_dir / "spectator.log", session.spectator_proc)
+    except (TimeoutError, RuntimeError):
+        _terminate_session(session)
+        raise
+
+
+def setup_game(
+    index: int,
+    num_games: int,
+    base_config: Config,
+    pm: ProcessManager,
+    project_root: Path,
+    log_dir: Path,
+    timestamp: str,
+    used_player_names: set[str] | None = None,
+    cross_game_round_robin: list[tuple[str, ...]] | None = None,
+    cross_game_format_picks: list[str] | None = None,
+) -> GameSession:
+    """Set up one game end to end: launch, attach clients, wait for the start.
+
+    The single-game path. A batch drives the three phases separately so that the
+    blocking waits overlap across games.
+    """
+    session = launch_game(
+        index,
+        num_games,
+        base_config,
+        pm,
+        project_root,
+        log_dir,
+        timestamp,
+        used_player_names=used_player_names,
+        cross_game_round_robin=cross_game_round_robin,
+        cross_game_format_picks=cross_game_format_picks,
+    )
+    attach_game(session, num_games, pm, project_root)
+    await_game_start(session, num_games)
     return session
 
 
