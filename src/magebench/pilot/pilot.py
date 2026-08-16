@@ -868,6 +868,7 @@ async def run_pilot(
     provider: str = DEFAULT_LLM_PROVIDER,
     system_prompt: str = "",
     game_dir: Path | None = None,
+    table_id: str = "",
     max_interactions_per_turn: int | None = None,
     reasoning_effort: str = "",
     tools: set[str] | None = None,
@@ -912,6 +913,7 @@ async def run_pilot(
         error_log_path=game_dir / f"{username}_errors.log" if game_dir else None,
         bridge_log_path=game_dir / f"{username}_bridge.jsonl" if game_dir else None,
         max_interactions_per_turn=max_interactions_per_turn,
+        table_id=table_id or None,
     )
 
     logger.info("[pilot] Spawning bridge client...")
@@ -996,6 +998,15 @@ def main() -> int:
     parser.add_argument("--system-prompt", default="", help="Custom system prompt")
     parser.add_argument("--game-dir", type=Path, help="Game directory for cost file output")
     parser.add_argument(
+        "--table-id",
+        default="",
+        help=(
+            "Pin the bridge to this table. Without it the bridge joins the first WAITING "
+            "table with an open seat, which is only correct while one table is open at a "
+            "time -- i.e. while batch setup is serialised."
+        ),
+    )
+    parser.add_argument(
         "--max-interactions-per-turn",
         type=int,
         help="Loop detection threshold (default 25)",
@@ -1076,6 +1087,7 @@ def main() -> int:
                 provider=args.provider,
                 system_prompt=system_prompt,
                 game_dir=args.game_dir,
+                table_id=args.table_id,
                 prices=prices,
                 max_interactions_per_turn=args.max_interactions_per_turn,
                 reasoning_effort=args.reasoning_effort,
