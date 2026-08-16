@@ -378,6 +378,12 @@ public final class BridgePublishedQueryBuilder {
                 var choiceEntry = new HashMap<String, Object>();
                 choiceEntry.put("index", idx);
                 choiceEntry.put("id", processorServices.viewLocator().getStableShortId(objectId, cardView, gameView));
+                // Engine-side uuid alongside the short id. The model never sees this --
+                // it is stripped before rendering -- but it is the only exact join between
+                // a teacher hint (which names engine objects) and the option token the
+                // model must emit. Matching by card name is ambiguous whenever two
+                // offered options share one.
+                choiceEntry.put("uuid", objectId.toString());
 
                 boolean isOnBattlefield = cardView == null
                     || (gameView.getMyHand().get(objectId) == null && gameView.getStack().get(objectId) == null);
@@ -459,6 +465,7 @@ public final class BridgePublishedQueryBuilder {
                         var choiceEntry = new HashMap<String, Object>();
                         choiceEntry.put("index", idx);
                         choiceEntry.put("id", processorServices.viewLocator().getStableShortId(attackerId, permanent, gameView));
+                        choiceEntry.put("uuid", attackerId.toString());
                         choiceEntry.put("name", processorServices.cardFormatter().safeDisplayName(permanent));
                         if (permanent.getPower() != null) {
                             choiceEntry.put("power", permanent.getPower());
