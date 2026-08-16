@@ -68,7 +68,14 @@ DEFAULT_MODEL = "google/gemini-2.0-flash-001"
 # game early instead of wasting API tokens on the other player.
 PERMANENT_FAILURE_EXIT_CODE = 3
 
-MAX_TOKENS = 20_000
+# vLLM validates prompt_tokens + max_tokens <= max_model_len, so this value is
+# subtracted from the usable prompt budget on every request. At 20_000 against a
+# 32768 context the real prompt ceiling was 12,768 tokens, and games were walking
+# into it: prompts grow ~50 tok/call, so long games hit a 400 that is NOT in
+# _classify_permanent_llm_failure's permanent set, get "recovered" with a blind
+# pass_priority and a wiped conversation, and finish looking healthy. Measured
+# completion length with thinking disabled is ~21 tokens mean, ~102 max.
+MAX_TOKENS = 1024
 LLM_REQUEST_TIMEOUT_SECS = 120
 MAX_CONSECUTIVE_TIMEOUTS = 3
 MAX_CONSECUTIVE_EMPTY_CHOICES = 5
@@ -540,6 +547,12 @@ async def run_pilot_loop(
                 "max_tokens": MAX_TOKENS,
             }
             extra_body: dict = {}
+            # Qwen3 and friends default to thinking mode in their chat template, which spends
+            # ~800-1800 completion tokens per decision — most of them to decide to pass. A
+            # served reasoning-parser strips the trace from the response but does not stop it
+            # being generated, so the cost is invisible in the logs and real on the clock.
+            if os.environ.get("MAGEBENCH_DISABLE_THINKING") == "1":
+                extra_body["chat_template_kwargs"] = {"enable_thinking": False}
             if reasoning_effort:
                 extra_body["reasoning"] = {"effort": reasoning_effort}
             if ignore_providers or provider_order:
