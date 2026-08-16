@@ -1,0 +1,17 @@
+{
+  "_comment": "SFT corpus generation. Boros Aggro mirror, chosen against a measured defect rather than by taste: the pilot passes 38% of decisions where it holds a playable card, and combat is 4.4% of the corpus. That is a basic-action failure, so the deck is picked to maximise the scarce decision types -- low curve, creature-dense, attacks every turn. Mirror removes matchup variance, so a behaviour change is attributable to the policy. Boros Aggro is also one of only 9 of the 26 Standard registry decks with a legal 60-card maindeck; Mono-Red Aggro was the more natural aggro pick and is 53 cards.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "HintBoros",
+      "preset": "q38b-local-notalk",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {"type": "cpu", "name": "XMage AI", "deck": "tmp/decks/Boros-Aggro.dck"}
+  ]
+}

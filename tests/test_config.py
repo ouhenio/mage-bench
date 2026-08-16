@@ -22,6 +22,9 @@ from magebench.orchestration.config import (
     load_presets,
     load_prompts,
     load_toolsets,
+    maindeck_size,
+    min_maindeck_size,
+    parse_dck_line,
     resolve_preset,
 )
 
@@ -1480,3 +1483,90 @@ def test_random_expressive_personality_allowed_on_normal_model():
 
     assert player.personality == "villain"
     assert player.prompt_suffix == "You are evil."
+
+
+# --- .dck parsing and deck size validation ---
+
+
+def test_parse_dck_line_maindeck():
+    count, name, sb = parse_dck_line("4 [M21:1] Lightning Bolt")
+    assert count == 4
+    assert name == "Lightning Bolt"
+    assert sb is False
+
+
+def test_parse_dck_line_sideboard():
+    count, name, sb = parse_dck_line("SB: 1 [FRF:87] Tasigur, the Golden Fang")
+    assert count == 1
+    assert name == "Tasigur, the Golden Fang"
+    assert sb is True
+
+
+def test_parse_dck_line_unparseable():
+    assert parse_dck_line("") is None
+    assert parse_dck_line("# comment") is None
+    assert parse_dck_line("NAME:Burn") is None
+
+
+def test_parse_dck_line_multiword_set():
+    count, name, sb = parse_dck_line("2 [CSP:152] Snow-Covered Island")
+    assert count == 2
+    assert name == "Snow-Covered Island"
+    assert sb is False
+
+
+def test_maindeck_size_excludes_sideboard_and_noise():
+    cards = [
+        "4 [M21:1] Lightning Bolt",
+        "20 [M21:7] Mountain",
+        "NAME:Burn",
+        "SB: 3 [M21:9] Smash to Smithereens",
+    ]
+    assert maindeck_size(cards) == 24
+
+
+def test_min_maindeck_size_by_deck_type():
+    assert min_maindeck_size("Limited") == 40
+    assert min_maindeck_size("Constructed - Standard") == 60
+    assert min_maindeck_size(None) == 60
+
+
+def _write_deck(root: Path, name: str, maindeck: int) -> str:
+    path = root / "tmp" / "decks" / f"{name}.dck"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{maindeck} [M21:7] Mountain\nSB: 15 [M21:9] Smash to Smithereens\n")
+    return str(path.relative_to(root))
+
+
+def test_validate_deck_sizes_accepts_legal_deck():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = Config(deck_type="Constructed - Standard")
+        config.cpu_players = [CpuPlayer(name="Weak", deck=_write_deck(root, "legal", 60))]
+        config.validate_deck_sizes(root)
+
+
+def test_validate_deck_sizes_rejects_undersized_deck():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = Config(deck_type="Constructed - Standard")
+        config.cpu_players = [CpuPlayer(name="Weak", deck=_write_deck(root, "short", 53))]
+        with pytest.raises(AssertionError, match="53 maindeck cards"):
+            config.validate_deck_sizes(root)
+
+
+def test_validate_deck_sizes_allows_40_card_limited():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = Config(deck_type="Limited")
+        config.cpu_players = [CpuPlayer(name="Weak", deck=_write_deck(root, "jumpstart", 40))]
+        config.validate_deck_sizes(root)
+
+
+def test_validate_deck_sizes_rejects_missing_deck_file():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = Config(deck_type="Constructed - Standard")
+        config.cpu_players = [CpuPlayer(name="Weak", deck="tmp/decks/nope.dck")]
+        with pytest.raises(AssertionError, match="not found"):
+            config.validate_deck_sizes(root)

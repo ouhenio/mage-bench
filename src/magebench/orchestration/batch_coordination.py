@@ -129,6 +129,7 @@ def launch_game(
 
     resolve_choice_decks(game_config.pilot_players, project_root, game_config.deck_type)
     game_config.resolve_random_decks(project_root)
+    game_config.validate_deck_sizes(project_root)
     write_game_meta(game_dir, game_config, project_root)
 
     spectator_log = game_dir / "spectator.log"

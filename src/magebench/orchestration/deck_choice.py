@@ -14,6 +14,7 @@ from magebench.orchestration.config import (
     deck_registry_format_dir,
     generate_dck_file,
     load_deck_registry,
+    parse_dck_line,
 )
 
 logger = get_logger(__name__)
@@ -35,30 +36,11 @@ _BASIC_LANDS = frozenset(
     }
 )
 
-# Regex for .dck lines: count [SET:NUM] Card Name
-_CARD_LINE_RE = re.compile(r"^(\d+)\s+\[.*?\]\s+(.+)$")
-
-
-def _parse_card_name(line: str) -> tuple[int, str, bool] | None:
-    """Parse a .dck line into (count, card_name, is_sideboard).
-
-    Returns None for unparseable lines.
-    """
-    stripped = line.strip()
-    is_sideboard = stripped.startswith("SB:")
-    if is_sideboard:
-        stripped = stripped[3:].strip()
-    m = _CARD_LINE_RE.match(stripped)
-    if not m:
-        return None
-    return int(m.group(1)), m.group(2).strip(), is_sideboard
-
-
 def _summarize_entry(entry: DeckEntry) -> str:
     """Return top 5 nonland maindeck cards by count as a compact string."""
     cards: list[tuple[int, str]] = []
     for line in entry.cards:
-        parsed = _parse_card_name(line)
+        parsed = parse_dck_line(line)
         if parsed is None:
             continue
         count, name, is_sideboard = parsed
