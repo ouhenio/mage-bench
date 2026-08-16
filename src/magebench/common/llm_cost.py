@@ -5,6 +5,7 @@ helpers for cost estimation and file-based cost reporting.
 """
 
 import json
+import os
 from pathlib import Path
 
 from magebench.common import http_utils
@@ -21,12 +22,17 @@ _PROVIDER_BASE_URLS = {
     "openai": "https://api.openai.com/v1",
     "anthropic": "https://api.anthropic.com/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
+    # Locally served OpenAI-compatible endpoint (vLLM). Override the host with
+    # MAGEBENCH_LOCAL_BASE_URL; the API key is ignored by vLLM but the client
+    # still requires a non-empty string.
+    "local": os.environ.get("MAGEBENCH_LOCAL_BASE_URL", "http://127.0.0.1:8000/v1"),
 }
 _PROVIDER_API_KEY_ENVS = {
     "openrouter": "OPENROUTER_API_KEY",
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "gemini": "GEMINI_API_KEY",
+    "local": "MAGEBENCH_LOCAL_API_KEY",
 }
 SUPPORTED_LLM_PROVIDERS = tuple(_PROVIDER_BASE_URLS)
 _OPENROUTER_HOSTS = frozenset({"openrouter.ai"})

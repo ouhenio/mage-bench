@@ -75,10 +75,17 @@ from magebench.game.season import SEASON_1_START_EPOCH as GAME_EXPORT_SEASON_1_S
 #  58 - get_game_state cursor now comes from processor-published state changes, not lazy read-time assignment (Mar 22)
 #  59 - get_game_state cursor is now a deterministic function of the published state, not a transition counter (Mar 22)
 #  60 - Rename get_game_state cursor to snapshot_id for snapshot-style unchanged reads (Mar 22)
+#  61 - Pilot can see its own hand on board_unchanged decisions (Aug 15). build_pilot_decision
+#       now takes the resolved fallback board, so `player` is the pilot's real name rather
+#       than the literal "You". Previously the renderer, which redacts the hand of every
+#       player whose name differs from the deciding player, redacted the pilot's own hand
+#       as if it were an opponent's -- measured at 11-21% of decisions across two games.
+#       The policy was choosing actions without seeing the cards it held, so results before
+#       and after this epoch are not comparable.
 #  --- Golden exports updated: game export wire format v9 uses snake_case keys (Mar 21)
 #  --- Golden exports updated: add model to test pilot players for stricter export validation (Mar 16)
 #  --- Golden exports updated: dataclass serialization includes null optional fields (Mar 17)
-HARNESS_EPOCH = 60
+HARNESS_EPOCH = 61
 
 # Re-exported here so existing callers keep a stable import path while the
 # canonical season boundary now lives with the export pipeline.

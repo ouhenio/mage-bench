@@ -1,0 +1,19 @@
+{
+  "_comment": "Step zero: local Qwen3-8B vs XMage's built-in AI. Mirror match on a single-variant Jumpstart deck, so the decklist is identical and deterministic on both sides and the result reflects play, not deck or variant luck.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {
+      "type": "pilot",
+      "preset": "q38b-local",
+      "provider": "local",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    }
+  ]
+}

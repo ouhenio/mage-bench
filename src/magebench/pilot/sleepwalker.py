@@ -46,6 +46,7 @@ async def run_sleepwalker(
     username: str,
     project_root: Path,
     deck_path: Path | None = None,
+    table_id: str = "",
 ) -> None:
     """Run the sleepwalker client."""
     logger.info("[sleepwalker] Starting for %s@%s:%s", username, server, port)
@@ -56,6 +57,7 @@ async def run_sleepwalker(
         username=username,
         deck_path=deck_path,
         heap_size_mb=512,
+        table_id=table_id or None,
     )
 
     logger.info("[sleepwalker] Spawning bridge client...")
@@ -151,6 +153,15 @@ def main() -> int:
     parser.add_argument("--username", default="Sleepy", help="Player username")
     parser.add_argument("--project-root", type=Path, help="Project root directory")
     parser.add_argument("--deck", type=Path, help="Path to deck file (.dck)")
+    parser.add_argument(
+        "--table-id",
+        default="",
+        help=(
+            "Pin the bridge to this table. Without it the bridge joins the first WAITING "
+            "table with an open seat, which cross-wires games when a batch has several "
+            "tables open at once."
+        ),
+    )
     args = parser.parse_args()
 
     # Determine project root
@@ -175,6 +186,7 @@ def main() -> int:
                 username=args.username,
                 project_root=project_root,
                 deck_path=args.deck,
+                table_id=args.table_id,
             )
         )
     except KeyboardInterrupt:

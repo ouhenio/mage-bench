@@ -102,6 +102,10 @@ async def _recover_from_stall(
             "stall",
             turns_without_progress=state.turns_without_progress,
             last_tools=last_tools,
+            # The auto-pass below is chosen by the harness, not the policy. Trajectories that
+            # include it carry an action the model never selected, so training data must be able
+            # to find and exclude it. Filter on this flag rather than on the event name.
+            harness_action=True,
         )
     try:
         await execute_tool(

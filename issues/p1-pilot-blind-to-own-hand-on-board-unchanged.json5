@@ -1,0 +1,37 @@
+{
+  "title": "Pilot's own hand is redacted to a count on the board_unchanged path",
+  "description": "On decisions where the bridge returns board_unchanged, the \
+pilot is shown its own hand as a count instead of its cards, so it chooses an \
+action without seeing what it holds. Measured on two real games: 8/73 and \
+11/53 tool calls carry board_unchanged, i.e. 11-21% of decisions. \
+Independently reconstructing the prompts through render_for_pilot showed the \
+pilot rendered as '- You' with hand as a count in 8/70 and 10/50 decision \
+prompts.\n\nMechanism: build_decision in src/magebench/pilot/pilot_bridge.py \
+constructs Decision with player=\"You\" and only overwrites it from the board \
+entry whose is_you is true. A board_unchanged result carries no board, so \
+player stays the literal \"You\". render_player in \
+src/magebench/game/decision_renderer.py then shows a full hand only when name \
+== deciding_player, and no player is ever named \"You\", so the pilot's own \
+hand is redacted along with the opponent's.\n\nThe fix is to carry the pilot's \
+real username through the board_unchanged path rather than leaving the \"You\" \
+placeholder — the same board_unchanged result already reaches a renderer that \
+has the previous board, so the name is the only thing missing. Do not paper \
+over it in the renderer by special-casing the string \"You\": that hides the \
+same bug for any future caller that forgets to set the name.\n\nNote for \
+whoever fixes this: it changes what the policy sees, so game results from \
+before and after are not comparable. It likely warrants a HARNESS_EPOCH bump. \
+Anything training on these games (GRPO rollouts) is currently learning from a \
+reward that penalises decisions the harness made blind.\n\nAdd a test that a \
+board_unchanged decision renders the deciding player's hand as cards, not as a \
+count.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "pilot",
+    "rendering",
+    "evaluation-validity",
+  ],
+  "created_at": "2026-08-15T22:50:00.000000-04:00",
+  "updated_at": "2026-08-15T22:50:00.000000-04:00",
+}

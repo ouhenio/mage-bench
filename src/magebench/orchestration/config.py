@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from magebench.common.atomic_write import atomic_write_text
 from magebench.common.llm_cost import DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS
 from magebench.common.log import get_logger
 from magebench.game.jumpstart import create_random_jumpstart_deck
@@ -480,7 +481,7 @@ def generate_dck_file(project_root: Path, entry: DeckEntry) -> Path:
     # Use deck name as filename, sanitized
     safe_name = entry.name.replace(" ", "-").replace("'", "").replace("/", "-")
     dck_path = tmp_dir / f"{safe_name}.dck"
-    dck_path.write_text("\n".join(entry.cards) + "\n")
+    atomic_write_text(dck_path, "\n".join(entry.cards) + "\n")
     return dck_path.relative_to(project_root)
 
 
