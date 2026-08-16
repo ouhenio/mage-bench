@@ -1,0 +1,17 @@
+{
+  "_comment": "Treatment arm of the base-prompt A/B. Identical to corpus-boros-mirror.json in every respect except the system prompt, which is notalk-strategy = notalk plus a 'How To Play Well' section. The control prompt is untouched, so this adds an arm rather than editing a frozen one. Each rule in the added section corresponds to a measured failure: passing 65.9% of offered plays, blocking 4x more often than attacking with an aggro deck, lands-only battlefields, one blocker assigned to two attackers, and 8.6% of decisions producing prose instead of a tool call.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "StratBoros",
+      "preset": "q38b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {"type": "cpu", "name": "XMage AI", "deck": "tmp/decks/Boros-Aggro.dck"}
+  ]
+}

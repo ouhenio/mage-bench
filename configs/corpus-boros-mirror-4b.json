@@ -1,0 +1,21 @@
+{
+  "_comment": "4B arm. Identical to corpus-boros-mirror-strategy.json except the model: Qwen3.5-4B instead of Qwen3-8B, same frozen notalk-strategy prompt, same Boros mirror. Decides whether the GRPO loop switches to the 4B for 2.27x fewer FLOPs/token. Qwen3.5 emits XML tool calls, so the server must run --tool-call-parser qwen3_xml or every call is fabricated by the recovery path.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "B4Boros",
+      "preset": "q35-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}

@@ -295,6 +295,18 @@
       "status": "active",
       "system_prompt": "notalk",
       "toolset": "notalk"
+    },
+    "q38b-local-strategy": {
+      "model": "Qwen/Qwen3-8B",
+      "status": "active",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-strategy": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
     }
   }
 }
