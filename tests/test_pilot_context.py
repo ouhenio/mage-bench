@@ -12,6 +12,7 @@ from magebench.pilot.pilot import (
 from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
     CONTEXT_SUMMARY_COUNT,
+    MAX_TOKENS,
     RENDER_INTERVAL,
     TOOL_SUMMARY_TRIGGER_CHARS,
     _find_tool_name,
@@ -40,6 +41,7 @@ def _windowed_arm(monkeypatch):
 def test_append_only_is_the_default(monkeypatch):
     """Unset means append-only: full history, no summarisation, no state bridge."""
     monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")
     history = [
         {"role": "user" if i % 2 == 0 else "assistant", "content": f"m{i}"}
         for i in range(CONTEXT_RECENT_COUNT + CONTEXT_SUMMARY_COUNT + 10)
@@ -52,8 +54,28 @@ def test_append_only_is_the_default(monkeypatch):
 def test_append_only_refuses_to_overrun_the_context(monkeypatch):
     """Head truncation drops the system prompt and tool grammar, so it must raise."""
     monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
-    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "100")
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "2000")
     history = [{"role": "user", "content": "x" * 5000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
+
+
+def test_append_only_requires_the_context_limit_to_be_set(monkeypatch):
+    """No default. The old one was 40960 while the server served 32768, so the guard
+    sat above the real ceiling and a live game was lost by a single token."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.delenv("MAGEBENCH_CONTEXT_LIMIT", raising=False)
+    with pytest.raises(AssertionError, match="MAGEBENCH_CONTEXT_LIMIT is unset"):
+        render_context([{"role": "user", "content": "hi"}], "SYS", "STATE", None)
+
+
+def test_append_only_reserves_the_completion_against_the_same_ceiling(monkeypatch):
+    """vLLM validates prompt + max_tokens <= max_model_len, so a prompt that fits the
+    raw limit but not the limit minus the completion must still raise."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", str(MAX_TOKENS + 500))
+    # ~600 estimated tokens: under the raw limit, over limit-minus-completion
+    history = [{"role": "user", "content": "x" * 1800}]
     with pytest.raises(AssertionError, match="head truncation"):
         render_context(history, "SYS", "STATE", None)
 

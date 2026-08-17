@@ -48,6 +48,7 @@ from magebench.pilot.pilot_recovery import (
 )
 from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
+    MAX_TOKENS,
     RENDER_INTERVAL,
     _fetch_state_summary,
     _find_cache_breakpoint_idx,
@@ -68,20 +69,6 @@ DEFAULT_MODEL = "google/gemini-2.0-flash-001"
 # game early instead of wasting API tokens on the other player.
 PERMANENT_FAILURE_EXIT_CODE = 3
 
-# vLLM validates prompt_tokens + max_tokens <= max_model_len, so this value is
-# subtracted from the usable prompt budget on every request. At 20_000 against a
-# 32768 context the real prompt ceiling was 12,768 tokens, and games were walking
-# into it: prompts grow ~50 tok/call, and the peak observed was 12,758 -- ten
-# tokens of headroom. Seven 400s fired across four games of a live baseline.
-#
-# Those 400s used to be swallowed. A 400 is not in _classify_permanent_llm_failure's
-# permanent set, so the pilot fired a blind pass_priority, wiped the conversation,
-# and finished the game looking healthy. That recovery path is gone -- any LLM error
-# now aborts, see the OpenAIError handler in run_pilot_loop -- so an overflow would
-# fail loudly today rather than silently. 1024 keeps it from arising at all:
-# measured completion length with thinking disabled is ~21 tokens mean, ~102 max,
-# so this is ~10x headroom while returning ~19k tokens of prompt budget.
-MAX_TOKENS = 1024
 
 # Ask the serving engine for exact prompt/completion token ids, for RL rollouts.
 # vLLM-only: `return_token_ids` / `return_prompt_text` are vLLM extensions and other

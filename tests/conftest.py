@@ -547,3 +547,19 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     _ = session, exitstatus
     print_timing_summary()
     print_rss_summary()
+
+
+@pytest.fixture(autouse=True)
+def _served_context_limit(monkeypatch):
+    """Stand in for the serving engine's advertised max_model_len.
+
+    Append-only rendering refuses to run without MAGEBENCH_CONTEXT_LIMIT, because
+    the previous default (40960) outlived the server setting it described (32768)
+    and a live game was lost by one token. In production rollout_games.sh reads the
+    real value from /v1/models; there is no server here, so tests get the same
+    number the run is served with.
+
+    Tests that assert on the requirement itself delete the variable explicitly, so
+    this does not hide it.
+    """
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")

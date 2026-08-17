@@ -14,6 +14,22 @@ from magebench.pilot.pilot_bridge import (
 from magebench.pilot.pilot_game_state import extract_oracle_texts_from_board
 from magebench.pilot.tool_error import ToolExecutionError
 
+# vLLM validates prompt_tokens + max_tokens <= max_model_len, so this value is
+# subtracted from the usable prompt budget on every request. At 20_000 against a
+# 32768 context the real prompt ceiling was 12,768 tokens, and games were walking
+# into it: prompts grow ~50 tok/call, and the peak observed was 12,758 -- ten
+# tokens of headroom. Seven 400s fired across four games of a live baseline.
+#
+# Those 400s used to be swallowed. A 400 is not in _classify_permanent_llm_failure's
+# permanent set, so the pilot fired a blind pass_priority, wiped the conversation,
+# and finished the game looking healthy. That recovery path is gone -- any LLM error
+# now aborts, see the OpenAIError handler in run_pilot_loop -- so an overflow would
+# fail loudly today rather than silently. 1024 keeps it from arising at all:
+# measured completion length with thinking disabled is ~21 tokens mean, ~102 max,
+# so this is ~10x headroom while returning ~19k tokens of prompt budget.
+MAX_TOKENS = 1024
+
+
 # Context window management.
 # History is append-only; before each LLM call we render a bounded context
 # window from history: recent messages at full fidelity, older messages
@@ -320,12 +336,29 @@ def render_context(
     # for re-measuring every baseline taken before today. Not dead code.
     if os.environ.get("MAGEBENCH_APPEND_ONLY", "1") != "0":
         messages.extend(history)
-        budget = int(os.environ.get("MAGEBENCH_CONTEXT_LIMIT", "40960"))
+        # MAGEBENCH_CONTEXT_LIMIT is the SERVER's max_model_len, not a budget we
+        # pick. It had a default of 40960 here, which was the server's setting the
+        # day it was written; the server moved to 32768 and the guard did not, so it
+        # sat 25% above the real ceiling and could never fire before vLLM rejected
+        # the request. A live run lost a game to exactly that, over by ONE token
+        # (31,745 prompt + 1,024 max_tokens = 32,769 against 32,768).
+        #
+        # So: no default. rollout_games.sh reads it from /v1/models, which is the
+        # only source that cannot go stale. A number restated in a second place is a
+        # number that will disagree with the first.
+        limit = os.environ.get("MAGEBENCH_CONTEXT_LIMIT")
+        assert limit, (
+            "MAGEBENCH_CONTEXT_LIMIT is unset and append-only rendering needs it. Set it to "
+            "the serving engine's max_model_len -- `curl -s $BASE_URL/models` reports it as "
+            "max_model_len. Do not guess: a guard above the real ceiling never fires."
+        )
+        budget = int(limit) - MAX_TOKENS
         approx = sum(len(str(m.get("content") or "")) for m in messages) // 3
         assert approx < budget, (
-            f"append-only prompt ~{approx} tokens exceeds {budget}: head truncation would "
-            f"silently drop the system prompt and tool grammar. Raise MAGEBENCH_CONTEXT_LIMIT "
-            f"and the server's --max-model-len together, or shorten the game."
+            f"append-only prompt ~{approx} tokens exceeds {budget} (max_model_len {limit} "
+            f"minus {MAX_TOKENS} reserved for the completion, which vLLM counts against the "
+            f"same ceiling): head truncation would silently drop the system prompt and tool "
+            f"grammar. Shorten the game or raise the server's --max-model-len."
         )
         return messages
 
