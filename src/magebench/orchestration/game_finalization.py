@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -153,6 +154,20 @@ def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
     }
     if config.tournament_game:
         meta["tournament_game"] = True
+
+    # Sampling and RNG conditions, recorded per game rather than left implicit in
+    # launch order or recoverable by grepping server.log. For a common-random-
+    # numbers experiment the seed IS the independent variable: if one game fails
+    # and an arm comes up short, arms misalign silently and nothing detects it.
+    # Temperature is here for the same reason from the other side -- "the only
+    # difference between the arms is the seed" has to be assertable from the
+    # artefacts, not trusted because an env var was set once.
+    for key, env in (("seed", "MAGEBENCH_GAME_SEED"), ("temperature", "MAGEBENCH_TEMPERATURE"),
+                     ("arm", "MAGEBENCH_ARM")):
+        raw = os.environ.get(env, "")
+        if raw:
+            meta[key] = int(raw) if key == "seed" else float(raw) if key == "temperature" else raw
+
     (game_dir / "game_meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 
