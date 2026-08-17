@@ -307,6 +307,18 @@
       "status": "active",
       "system_prompt": "notalk-strategy",
       "toolset": "notalk"
+    },
+    "q3-4b-local-strategy": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-strategy-reminders": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy-reminders",
+      "toolset": "notalk"
     }
   }
 }
