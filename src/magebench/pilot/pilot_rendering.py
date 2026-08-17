@@ -25,6 +25,78 @@ RENDER_INTERVAL = 5
 
 _CACHE_BREAKPOINT_MARKER = "All cards listed are playable right now."
 
+# Rule 1 of the system prompt already says "play a land every turn, before anything
+# else". The policy declines anyway: 1,594 of 2,082 land offers across 479 recorded
+# games, and 164 of those games played ZERO lands (median 1 in losses, 2.94 in wins).
+#
+# Not a knowledge failure and not a prompt-wording failure. Replaying real recorded
+# requests against the same weights: the identical decision sent WITHOUT its
+# conversation history plays the land 16/16 at temperature 1.0; sent WITH the history
+# recorded from the game it declines 16/16. Deterministic in both directions. A rule
+# 5,000 characters back in the system prompt loses to the local context; the same rule
+# beside the decision wins -- measured on five failing contexts, 0% -> 100%.
+#
+# So restate rule 1 at the point of decision. This is NOT redundant with the system
+# prompt: the system prompt is already there, and is already losing.
+_LAND_REMINDER = (
+    "  REMINDER: rule 1 — play a land every turn, before anything else."
+    " You have a land drop remaining. Respond with choice=pN, not choice=no."
+)
+
+
+# Rule 3, same treatment, for the defect the land fix exposed. Measured over 476
+# games on 24 paired seeds: land offers taken went 37.8% -> 99.8% and paired life
+# differential improved +3.90 (Wilcoxon p=0.00057, better on 19 of 24 seeds). But
+# cast offers taken moved only 25.7% -> 30.3%, while the number of castable offers
+# ROSE 2,891 -> 4,349 because the extra mana made half again as many spells legal.
+# The policy now builds mana and will not spend it: 3,030 declined castable spells.
+#
+# Scoped to a main phase, unlike the land reminder. A land drop is never the wrong
+# play, so rule 1 fires unconditionally; "cast something" is not unconditionally
+# right -- holding an instant is often correct and rule 6 says removal is for what
+# actually threatens you. Rule 3 scopes ITSELF to "your own main phase", so this
+# follows that scope rather than inventing a wider one.
+_CAST_REMINDER = (
+    "  REMINDER: rule 3 — passing your own main phase is almost always wrong."
+    " Every spell listed here is one the server has already confirmed you can pay"
+    " for. Cast something rather than answering choice=no."
+)
+
+_MAIN_PHASES = frozenset({"PRECOMBAT_MAIN", "POSTCOMBAT_MAIN"})
+
+
+def _has_action(choices: list, action: str) -> bool:
+    for choice in choices:
+        if getattr(choice, "action", None) == action:
+            return True
+    return False
+
+
+def land_drop_reminder(choices: list, phase: str | None = None) -> list[str]:
+    """At most one reminder line for the offer on the table.
+
+    Set MAGEBENCH_DECISION_REMINDERS=0 to suppress these entirely -- used to A/B
+    per-decision reminders against the same rules stated once in the system prompt.
+    Same opt-out shape as MAGEBENCH_DISABLE_THINKING. Default is ON because the
+    reminders are the measured-better behaviour: +5.65 life points per game against
+    no reminders, paired over 24 deals, p=0.00025.
+
+    A land takes precedence over a spell and returns early: rule 1 says play the land
+    BEFORE anything else, and only one choice can be made per decision, so emitting
+    both would give two imperatives for one slot.
+
+    The engine lists a card only when playing it is legal right now, so the presence
+    of one in `choices` IS the condition -- no land-drop counter to consult and no
+    state to get out of sync.
+    """
+    if os.environ.get("MAGEBENCH_DECISION_REMINDERS") == "0":
+        return []
+    if _has_action(choices, "land"):
+        return [_LAND_REMINDER]
+    if phase in _MAIN_PHASES and _has_action(choices, "cast"):
+        return [_CAST_REMINDER]
+    return []
+
 
 def render_for_pilot(
     result_text: str,
@@ -81,6 +153,8 @@ def render_for_pilot(
         lines.append(f"  Respond: {respond_with}")
     elif resp_type:
         lines.append(f"  Response type: {resp_type}")
+
+    lines.extend(land_drop_reminder(decision.choices, decision.phase))
 
     mana_pool = data.get("mana_pool")
     if mana_pool and any(v > 0 for v in mana_pool.values()):
