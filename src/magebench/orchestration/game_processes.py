@@ -180,6 +180,31 @@ def start_server(
     )
 
 
+def prefs_isolation_args(game_dir: Path) -> list[str]:
+    """Give a client JVM its own java.util.prefs tree.
+
+    Every Swing client writes preferences during shutdown, and WhatsNewDialog's
+    cookie store does it unconditionally -- `disableWhatsNew` suppresses the dialog,
+    not the store. They all share one backing store under $HOME, and java.util.prefs
+    serialises access to it with a file lock.
+
+    At 8 concurrent games this is invisible. At 20 it put `spectator.log` last in 19
+    of 20 game dirs with a 33-113s tail after the server was done, and four of the
+    twenty gave up with `BackingStoreException: Couldn't get file lock`. Games that
+    never errored still waited -- the exception is the tip, the queue is the cost.
+    It gets worse as concurrency rises, which is the direction we are going.
+
+    A per-game tree removes the shared resource. Nothing reads it back: these clients
+    are configured entirely by system properties.
+    """
+    prefs = game_dir / "prefs"
+    prefs.mkdir(parents=True, exist_ok=True)
+    return [
+        f"-Djava.util.prefs.userRoot={prefs}",
+        f"-Djava.util.prefs.systemRoot={prefs}",
+    ]
+
+
 def start_gui_client(
     pm: ProcessManager,
     project_root: Path,
@@ -208,6 +233,7 @@ def start_gui_client(
             config.jvm_rendering,
             "-Xmx1536m",
             f"-Dxmage.observer.gameDir={game_dir}",
+            *prefs_isolation_args(game_dir),
             *([f"-Dxmage.ai.skills={ai_skills}"] if ai_skills else []),
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
@@ -410,12 +436,16 @@ def start_observer_client(
     game_dir: Path | None = None,
 ) -> subprocess.Popen:
     """Start the observer spectator client."""
+    # Same contract as start_gui_client: without game_dir the server-side event log
+    # never gets a directory and the game produces no server_game_events.jsonl.
+    assert game_dir is not None, "game_dir is required to record server game events"
     config_json = config.get_players_config_json()
 
     jvm_args_list = [
         config.jvm_opens,
         config.jvm_rendering,
         "-Xmx1536m",
+        *prefs_isolation_args(game_dir),
         "-Dxmage.aiPuppeteer.autoConnect=true",
         "-Dxmage.aiPuppeteer.autoStart=true",
         "-Dxmage.aiPuppeteer.disableWhatsNew=true",
@@ -424,11 +454,9 @@ def start_observer_client(
         f"-Dxmage.aiPuppeteer.user={config.user}",
         f"-Dxmage.aiPuppeteer.password={config.password}",
     ]
-    if game_dir:
-        jvm_args_list.append(f"-Dxmage.observer.gameDir={game_dir}")
+    jvm_args_list.append(f"-Dxmage.observer.gameDir={game_dir}")
     if config.record:
-        resolved_game_dir = game_dir or (project_root / config.log_dir / f"game_{config.timestamp}").resolve()
-        record_path = config.record_output or (resolved_game_dir / "recording.mov")
+        record_path = config.record_output or (game_dir / "recording.mov")
         jvm_args_list.append(f"-Dxmage.observer.record={record_path}")
 
     jvm_args = " ".join(jvm_args_list)
