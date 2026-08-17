@@ -16,13 +16,30 @@ under windowed rendering because the context window was already discarding \
 history, so a reset looked like more of the same. Defaulting to append-only \
 (a0029c31) is what made it observable, because append-only's whole premise is \
 that decision k's prompt is decision k-1's prompt plus what happened since.\n\n\
-It matters because the one-row-per-game training layout treats a game as ONE \
-sequence, valid only under that premise. For a game that resets, a row built \
-from the final prompt covers only the decisions after the last reset -- in \
-211956, 51 through 127 -- while the end-of-game reward is attributed to it as \
-though it covered the whole game. Splitting into separate episodes sharing one \
-outcome is the other defensible reading. Either may be correct; doing the \
-first silently is not.\n\n\
+SCOPE. mtg-ac counted this across every recorded game with a readable pilot \
+log: 135 of 468 games (28.8%) contain at least one wipe, mean 0.33 per game, \
+max 3. Of 155 wipes, 154 came from the stall path -- the truncation and \
+timeout resets at pilot_recovery.py:58 and :183 are live code that is never \
+reached in practice, so the fix has one target. That 28.8% is a lower bound; \
+it counts emitted events, so a wipe that failed to emit is invisible.\n\n\
+WHY IT IS A CORRECTNESS BUG, not a data-quality one. This framing is mtg-ac's \
+and it is sharper than the reward-attribution one this issue was first filed \
+with. reset_context replaces history with a single synthetic user message \
+(pilot_state.py:87-92). Every token sampled after that point was conditioned \
+on a two-message context. Concatenating the game into one flat sequence makes \
+the training forward pass recompute those logprobs against the FULL history -- \
+a conditioning the sampler never saw -- so the importance ratio is computed \
+against the wrong prefix. pipelines/SCHEMA.md already names this failure shape \
+for re-tokenized re-renders: self-consistent and wrong. A wipe reaches it by a \
+different road.\n\n\
+So one row per game is INVALID on ~29% of games rather than merely degraded, \
+and it fails silently -- the row builds and it trains. Splitting at wipe \
+boundaries is not a rescue while union asserts one row per prompt.\n\n\
+It also selects. Wiped games average 89.9 LLM calls against 67.2 for games \
+that do not wipe, so wipes track length -- which means the 28,672-token cap, \
+the filter 'prompt tokens strictly increasing', and a decision horizon all \
+select against the same long games, and those are the games where the policy \
+survived longest.\n\n\
 Worth noting the harness already treats half of this correctly: the auto-pass \
 is emitted with harness_action=True (pilot_recovery.py:108) and the comment \
 there says training data must be able to find and exclude it, because it is an \
@@ -32,7 +49,21 @@ A second-order effect worth measuring separately: the detector fires because \
 the policy passed priority for 20 consecutive turns. On the corpus that \
 motivated the strategy prompt, passing on decisions with a playable card is \
 the defect being trained away -- so stall frequency is partly a symptom of the \
-thing under study, and will change as the policy improves.\n\n\
+thing under study, and will change as the policy improves. That also makes the \
+stall event a free policy-collapse metric that nothing currently reads: it is \
+a direct count of degenerate passing, already logged 154 times, and belongs \
+next to the dead-group fraction.\n\n\
+TWO KNOCK-ON EFFECTS, both found by mtg-ac and verified here.\n\n\
+reset_context also calls seen_oracle_cards.clear() (pilot_state.py:94), so a \
+wipe re-shows oracle text the policy has already been shown. Wipes correlate \
+with passing behaviour (which triggers them) and with game length. Card-text \
+exposure is therefore correlated with the outcome variable BEFORE the planned \
+card-text A/B starts, and that A/B must be stratified on wipe count rather \
+than folded in with another change.\n\n\
+pipelines/SCHEMA.md attributed non-extension of prompt_token_ids to the \
+60-message history window, which as of a0029c31 no longer fires by default. \
+Left alone, it would have told the next reader that non-extension was solved \
+and one row per game was safe. Corrected in the same change that filed this.\n\n\
 REPRODUCTION\n\n\
   cd ~/.mage-bench/logs\n\
   for g in game_20260816_211947 game_20260816_211950 game_20260816_211956 \\\n\
@@ -62,5 +93,5 @@ Do not 'fix' this by relaxing the containment check.",
   "type": "bug",
   "labels": ["pilot", "training-data", "append-only"],
   "created_at": "2026-08-17T00:36:19.000-04:00",
-  "updated_at": "2026-08-17T00:36:19.000-04:00",
+  "updated_at": "2026-08-17T00:51:00.000-04:00",
 }
