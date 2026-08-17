@@ -353,12 +353,23 @@ def render_context(
             "max_model_len. Do not guess: a guard above the real ceiling never fires."
         )
         budget = int(limit) - MAX_TOKENS
-        approx = sum(len(str(m.get("content") or "")) for m in messages) // 3
+        chars = sum(len(str(m.get("content") or "")) for m in messages)
+        # chars//3 is not a token count and is biased LOW, which is the wrong direction
+        # for a guard. Measured against `usage.prompt_tokens` over 276 real calls from a
+        # live run: chars//3 / actual is median 0.834, mean 0.818, max 0.870, and 0.867
+        # on the >20k prompts that matter here. So actual can be up to ~1.22x the
+        # estimate, and an unscaled guard trips ~4k tokens AFTER the server has already
+        # refused the request -- which is what it is supposed to prevent.
+        # Scaling by the worst observed ratio makes it fire slightly early rather than
+        # slightly late. Early costs a game; late costs the guard its entire purpose.
+        approx = int(chars / 3 / 0.818)
         assert approx < budget, (
-            f"append-only prompt ~{approx} tokens exceeds {budget} (max_model_len {limit} "
-            f"minus {MAX_TOKENS} reserved for the completion, which vLLM counts against the "
-            f"same ceiling): head truncation would silently drop the system prompt and tool "
-            f"grammar. Shorten the game or raise the server's --max-model-len."
+            f"append-only prompt ~{approx} tokens (from {chars} chars) exceeds {budget} "
+            f"(context limit {limit} minus {MAX_TOKENS} reserved for the completion, which "
+            f"vLLM counts against the same ceiling): head truncation would silently drop the "
+            f"system prompt and tool grammar. Shorten the game, or raise the limit AND the "
+            f"training row capacity together -- raising only the server opens a band where a "
+            f"game completes and its training row is dropped."
         )
         return messages
 

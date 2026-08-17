@@ -1614,19 +1614,6 @@ public abstract class GameImpl implements Game {
 
     protected UUID pickChoosingPlayer() {
         UUID[] players = getPlayers().keySet().toArray(new UUID[0]);
-        // Same defect as the init() shuffle, and the same fix. The draw below is
-        // deterministic under xmage.game.seed -- it happens after seeding and after a
-        // now-deterministic shuffle, so nextInt returns the same INDEX every time. What
-        // varies is the array it indexes: Players is a LinkedHashMap in TABLE JOIN order,
-        // and joins race, so index 0 is a different seat run to run. Measured by mtg-d1
-        // over 80 games on 4 fixed seeds: the toss came out ~50/50 within every seed
-        // while the opening hands were identical, which is exactly this and nothing else.
-        // Worth 2.94 life points on average (SE 1.77), and all 3 wins in that run were
-        // on the play. Sorting by name makes the seed fix the toss too, so fixed deals
-        // become genuinely paired.
-        if (System.getProperty("xmage.game.seed") != null) {
-            java.util.Arrays.sort(players, java.util.Comparator.comparing(id -> getPlayer(id).getName()));
-        }
         UUID playerId;
         while (!hasEnded()) {
             playerId = players[RandomUtil.nextInt(players.length)]; // test game

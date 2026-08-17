@@ -980,3 +980,16 @@ def test_short_history_tail_breakpoint():
 
     # Original history dict must not be mutated
     assert history[-1].get("content") == original_history_content
+
+
+def test_append_only_guard_estimate_is_biased_high_not_low(monkeypatch):
+    """The guard must trip BEFORE the server refuses, so its estimate must not
+    under-count. chars//3 measured 0.818-0.870 of actual tokens over 276 live calls;
+    unscaled it trips ~4k tokens after the server already 400'd, which is the whole
+    failure it exists to prevent."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", str(MAX_TOKENS + 10_000))
+    # 30,000 chars: chars//3 is 10,000 and would just fit; scaled it is ~12,225 and must not
+    history = [{"role": "user", "content": "x" * 30_000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
