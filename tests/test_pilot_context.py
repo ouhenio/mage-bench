@@ -11,6 +11,7 @@ from magebench.pilot.pilot import (
 )
 from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
+    CHARS_PER_TOKEN_WORST,
     CONTEXT_SUMMARY_COUNT,
     MAX_TOKENS,
     RENDER_INTERVAL,
@@ -993,3 +994,14 @@ def test_append_only_guard_estimate_is_biased_high_not_low(monkeypatch):
     history = [{"role": "user", "content": "x" * 30_000}]
     with pytest.raises(AssertionError, match="head truncation"):
         render_context(history, "SYS", "STATE", None)
+
+
+def test_guard_bound_is_a_minimum_ratio_not_a_mean():
+    """Direction check, because getting it backwards restores the silent failure.
+
+    The guard trips at actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires early
+    only while the constant is at or below the smallest real ratio. Measured minimum on
+    prompts large enough to reach the ceiling is 0.805; the mean (0.818) and the max
+    (0.872) both sit above it and would fire late on the worst-behaved prompts.
+    """
+    assert CHARS_PER_TOKEN_WORST <= 0.805

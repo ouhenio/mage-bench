@@ -29,6 +29,11 @@ from magebench.pilot.tool_error import ToolExecutionError
 # so this is ~10x headroom while returning ~19k tokens of prompt budget.
 MAX_TOKENS = 1024
 
+# Worst-case (chars/3)/actual_tokens ratio among prompts large enough to approach
+# the context ceiling. See the derivation at the append-only guard: the bound must
+# be a MINIMUM ratio, because a larger value makes the guard fire later.
+CHARS_PER_TOKEN_WORST = 0.805
+
 
 # Context window management.
 # History is append-only; before each LLM call we render a bounded context
@@ -355,14 +360,23 @@ def render_context(
         budget = int(limit) - MAX_TOKENS
         chars = sum(len(str(m.get("content") or "")) for m in messages)
         # chars//3 is not a token count and is biased LOW, which is the wrong direction
-        # for a guard. Measured against `usage.prompt_tokens` over 276 real calls from a
-        # live run: chars//3 / actual is median 0.834, mean 0.818, max 0.870, and 0.867
-        # on the >20k prompts that matter here. So actual can be up to ~1.22x the
-        # estimate, and an unscaled guard trips ~4k tokens AFTER the server has already
-        # refused the request -- which is what it is supposed to prevent.
-        # Scaling by the worst observed ratio makes it fire slightly early rather than
-        # slightly late. Early costs a game; late costs the guard its entire purpose.
-        approx = int(chars / 3 / 0.818)
+        # for a guard: unscaled it trips ~4k tokens AFTER the server has already refused
+        # the request, which is the event it exists to prevent.
+        #
+        # Let r = (chars/3) / actual_tokens. Then this guard trips at
+        # actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires EARLY only while
+        # CHARS_PER_TOKEN_WORST <= r. The bound therefore has to be the MINIMUM observed
+        # ratio, not the mean and not the max -- a larger divisor fires later, which is
+        # the direction that fails silently.
+        #
+        # Measured against usage.prompt_tokens over 678 live calls:
+        #   all prompts    min 0.660  median 0.813  max 0.872
+        #   >15k tokens    min 0.805  median 0.855  max 0.872   (n=261)
+        # The 0.660 tail is short prompts, where fixed per-message overhead dominates;
+        # those are nowhere near the ceiling and using their minimum would fire ~7k
+        # tokens early on every long game. 0.805 is the worst case among prompts large
+        # enough to reach the limit, which is the population this guard is about.
+        approx = int(chars / 3 / CHARS_PER_TOKEN_WORST)
         assert approx < budget, (
             f"append-only prompt ~{approx} tokens (from {chars} chars) exceeds {budget} "
             f"(context limit {limit} minus {MAX_TOKENS} reserved for the completion, which "
