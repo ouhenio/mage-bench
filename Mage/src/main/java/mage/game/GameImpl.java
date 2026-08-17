@@ -1326,8 +1326,43 @@ public abstract class GameImpl implements Game {
             // Seed the game RNG for deterministic shuffling, coin flips, etc.
             RandomUtil.setSeed(42);
         }
+        // GRPO wants common random numbers: G games sharing one shuffle, so the
+        // group baseline measures how the policy PLAYED rather than what it DREW.
+        // Seeded here, immediately before the shuffle, rather than at JVM start --
+        // anything else consuming RandomUtil between startup and this point (table
+        // setup, id generation, the engine AI) would shift the stream by a variable
+        // number of draws and the same seed would yield different hands.
+        // RandomUtil.random is a process-global static, so this is only sound with
+        // ONE game per server JVM; two games initialising concurrently would
+        // interleave their draws from the same generator.
+        String seedProperty = System.getProperty("xmage.game.seed");
+        if (seedProperty != null && !seedProperty.isEmpty()) {
+            try {
+                long seed = Long.parseLong(seedProperty.trim());
+                RandomUtil.setSeed(seed);
+                logger.info("Game RNG seeded from xmage.game.seed=" + seed);
+            } catch (NumberFormatException e) {
+                // Loud: a typo'd seed that silently ran unseeded would produce a
+                // group with independent shuffles that LOOKS like a seeded one.
+                throw new IllegalArgumentException("xmage.game.seed is not a long: " + seedProperty, e);
+            }
+        }
         if (!gameOptions.skipInitShuffling) { //don't shuffle in test mode for card injection on top of player's libraries
-            for (Player player : state.getPlayers().values()) {
+            java.util.Collection<Player> toShuffle = state.getPlayers().values();
+            if (seedProperty != null && !seedProperty.isEmpty()) {
+                // Both players draw from ONE seeded stream, so whoever shuffles first
+                // gets the first deal. state.getPlayers() is keyed by a per-game random
+                // UUID, so its iteration order varies between runs -- which made five
+                // games at one seed produce exactly TWO deals, the pilot's and the
+                // opponent's, swapped. The deck order was perfectly deterministic; who
+                // received it was not. Fix the order by name so the same seed gives the
+                // same player the same deck. Only when seeded, so unseeded play is
+                // untouched.
+                java.util.List<Player> ordered = new java.util.ArrayList<>(toShuffle);
+                ordered.sort(java.util.Comparator.comparing(Player::getName));
+                toShuffle = ordered;
+            }
+            for (Player player : toShuffle) {
                 player.shuffleLibrary(null, this);
             }
         }
