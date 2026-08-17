@@ -36,6 +36,7 @@ from magebench.pilot.pilot_bridge import (
 )
 from magebench.pilot.pilot_recovery import (
     _classify_permanent_llm_failure,
+    is_context_overflow,
 )
 from magebench.pilot.pilot_recovery import (
     _handle_timeout as _handle_timeout_impl,
@@ -56,7 +57,7 @@ from magebench.pilot.pilot_rendering import (
     render_context,
     render_for_pilot,
 )
-from magebench.pilot.pilot_state import PilotLoopState, PilotTurnState
+from magebench.pilot.pilot_state import PilotLoopState, PilotTurnState, reset_context
 from magebench.pilot.prompts import load_prompts
 from magebench.pilot.tool_error import ToolExecutionError
 
@@ -86,6 +87,12 @@ MAX_CONSECUTIVE_TRUNCATIONS = 3
 MAX_CONSECUTIVE_EMPTY_ERRORS = 10  # bridge is dead if every tool returns empty error
 MAX_EMPTY_RESPONSES = 10
 MAX_CHAT_MESSAGES_PER_TURN = 2  # max send_chat_message calls per LLM iteration
+
+
+# Two is enough to distinguish 'the prompt was long' from 'even a fresh prompt
+# overflows'. The second case means the reset cannot help and the game should end
+# loudly rather than spin until the batch deadline.
+MAX_CONTEXT_OVERFLOW_RESETS = 2
 
 
 class PermanentLLMError(Exception):
@@ -818,6 +825,48 @@ async def run_pilot_loop(
                     error_type=type(exc).__name__,
                     error_message=error_str[:500],
                 )
+
+            # ONE exception to the no-recovery rule below, and it is not the old one.
+            #
+            # A context overflow is not the policy failing -- it is the prompt having
+            # outgrown the server, which append-only rendering makes inevitable in a long
+            # enough game. Resetting shortens the prompt and the SAME decision is then put
+            # back through the policy. No action is fabricated: that is the whole
+            # difference from the path the comment below describes, which blind-fired
+            # pass_priority and recorded a move nobody chose.
+            #
+            # This is only safe because a mid-game reset is now a first-class outcome:
+            # the training layout segments on it and each segment reproduces the
+            # conditioning its tokens were sampled under. Before 2026-08-17 this same fix
+            # would have traded a loud failure for a silent one.
+            #
+            # Bounded, because if the post-reset prompt still overflows nothing has been
+            # gained and retrying forever would hang the batch on the deadline.
+            if is_context_overflow(error_str) and state.context_overflow_resets < MAX_CONTEXT_OVERFLOW_RESETS:
+                state.context_overflow_resets += 1
+                logger.warning(
+                    "[pilot] context overflow, resetting conversation and retrying (%d/%d)",
+                    state.context_overflow_resets,
+                    MAX_CONTEXT_OVERFLOW_RESETS,
+                )
+                if game_log:
+                    # The marker the stall path never had. Without it the trainer cannot
+                    # tell a ceiling reset from a stall reset from ordinary history, and
+                    # they do not mean the same thing about the policy.
+                    game_log.emit(
+                        "context_reset",
+                        cause="context_overflow",
+                        harness_action=True,
+                        reset_index=state.context_overflow_resets,
+                        error_message=error_str[:500],
+                    )
+                reset_context(
+                    state,
+                    "The conversation was reset because it grew past the context limit. "
+                    "The game is unchanged. Call pass_priority to see the current state.",
+                    reset_board_context=False,
+                )
+                continue
 
             # Any LLM error aborts the game. There is deliberately no recovery path.
             #

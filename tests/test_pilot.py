@@ -12,6 +12,7 @@ from mcp.types import CallToolResult, TextContent
 from openai import OpenAIError
 
 from magebench.game.game_export_types import Decision, PilotContext
+from magebench.pilot.pilot_recovery import is_context_overflow
 from magebench.pilot.pilot import (
     MAX_CHAT_MESSAGES_PER_TURN,
     MAX_CONSECUTIVE_EMPTY_CHOICES,
@@ -1290,3 +1291,121 @@ async def test_consecutive_empty_choices_triggers_auto_pass():
         mock_auto_pass.assert_called_once()
 
     assert client.chat.completions.create.call_count == MAX_CONSECUTIVE_EMPTY_CHOICES
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_no_prefetch")
+async def test_context_overflow_resets_and_retries_instead_of_aborting(tmp_path):
+    """A context overflow is the prompt outgrowing the server, not the policy failing.
+
+    It must reset and put the SAME decision back through the policy. Critically it must
+    not fabricate a move: that is the distinction from the old blind-recovery path, which
+    fired pass_priority and recorded an action nobody chose. Only safe now because the
+    training layout segments on a reset and reproduces each segment's conditioning.
+    """
+    session = MagicMock()
+    tool_calls: list[tuple[str, dict]] = []
+    pass_call_count = 0
+
+    async def fake_call_tool(name: str, args: dict) -> MagicMock:
+        nonlocal pass_call_count
+        tool_calls.append((name, dict(args)))
+        if name != "pass_priority":
+            return _mock_tool_result("{}")
+        pass_call_count += 1
+        if pass_call_count == 1:
+            return _mock_tool_result(
+                json.dumps({"action_pending": True, "action_type": "GAME_SELECT",
+                            "board": [{"name": "You", "life": 20}], "board_cursor": 5})
+            )
+        return _mock_tool_result('{"game_over": true}')
+
+    session.call_tool = AsyncMock(side_effect=fake_call_tool)
+    client = MagicMock()
+
+    async def fake_create(**_kwargs):
+        fake_create.calls += 1
+        if fake_create.calls == 2:
+            raise OpenAIError(
+                "Error code: 400 - This model's maximum context length is 32768 tokens. "
+                "However, you requested 32769 tokens."
+            )
+        return _make_llm_response("pass_priority", "{}")
+
+    fake_create.calls = 0
+    client.chat.completions.create = AsyncMock(side_effect=fake_create)
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
+
+    with patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock):
+        await asyncio.wait_for(
+            run_pilot_loop(
+                session=session, client=client, model="test-model",
+                system_prompt="You are a test.", tools=_TOOLS, prices={},
+                username="test-player", game_dir=game_dir,
+            ),
+            timeout=5,
+        )
+
+    # Survived: no abort marker, and the game reached its own end.
+    assert not (game_dir / "ABORTED.json").exists()
+    # No fabricated action. Two LLM responses asked for pass_priority (the third call
+    # was the overflow, which returned nothing), so exactly two must have been issued.
+    # Args are not compared: the harness adds board_cursor for its own routing, which
+    # is not the policy choosing anything.
+    assert len([n for n, _ in tool_calls if n == "pass_priority"]) == 2
+    # It retried the decision rather than skipping it: 1 ok + 1 overflow + 1 retry.
+    assert fake_create.calls >= 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_no_prefetch")
+async def test_repeated_context_overflow_still_aborts(tmp_path):
+    """If a freshly reset prompt still overflows, resetting cannot help.
+
+    Without the bound the pilot would reset forever and the batch would hang to its
+    deadline -- which is how one dead game cost 30 minutes on step 5.
+    """
+    session = MagicMock()
+
+    async def fake_call_tool(name: str, args: dict) -> MagicMock:
+        if name != "pass_priority":
+            return _mock_tool_result("{}")
+        return _mock_tool_result(
+            json.dumps({"action_pending": True, "action_type": "GAME_SELECT",
+                        "board": [{"name": "You", "life": 20}], "board_cursor": 5})
+        )
+
+    session.call_tool = AsyncMock(side_effect=fake_call_tool)
+    client = MagicMock()
+    client.chat.completions.create = AsyncMock(
+        side_effect=OpenAIError("maximum context length is 32768 tokens")
+    )
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
+
+    with (
+        patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock),
+        pytest.raises(PermanentLLMError),
+    ):
+        await asyncio.wait_for(
+            run_pilot_loop(
+                session=session, client=client, model="test-model",
+                system_prompt="You are a test.", tools=_TOOLS, prices={},
+                username="test-player", game_dir=game_dir,
+            ),
+            timeout=5,
+        )
+    assert (game_dir / "ABORTED.json").exists()
+
+
+def test_is_context_overflow_matches_the_server_and_nothing_else():
+    """Matched on text because a 400 alone cannot separate an overflow from a bad
+    request, and the two need opposite handling."""
+    assert is_context_overflow(
+        "Error code: 400 - This model's maximum context length is 32768 tokens. "
+        "However, you requested 1024 output tokens..."
+    )
+    assert is_context_overflow("please reduce the length of the messages")
+    assert not is_context_overflow("Error code: 400 - invalid tool_choice")
+    assert not is_context_overflow("Error code: 404 - model not found")

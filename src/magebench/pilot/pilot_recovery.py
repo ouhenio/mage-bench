@@ -188,6 +188,23 @@ async def _handle_timeout(
     return False
 
 
+# vLLM rejects prompt + max_tokens > max_model_len with a 400 whose body names the
+# ceiling. Matched on the text because the status code alone cannot distinguish it
+# from any other 400, and the two need opposite handling: a malformed request is a
+# bug, an overflow is the game having gone on too long.
+_CONTEXT_OVERFLOW_MARKERS = (
+    "maximum context length",
+    "reduce the length",
+    "longer than the maximum model length",
+)
+
+
+def is_context_overflow(error_str: str) -> bool:
+    """True if this LLM error is the prompt outgrowing the server's context."""
+    lowered = error_str.lower()
+    return any(m in lowered for m in _CONTEXT_OVERFLOW_MARKERS)
+
+
 def _classify_permanent_llm_failure(error_str: str) -> str | None:
     """Return the permanent failure reason, if the error should abort the game."""
     permanent_codes = {"401", "402", "403", "404"}
