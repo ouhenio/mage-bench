@@ -32,14 +32,39 @@ a conditioning the sampler never saw -- so the importance ratio is computed \
 against the wrong prefix. pipelines/SCHEMA.md already names this failure shape \
 for re-tokenized re-renders: self-consistent and wrong. A wipe reaches it by a \
 different road.\n\n\
-So one row per game is INVALID on ~29% of games rather than merely degraded, \
-and it fails silently -- the row builds and it trains. Splitting at wipe \
-boundaries is not a rescue while union asserts one row per prompt.\n\n\
+So one FLAT row per game is invalid on ~29% of games rather than merely \
+degraded, and it fails silently -- the row builds and it trains.\n\n\
+STATUS OF THE TRAINING CONSEQUENCE: closed by segmentation, 2026-08-17. \
+verl-train-ff's build_game_rows returns a list of segments and \
+_rows_for(layout='game') emits one row per segment. A segment's first prompt \
+IS the post-wipe two-message context and grows append-only from there, so the \
+row reproduces the wiped conditioning rather than papering over it. Verified \
+on game 205851 (85 decisions, 1 reset, 2 segments) against the failure stated \
+directly -- for every decision, is the row's prefix before that decision's \
+response identical to the prompt the sampler conditioned on? 85 of 85 match, 0 \
+differ. The importance ratio is 1 on these games.\n\n\
+An earlier revision of this issue said splitting was 'not a rescue while union \
+asserts one row per prompt'. That was relayed from mtg-ac and is true of \
+verl's v0 AgentLoop path, which this pipeline does not take: rollouts come \
+from mage-bench and build_batch assembles tensors directly, so N rows from one \
+game is just N rows. The constraint binds the verl-native path in \
+docs/verl-native-rollout-proposal.md, where a wipe would be unrepresentable, \
+and is now an argument against v0 rather than a limit here.\n\n\
+THIS ISSUE STAYS OPEN ANYWAY. The harness still wipes mid-game, still emits no \
+marker distinguishing a reset from ordinary history, and any future consumer \
+that flattens a game -- the verl-native path, an SFT corpus builder, an \
+exported transcript -- reintroduces the same bug with nothing to warn it. The \
+training layout defends itself; the data does not describe itself.\n\n\
 It also selects. Wiped games average 89.9 LLM calls against 67.2 for games \
 that do not wipe, so wipes track length -- which means the 28,672-token cap, \
 the filter 'prompt tokens strictly increasing', and a decision horizon all \
 select against the same long games, and those are the games where the policy \
-survived longest.\n\n\
+survived longest. The sign of that bias flips silently: mtg-d1 measured that \
+the current long tail is losses, so today these filters mostly drop bad games \
+and look harmless. Training exists to turn long games into wins. When it \
+works, the same filter starts dropping the best trajectories, with no code \
+change and nothing in the logs marking the moment. Report what each filter \
+dropped per step rather than assuming it stayed benign.\n\n\
 Worth noting the harness already treats half of this correctly: the auto-pass \
 is emitted with harness_action=True (pilot_recovery.py:108) and the comment \
 there says training data must be able to find and exclude it, because it is an \
@@ -93,5 +118,5 @@ Do not 'fix' this by relaxing the containment check.",
   "type": "bug",
   "labels": ["pilot", "training-data", "append-only"],
   "created_at": "2026-08-17T00:36:19.000-04:00",
-  "updated_at": "2026-08-17T00:51:00.000-04:00",
+  "updated_at": "2026-08-17T01:08:00.000-04:00",
 }
