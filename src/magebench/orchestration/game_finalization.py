@@ -151,6 +151,12 @@ def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
         "players": players,
         "git_branch": run_git("rev-parse --abbrev-ref HEAD", project_root),
         "git_commit": run_git("rev-parse --short HEAD", project_root),
+        # `git_commit` exists to answer "which code produced this data" when the
+        # results are read back weeks later. Against a dirty tree it answers it
+        # WRONG -- the seat-order fix ran for a whole verification batch while
+        # every artifact pointed at a commit that did not contain it. A label
+        # that is silently wrong is worse than no label.
+        "git_dirty": bool(run_git("status --porcelain", project_root)),
     }
     if config.tournament_game:
         meta["tournament_game"] = True
