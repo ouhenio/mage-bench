@@ -32,32 +32,35 @@ A second-order effect worth measuring separately: the detector fires because \
 the policy passed priority for 20 consecutive turns. On the corpus that \
 motivated the strategy prompt, passing on decisions with a playable card is \
 the defect being trained away -- so stall frequency is partly a symptom of the \
-thing under study, and will change as the policy improves.",
-  "reproduction": "cd ~/.mage-bench/logs && for g in game_20260816_211947 \
-game_20260816_211950 game_20260816_211956 game_20260816_212005 \
-game_20260816_212009 game_20260816_212012; do python \
-pipelines/check_prefix_containment.py $g/*_llm_trace.jsonl; done\n\n\
+thing under study, and will change as the policy improves.\n\n\
+REPRODUCTION\n\n\
+  cd ~/.mage-bench/logs\n\
+  for g in game_20260816_211947 game_20260816_211950 game_20260816_211956 \\\n\
+           game_20260816_212005 game_20260816_212009 game_20260816_212012; do\n\
+    python pipelines/check_prefix_containment.py $g/*_llm_trace.jsonl\n\
+  done\n\n\
 Each reports FAIL with 2 broken transitions (4 for 211956, which resets \
-twice). The six sibling games from the same batch pass clean, 2558 -> 31,611 \
-tokens, generation-prompt suffix [4].",
-  "proposed_fix": "Not obvious, and deliberately not chosen here -- the right \
-answer depends on what the training layout should do with a reset, which is \
-owned elsewhere. Three options, in increasing cost:\n\n\
+twice). The six sibling games from the same batch pass clean, 2,558 -> 31,611 \
+tokens, generation-prompt suffix [4].\n\n\
+POSSIBLE FIXES, none chosen here\n\n\
+The right answer depends on what the training layout should do with a reset, \
+which is owned by the training side rather than the harness. Three options, in \
+increasing cost:\n\n\
 1. Emit a marker on the reset the way the auto-pass already carries \
 harness_action=True, and have the trainer split or drop on it. Cheapest, and \
-makes the existing behaviour honest rather than changing it.\n\n\
+makes existing behaviour honest rather than changing it.\n\n\
 2. Gate training on containment: run check_prefix_containment.py per trace and \
-refuse to train on a failing game. Turns a silent data defect into a loud one. \
-This is worth doing regardless of which fix lands, because it fails closed.\n\n\
+refuse to train on a failing game. Turns a silent data defect into a loud one, \
+and is worth doing regardless of which fix lands, because it fails closed.\n\n\
 3. Stop resetting: recover from a stall without discarding history. Removes \
 the defect at the source, but the reset presumably exists because a stalled \
-conversation was re-stalling, so this needs to be established rather than \
-assumed.\n\n\
+conversation was re-stalling, so that needs establishing rather than \
+assuming.\n\n\
 Do not 'fix' this by relaxing the containment check.",
-  "type": "bug",
   "status": "open",
   "priority": 1,
+  "type": "bug",
   "labels": ["pilot", "training-data", "append-only"],
-  "created_at": "2026-08-17T10:42:00.000-07:00",
-  "updated_at": "2026-08-17T10:42:00.000-07:00",
+  "created_at": "2026-08-17T00:36:19.000-04:00",
+  "updated_at": "2026-08-17T00:36:19.000-04:00",
 }
