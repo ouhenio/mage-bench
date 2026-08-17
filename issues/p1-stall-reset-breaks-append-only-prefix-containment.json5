@@ -16,12 +16,29 @@ under windowed rendering because the context window was already discarding \
 history, so a reset looked like more of the same. Defaulting to append-only \
 (a0029c31) is what made it observable, because append-only's whole premise is \
 that decision k's prompt is decision k-1's prompt plus what happened since.\n\n\
-SCOPE. mtg-ac counted this across every recorded game with a readable pilot \
-log: 135 of 468 games (28.8%) contain at least one wipe, mean 0.33 per game, \
-max 3. Of 155 wipes, 154 came from the stall path -- the truncation and \
-timeout resets at pilot_recovery.py:58 and :183 are live code that is never \
-reached in practice, so the fix has one target. That 28.8% is a lower bound; \
-it counts emitted events, so a wipe that failed to emit is invisible.\n\n\
+SCOPE. mtg-ac counted this across all 468 recorded games, twice and by \
+independent routes: 135 games (28.8%) by emitted events, 137 (29.3%) by \
+structure, agreeing per-game on 463 of 468. Mean 0.33 wipes per game, max 3. \
+The 4 games where structure exceeds emission are missed emissions; the 1 in \
+the other direction is expected from the code, since the stall path emits \
+before deciding and skips reset_context when the auto-pass ended the game \
+(pilot_recovery.py:135). Of 155 emitted wipes, 154 came from the stall path -- \
+the truncation and timeout resets at pilot_recovery.py:58 and :183 are live \
+code never reached in practice, so the fix has one target.\n\n\
+The mechanism is confirmed rather than inferred: message count immediately \
+after each of the 161 structurally detected wipes is exactly 2 -- min, median \
+and max, no exceptions -- which is the system message plus the single \
+synthetic user message reset_context writes. Nothing else in 468 games \
+produces that shape, so the detector has no visible false-positive channel.\n\n\
+DO NOT COUNT WIPES WITH check_prefix_containment.py. It asks whether a game is \
+one clean append-only sequence, which is also false for every windowed game, \
+so over a mostly pre-flip corpus it flags nearly everything and measures \
+windowing instead. Windowing falls to a floor and stays (plateau at exactly 62 \
+messages); a wipe collapses to single digits. Count transitions where message \
+count drops below 8. The containment checker is right for ONE known \
+append-only trace and wrong for a mixed corpus -- the same trap as filtering \
+on 'prompt tokens strictly increasing', where the obvious tool answers an \
+adjacent question.\n\n\
 WHY IT IS A CORRECTNESS BUG, not a data-quality one. This framing is mtg-ac's \
 and it is sharper than the reward-attribution one this issue was first filed \
 with. reset_context replaces history with a single synthetic user message \
@@ -97,7 +114,9 @@ REPRODUCTION\n\n\
   done\n\n\
 Each reports FAIL with 2 broken transitions (4 for 211956, which resets \
 twice). The six sibling games from the same batch pass clean, 2,558 -> 31,611 \
-tokens, generation-prompt suffix [4].\n\n\
+tokens, generation-prompt suffix [4]. These twelve are known append-only, \
+which is what makes the checker the right tool here -- see the warning above \
+before generalising this command to a corpus.\n\n\
 POSSIBLE FIXES, none chosen here\n\n\
 The right answer depends on what the training layout should do with a reset, \
 which is owned by the training side rather than the harness. Three options, in \
@@ -118,5 +137,5 @@ Do not 'fix' this by relaxing the containment check.",
   "type": "bug",
   "labels": ["pilot", "training-data", "append-only"],
   "created_at": "2026-08-17T00:36:19.000-04:00",
-  "updated_at": "2026-08-17T01:08:00.000-04:00",
+  "updated_at": "2026-08-17T01:19:00.000-04:00",
 }
