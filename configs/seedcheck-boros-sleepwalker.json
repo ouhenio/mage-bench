@@ -1,0 +1,19 @@
+{
+  "_comment": "Cross-path deal check for c9e2c7d2. Identical to corpus-boros-mirror-q34b.json except the pilot seat is a sleepwalker: the deal is dealt in GameImpl.init() before any decision exists, so no policy and no GPU are needed to witness it. mtg-d1's seed_witness keys by ROLE (the seat not named 'XMage AI'), so this seat maps to the same role its baseline recorded from pilot games.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "sleepwalker",
+      "name": "SeedCheck",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}
