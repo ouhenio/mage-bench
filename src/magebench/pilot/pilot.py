@@ -588,6 +588,16 @@ async def run_pilot_loop(
                 "tool_choice": "auto",
                 "max_tokens": MAX_TOKENS,
             }
+            # Sending no temperature means the SERVER decides, and vLLM falls back to
+            # the model's generation_config.json. For Qwen3-4B that is temperature 0.6
+            # with top_k 20 -- measured effectively deterministic: 16 of 16 identical
+            # completions on the same prompt. A policy-gradient method needs the policy
+            # to explore; with a deterministic policy the advantage can only reweight
+            # actions it already takes, and every rollout in a group differs only by
+            # what it was dealt. Set it explicitly, so it is recorded in the trace and
+            # cannot change under us when a model's config file does.
+            if os.environ.get("MAGEBENCH_TEMPERATURE"):
+                create_kwargs["temperature"] = float(os.environ["MAGEBENCH_TEMPERATURE"])
             extra_body: dict = {}
             # Qwen3 and friends default to thinking mode in their chat template, which spends
             # ~800-1800 completion tokens per decision — most of them to decide to pass. A

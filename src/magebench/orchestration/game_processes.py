@@ -139,6 +139,7 @@ def start_server(
     hint_seats = os.environ.get("MAGEBENCH_HINT_SEATS", "")
     hint_dir = os.environ.get("MAGEBENCH_HINT_DIR", "")
     hint_skill = os.environ.get("MAGEBENCH_HINT_SKILL", "")
+    game_seed = os.environ.get("MAGEBENCH_GAME_SEED", "")
     assert not hint_seats or hint_dir, (
         "MAGEBENCH_HINT_SEATS is set but MAGEBENCH_HINT_DIR is not -- hints would go to "
         "the server log instead of a file, which no consumer reads"
@@ -152,6 +153,12 @@ def start_server(
             *([f"-Dxmage.hint.seats={hint_seats}"] if hint_seats else []),
             *([f"-Dxmage.hint.dir={hint_dir}"] if hint_seats else []),
             *([f"-Dxmage.hint.skill={hint_skill}"] if hint_seats and hint_skill else []),
+            # Common random numbers for GRPO: every game in a group shares one
+            # shuffle, so the group baseline measures play rather than draw. The
+            # engine seeds immediately before its shuffle, and RandomUtil is a
+            # process-global static -- so this is only sound with ONE game per
+            # server JVM. Two games in one JVM would interleave their draws.
+            *([f"-Dxmage.game.seed={game_seed}"] if game_seed else []),
         ]
     )
 
