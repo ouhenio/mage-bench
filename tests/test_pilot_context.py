@@ -23,6 +23,40 @@ from magebench.pilot.pilot_rendering import (
 )
 from magebench.pilot.pilot_state import PilotLoopState
 
+
+@pytest.fixture(autouse=True)
+def _windowed_arm(monkeypatch):
+    """Pin the windowed path for this module.
+
+    Append-only became the default on 2026-08-17, which made every windowing test
+    here exercise a code path it was not written for. The windowed renderer is not
+    dead -- it is the reference arm for re-running the append-only A/B and for
+    re-measuring baselines taken before the switch -- so these tests select it
+    explicitly rather than relying on a default that has now changed once.
+    """
+    monkeypatch.setenv("MAGEBENCH_APPEND_ONLY", "0")
+
+
+def test_append_only_is_the_default(monkeypatch):
+    """Unset means append-only: full history, no summarisation, no state bridge."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"m{i}"}
+        for i in range(CONTEXT_RECENT_COUNT + CONTEXT_SUMMARY_COUNT + 10)
+    ]
+    messages = render_context(history, "SYS", "STATE", None)
+    assert messages[0] == {"role": "system", "content": "SYS"}
+    assert messages[1:] == history, "append-only must pass history through untouched"
+
+
+def test_append_only_refuses_to_overrun_the_context(monkeypatch):
+    """Head truncation drops the system prompt and tool grammar, so it must raise."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "100")
+    history = [{"role": "user", "content": "x" * 5000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
+
 # ---------------------------------------------------------------------------
 # _summarize_tool_result
 # ---------------------------------------------------------------------------
