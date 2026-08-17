@@ -127,7 +127,31 @@ public final class AiDecisionRecorder {
                 }
             }
             sb.append("],");
-            kv(sb, "chosen", chosen == null ? "pass" : describe(game, chosen));
+            // DO NOT write "pass" for a null action. `chosen == null` means the AI
+            // produced no action, and that is true both when it deliberately passed
+            // and when its search was cut short by maxThinkTimeSecs or maxNodes.
+            // Writing "pass" for both asserts something the recorder does not know.
+            //
+            // Measured on the 4,315 records this already produced: 3,350 (77.6%) are
+            // "pass", and 2,192 (50.8%) are "pass" WITH options available. In
+            // aggregate that reads as a cautious teacher, which is exactly how the
+            // older recorder came to label 1,073 of 1,295 attack decisions "Pass".
+            // A corpus already collected cannot be cleaned of this -- there is no
+            // field distinguishing the two -- only regenerated.
+            //
+            // `null` says "no action", which is all this method can honestly know.
+            // Distinguishing deliberate-pass from search-exhausted needs the CALLER:
+            // ComputerPlayer6.act() reaches here via `actions.isEmpty()`, and only
+            // addActionsTimed()'s `catch (TimeoutException | InterruptedException)`
+            // knows which happened. That is a two-file change and the call sites live
+            // in uncommitted work in another tree; landing half of it here would
+            // conflict with that. See the TODO item.
+            sb.append("\"chosen\":");
+            if (chosen == null) {
+                sb.append("null");
+            } else {
+                sb.append('"').append(esc(describe(game, chosen))).append('"');
+            }
             sb.append("}\n");
 
             Path out = Paths.get(System.getProperty(DIR_PROPERTY), "ai_decisions.jsonl");
