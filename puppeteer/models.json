@@ -519,6 +519,28 @@
       "_thinking": false,
       "_tier": "cheap",
       "_notes": "Locally served via vLLM on this host. Free."
+    },
+    {
+      "id": "Qwen/Qwen3.5-4B",
+      "name": "Qwen3.5 4B",
+      "name_part": "Q354B",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 32,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "Locally served via vLLM on this host. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes."
+    },
+    {
+      "id": "Qwen/Qwen3-4B",
+      "name": "Qwen3 4B",
+      "name_part": "Q34B",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 32,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "Locally served via vLLM. Free. Same generation as Qwen3-8B: hermes tool calls, 152k vocab, no vision tower."
     }
   ],
   "_thinking_config": {
