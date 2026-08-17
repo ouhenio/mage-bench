@@ -1,0 +1,63 @@
+{
+  "title": "Stall recovery resets the conversation mid-game, breaking prefix \
+containment under append-only rendering",
+  "description": "_recover_from_stall calls reset_context \
+(src/magebench/pilot/pilot_recovery.py:133) after 20 turns without progress. \
+That wipes the conversation to 2 messages in the middle of a game.\n\n\
+Measured over the 12 append-only games available on 2026-08-17 (the A/B \
+appendonly arm at c5c00e8d plus a GRPO loop step at e005b2b3): 6 of 12 break \
+strict prefix containment. In game_20260816_211956 the message list goes 52 -> \
+2 at decision 26 and again at decision 51; prompt tokens drop 7,264 -> 2,538 \
+and 8,175 -> 2,538. The pilot log carries the matching warning: \"Stalled: 20 \
+turns without progress, last tools: ['pass_priority'], auto-passing until next \
+event\".\n\n\
+This is not a regression. The reset has always happened; it was invisible \
+under windowed rendering because the context window was already discarding \
+history, so a reset looked like more of the same. Defaulting to append-only \
+(a0029c31) is what made it observable, because append-only's whole premise is \
+that decision k's prompt is decision k-1's prompt plus what happened since.\n\n\
+It matters because the one-row-per-game training layout treats a game as ONE \
+sequence, valid only under that premise. For a game that resets, a row built \
+from the final prompt covers only the decisions after the last reset -- in \
+211956, 51 through 127 -- while the end-of-game reward is attributed to it as \
+though it covered the whole game. Splitting into separate episodes sharing one \
+outcome is the other defensible reading. Either may be correct; doing the \
+first silently is not.\n\n\
+Worth noting the harness already treats half of this correctly: the auto-pass \
+is emitted with harness_action=True (pilot_recovery.py:108) and the comment \
+there says training data must be able to find and exclude it, because it is an \
+action the policy never selected. The same reasoning applies to the context \
+reset that immediately follows, and it carries no marker at all.\n\n\
+A second-order effect worth measuring separately: the detector fires because \
+the policy passed priority for 20 consecutive turns. On the corpus that \
+motivated the strategy prompt, passing on decisions with a playable card is \
+the defect being trained away -- so stall frequency is partly a symptom of the \
+thing under study, and will change as the policy improves.",
+  "reproduction": "cd ~/.mage-bench/logs && for g in game_20260816_211947 \
+game_20260816_211950 game_20260816_211956 game_20260816_212005 \
+game_20260816_212009 game_20260816_212012; do python \
+pipelines/check_prefix_containment.py $g/*_llm_trace.jsonl; done\n\n\
+Each reports FAIL with 2 broken transitions (4 for 211956, which resets \
+twice). The six sibling games from the same batch pass clean, 2558 -> 31,611 \
+tokens, generation-prompt suffix [4].",
+  "proposed_fix": "Not obvious, and deliberately not chosen here -- the right \
+answer depends on what the training layout should do with a reset, which is \
+owned elsewhere. Three options, in increasing cost:\n\n\
+1. Emit a marker on the reset the way the auto-pass already carries \
+harness_action=True, and have the trainer split or drop on it. Cheapest, and \
+makes the existing behaviour honest rather than changing it.\n\n\
+2. Gate training on containment: run check_prefix_containment.py per trace and \
+refuse to train on a failing game. Turns a silent data defect into a loud one. \
+This is worth doing regardless of which fix lands, because it fails closed.\n\n\
+3. Stop resetting: recover from a stall without discarding history. Removes \
+the defect at the source, but the reset presumably exists because a stalled \
+conversation was re-stalling, so this needs to be established rather than \
+assumed.\n\n\
+Do not 'fix' this by relaxing the containment check.",
+  "type": "bug",
+  "status": "open",
+  "priority": 1,
+  "labels": ["pilot", "training-data", "append-only"],
+  "created_at": "2026-08-17T10:42:00.000-07:00",
+  "updated_at": "2026-08-17T10:42:00.000-07:00",
+}
