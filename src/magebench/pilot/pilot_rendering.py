@@ -1,6 +1,7 @@
 """Prompt rendering and context-window helpers for the pilot loop."""
 
 import json
+import os
 
 from mcp import ClientSession
 
@@ -298,6 +299,35 @@ def render_context(
         ]
     else:
         messages = [{"role": "system", "content": system_prompt}]
+
+    # Append-only: the prompt only ever grows at the end, so decision k's prompt is
+    # exactly decision k-1's prompt plus k-1's response plus the new observation.
+    # That makes a whole game one training row instead of one row per decision.
+    #
+    # This is NOT a free optimisation. The model currently sees a truncated window
+    # and here sees full history -- a different input, so different behaviour. The
+    # count of training signals is unchanged; the signals are not. It has to be
+    # A/B'd on paired seeds, not banked.
+    #
+    # Refuses rather than truncates: on overrun the chat template drops from the
+    # HEAD, which is the system prompt and the tool grammar. A model told nothing
+    # and asked to emit a tool call looks like a capability collapse, and the only
+    # signal is a warning nobody reads.
+    # Default ON as of 2026-08-17: ouhenio adopted append-only after the paired
+    # A/B (8 identical deals, every behavioural interval crossing zero, ~39x less
+    # compute). Opt OUT with MAGEBENCH_APPEND_ONLY=0 -- the windowed path is kept
+    # deliberately, because it is the reference arm for re-running that A/B and
+    # for re-measuring every baseline taken before today. Not dead code.
+    if os.environ.get("MAGEBENCH_APPEND_ONLY", "1") != "0":
+        messages.extend(history)
+        budget = int(os.environ.get("MAGEBENCH_CONTEXT_LIMIT", "40960"))
+        approx = sum(len(str(m.get("content") or "")) for m in messages) // 3
+        assert approx < budget, (
+            f"append-only prompt ~{approx} tokens exceeds {budget}: head truncation would "
+            f"silently drop the system prompt and tool grammar. Raise MAGEBENCH_CONTEXT_LIMIT "
+            f"and the server's --max-model-len together, or shorten the game."
+        )
+        return messages
 
     if len(history) <= CONTEXT_RECENT_COUNT:
         messages.extend(history)
