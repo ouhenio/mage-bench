@@ -2,16 +2,53 @@
 
 import json
 import random
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from magebench.common.atomic_write import atomic_write_text
 from magebench.common.llm_cost import DEFAULT_LLM_PROVIDER, SUPPORTED_LLM_PROVIDERS
 from magebench.common.log import get_logger
 from magebench.game.jumpstart import create_random_jumpstart_deck
 from magebench.leaderboard.matchmaker import get_active_presets, get_round_robin_matchup, pick_round_robin_format
 
 logger = get_logger(__name__)
+
+# A .dck card line: "4 [M21:1] Lightning Bolt", optionally prefixed "SB: " for sideboard.
+_DCK_LINE_RE = re.compile(r"^(\d+)\s+\[.*?\]\s+(.+)$")
+
+# Minimum legal maindeck size by XMage deck type. Jumpstart pairs two 20-card halves.
+_MIN_MAINDECK_BY_TYPE = {"Limited": 40}
+_MIN_MAINDECK_CONSTRUCTED = 60
+
+
+def parse_dck_line(line: str) -> tuple[int, str, bool] | None:
+    """Parse a .dck line into (count, card_name, is_sideboard).
+
+    Returns None for unparseable lines.
+    """
+    stripped = line.strip()
+    is_sideboard = stripped.startswith("SB:")
+    if is_sideboard:
+        stripped = stripped[3:].strip()
+    m = _DCK_LINE_RE.match(stripped)
+    if not m:
+        return None
+    return int(m.group(1)), m.group(2).strip(), is_sideboard
+
+
+def maindeck_size(cards: list[str]) -> int:
+    """Total card count of the maindeck, ignoring sideboard and unparseable lines."""
+    parsed = (parse_dck_line(line) for line in cards)
+    return sum(count for count, _, is_sideboard in filter(None, parsed) if not is_sideboard)
+
+
+def min_maindeck_size(deck_type: str | None) -> int:
+    """Minimum legal maindeck size for a deck type."""
+    if deck_type in _MIN_MAINDECK_BY_TYPE:
+        return _MIN_MAINDECK_BY_TYPE[deck_type]
+    return _MIN_MAINDECK_CONSTRUCTED
 
 
 @dataclass
@@ -480,7 +517,7 @@ def generate_dck_file(project_root: Path, entry: DeckEntry) -> Path:
     # Use deck name as filename, sanitized
     safe_name = entry.name.replace(" ", "-").replace("'", "").replace("/", "-")
     dck_path = tmp_dir / f"{safe_name}.dck"
-    dck_path.write_text("\n".join(entry.cards) + "\n")
+    atomic_write_text(dck_path, "\n".join(entry.cards) + "\n")
     return dck_path.relative_to(project_root)
 
 
@@ -762,16 +799,20 @@ class Config:
             result["deckType"] = self.deck_type
         return json.dumps(result, separators=(",", ":"))
 
+    @property
+    def all_players(self) -> list[Player]:
+        """Every player in the game, regardless of type."""
+        return [*self.sleepwalker_players, *self.pilot_players, *self.replay_players, *self.cpu_players]
+
     def resolve_random_decks(self, project_root: Path) -> None:
         """Replace any deck="random" with a randomly chosen deck from the registry."""
         # Fail fast if any player still has deck="choice" — caller must resolve those first
-        all_typed_players = self.sleepwalker_players + self.pilot_players + self.replay_players + self.cpu_players
-        choice_names = [p.name for p in all_typed_players if p.deck == "choice"]
+        all_players = self.all_players
+        choice_names = [p.name for p in all_players if p.deck == "choice"]
         assert not choice_names, (
             f"Unresolved deck='choice' for {choice_names} — call resolve_choice_decks() before resolve_random_decks()"
         )
 
-        all_players = self.sleepwalker_players + self.pilot_players + self.replay_players + self.cpu_players
         if not any(p.deck == "random" for p in all_players):
             return
 
@@ -809,14 +850,32 @@ class Config:
                 player.deck_strategy = chosen.strategy
                 logger.info("Random deck for %s: %s", player.name, chosen.name)
 
+    def validate_deck_sizes(self, project_root: Path) -> None:
+        """Crash if any player's resolved deck is below the format's legal maindeck size.
+
+        An undersized deck is rejected by the server at join time, and
+        TablesPanel logs the rejection without acting on it — the seat simply
+        never joins and the game hangs to its timeout. Catch it before launch.
+        """
+        minimum = min_maindeck_size(self.deck_type)
+        for player in self.all_players:
+            if not player.deck:
+                continue
+            dck_file = project_root / player.deck
+            assert dck_file.exists(), f"Deck file for {player.name} not found: {dck_file}"
+            size = maindeck_size(dck_file.read_text().splitlines())
+            assert size >= minimum, (
+                f"{player.name} has an illegal {self.deck_type} deck: "
+                f"{player.deck} holds {size} maindeck cards, minimum is {minimum}"
+            )
+
     def resolve_deck_metadata(self, project_root: Path) -> None:
         """Populate deck_name/deck_strategy for players with static deck paths.
 
         Called after all deck resolution is complete. Looks up static deck paths
         in the registry by matching card content.
         """
-        all_players = self.sleepwalker_players + self.pilot_players + self.replay_players + self.cpu_players
-        for player in all_players:
+        for player in self.all_players:
             # Skip players that already have metadata (from random/choice resolution)
             # or don't have a deck path
             if player.deck_name or not player.deck:

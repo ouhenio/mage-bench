@@ -57,6 +57,7 @@ class PilotLoopState:
     seen_oracle_cards: set[str] = field(default_factory=set)
     cache_breakpoint_idx: int | None = None
     render_counter: int = 0
+    context_overflow_resets: int = 0
 
 
 @dataclass

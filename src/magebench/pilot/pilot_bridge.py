@@ -75,8 +75,15 @@ def build_pilot_snapshot(data: dict, board: list[dict] | None, decision: Decisio
     return require_snapshot(snapshot_payload, source="pilot snapshot")
 
 
-def build_pilot_decision(data: dict) -> Decision:
-    """Build a decision-like dict from a pass_priority/get_action_choices result."""
+def build_pilot_decision(data: dict, fallback_board: list[dict] | None = None) -> Decision:
+    """Build a decision-like dict from a pass_priority/get_action_choices result.
+
+    `fallback_board` is the last known board, used when this result carries none
+    (the board_unchanged path). Without it `player` stays the literal "You", and
+    since no player is named "You" the renderer redacts the pilot's own hand as
+    if it belonged to an opponent -- the policy is then asked to act without
+    seeing the cards it holds.
+    """
     raw_choices = data.get("choices")
     if raw_choices is None:
         raw_choices = []
@@ -114,6 +121,8 @@ def build_pilot_decision(data: dict) -> Decision:
         decision.phase = context_phase
 
     board = data.get("board")
+    if not isinstance(board, list):
+        board = fallback_board
     if isinstance(board, list):
         for p in board:
             if isinstance(p, dict) and p.get("is_you"):

@@ -24,6 +24,7 @@ from magebench.orchestration.game_finalization import (
     write_game_meta,
 )
 from magebench.orchestration.game_processes import (
+    start_gui_client,
     start_observer_client,
     wait_for_game_start,
     wait_with_pilot_monitoring,
@@ -954,13 +955,13 @@ def test_setup_game_cleans_up_pilots_on_timeout(
     return_value="/usr/bin/xvfb-run",
 )
 @patch("magebench.orchestration.game_processes.sys.platform", "linux")
-def test_start_observer_xvfb_on_headless_linux(_mock_which):
+def test_start_observer_xvfb_on_headless_linux(_mock_which, tmp_path):
     """On headless Linux (no DISPLAY), observer args should be prefixed with xvfb-run."""
     with patch.dict("os.environ", {}, clear=True):
         pm = MagicMock()
         pm.start_jvm_process.return_value = MagicMock()
         config = Config()
-        start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"))
+        start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"), game_dir=tmp_path)
         args = pm.start_jvm_process.call_args.kwargs["args"]
         assert args[0] == "/usr/bin/xvfb-run"
         assert "--auto-servernum" in args
@@ -968,23 +969,83 @@ def test_start_observer_xvfb_on_headless_linux(_mock_which):
 
 
 @patch("magebench.orchestration.game_processes.sys.platform", "linux")
-def test_start_observer_no_xvfb_when_display_set():
+def test_start_observer_no_xvfb_when_display_set(tmp_path):
     """With DISPLAY set, observer args should NOT be prefixed with xvfb-run."""
     with patch.dict("os.environ", {"DISPLAY": ":1"}, clear=True):
         pm = MagicMock()
         pm.start_jvm_process.return_value = MagicMock()
         config = Config()
-        start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"))
+        start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"), game_dir=tmp_path)
         args = pm.start_jvm_process.call_args.kwargs["args"]
         assert args[0] == "mvn"
 
 
 @patch("magebench.orchestration.game_processes.shutil.which", return_value=None)
 @patch("magebench.orchestration.game_processes.sys.platform", "linux")
-def test_start_observer_fails_without_xvfb(_mock_which):
+def test_start_observer_fails_without_xvfb(_mock_which, tmp_path):
     """On headless Linux without xvfb-run, should raise AssertionError."""
     with patch.dict("os.environ", {}, clear=True):
         pm = MagicMock()
         config = Config()
         with pytest.raises(AssertionError, match="xvfb-run is not installed"):
-            start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"))
+            start_observer_client(pm, Path("/fake/root"), config, Path("/tmp/test.log"), game_dir=tmp_path)
+
+
+# --- java.util.prefs isolation ---
+#
+# Swing clients write preferences on shutdown into one backing store under $HOME,
+# and java.util.prefs guards it with a file lock. Shared, that lock serialised 20
+# concurrent games' shutdowns and added 33-113s to each. These assert the shared
+# resource is gone, which is the only property that matters.
+
+
+def _jvm_opts(pm):
+    return pm.start_jvm_process.call_args.kwargs["env"]["MAVEN_OPTS"]
+
+
+@patch("magebench.orchestration.game_processes.sys.platform", "linux")
+def test_observer_prefs_root_is_inside_its_own_game_dir(tmp_path):
+    with patch.dict("os.environ", {"DISPLAY": ":1"}, clear=True):
+        pm = MagicMock()
+        pm.start_jvm_process.return_value = MagicMock()
+        start_observer_client(pm, Path("/fake/root"), Config(), Path("/tmp/test.log"), game_dir=tmp_path)
+        opts = _jvm_opts(pm)
+        assert f"-Djava.util.prefs.userRoot={tmp_path / 'prefs'}" in opts
+        assert f"-Djava.util.prefs.systemRoot={tmp_path / 'prefs'}" in opts
+        assert (tmp_path / "prefs").is_dir()
+
+
+@patch("magebench.orchestration.game_processes.sys.platform", "linux")
+def test_gui_client_prefs_root_is_inside_its_own_game_dir(tmp_path):
+    with patch.dict("os.environ", {"DISPLAY": ":1"}, clear=True):
+        pm = MagicMock()
+        pm.start_jvm_process.return_value = MagicMock()
+        start_gui_client(pm, Path("/fake/root"), Config(), Path("/tmp/test.log"), game_dir=tmp_path)
+        assert f"-Djava.util.prefs.userRoot={tmp_path / 'prefs'}" in _jvm_opts(pm)
+
+
+@patch("magebench.orchestration.game_processes.sys.platform", "linux")
+def test_concurrent_games_do_not_share_a_prefs_root(tmp_path):
+    """The point of the change: two games must not name the same prefs tree.
+
+    A per-game path that happened to resolve to one directory would pass both
+    tests above and reintroduce the lock contention in full.
+    """
+    roots = []
+    for name in ("game_a", "game_b"):
+        with patch.dict("os.environ", {"DISPLAY": ":1"}, clear=True):
+            pm = MagicMock()
+            pm.start_jvm_process.return_value = MagicMock()
+            game_dir = tmp_path / name
+            game_dir.mkdir()
+            start_observer_client(pm, Path("/fake/root"), Config(), Path("/tmp/test.log"), game_dir=game_dir)
+            roots.append([o for o in _jvm_opts(pm).split() if o.startswith("-Djava.util.prefs.userRoot=")])
+    assert roots[0] and roots[1], roots
+    assert roots[0] != roots[1]
+
+
+def test_observer_requires_a_game_dir():
+    """Without one the server-side event log has nowhere to write and the batch
+    hangs on a game_end that never arrives, rather than failing."""
+    with pytest.raises(AssertionError, match="game_dir is required"):
+        start_observer_client(MagicMock(), Path("/fake/root"), Config(), Path("/tmp/test.log"))

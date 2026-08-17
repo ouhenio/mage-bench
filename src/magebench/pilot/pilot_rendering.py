@@ -1,6 +1,7 @@
 """Prompt rendering and context-window helpers for the pilot loop."""
 
 import json
+import os
 
 from mcp import ClientSession
 
@@ -12,6 +13,27 @@ from magebench.pilot.pilot_bridge import (
 )
 from magebench.pilot.pilot_game_state import extract_oracle_texts_from_board
 from magebench.pilot.tool_error import ToolExecutionError
+
+# vLLM validates prompt_tokens + max_tokens <= max_model_len, so this value is
+# subtracted from the usable prompt budget on every request. At 20_000 against a
+# 32768 context the real prompt ceiling was 12,768 tokens, and games were walking
+# into it: prompts grow ~50 tok/call, and the peak observed was 12,758 -- ten
+# tokens of headroom. Seven 400s fired across four games of a live baseline.
+#
+# Those 400s used to be swallowed. A 400 is not in _classify_permanent_llm_failure's
+# permanent set, so the pilot fired a blind pass_priority, wiped the conversation,
+# and finished the game looking healthy. That recovery path is gone -- any LLM error
+# now aborts, see the OpenAIError handler in run_pilot_loop -- so an overflow would
+# fail loudly today rather than silently. 1024 keeps it from arising at all:
+# measured completion length with thinking disabled is ~21 tokens mean, ~102 max,
+# so this is ~10x headroom while returning ~19k tokens of prompt budget.
+MAX_TOKENS = 1024
+
+# Worst-case (chars/3)/actual_tokens ratio among prompts large enough to approach
+# the context ceiling. See the derivation at the append-only guard: the bound must
+# be a MINIMUM ratio, because a larger value makes the guard fire later.
+CHARS_PER_TOKEN_WORST = 0.805
+
 
 # Context window management.
 # History is append-only; before each LLM call we render a bounded context
@@ -47,7 +69,10 @@ def render_for_pilot(
     else:
         board = last_board
 
-    decision = build_pilot_decision(data)
+    # `board` is already resolved above (this result's, or the last one carried
+    # forward). The decision must see the same board the snapshot does, or it
+    # cannot identify which player is the pilot.
+    decision = build_pilot_decision(data, board)
     snapshot = build_pilot_snapshot(data, board, decision)
 
     oracle_texts = extract_oracle_texts_from_board(board) if board else {}
@@ -295,6 +320,72 @@ def render_context(
         ]
     else:
         messages = [{"role": "system", "content": system_prompt}]
+
+    # Append-only: the prompt only ever grows at the end, so decision k's prompt is
+    # exactly decision k-1's prompt plus k-1's response plus the new observation.
+    # That makes a whole game one training row instead of one row per decision.
+    #
+    # This is NOT a free optimisation. The model currently sees a truncated window
+    # and here sees full history -- a different input, so different behaviour. The
+    # count of training signals is unchanged; the signals are not. It has to be
+    # A/B'd on paired seeds, not banked.
+    #
+    # Refuses rather than truncates: on overrun the chat template drops from the
+    # HEAD, which is the system prompt and the tool grammar. A model told nothing
+    # and asked to emit a tool call looks like a capability collapse, and the only
+    # signal is a warning nobody reads.
+    # Default ON as of 2026-08-17: ouhenio adopted append-only after the paired
+    # A/B (8 identical deals, every behavioural interval crossing zero, ~39x less
+    # compute). Opt OUT with MAGEBENCH_APPEND_ONLY=0 -- the windowed path is kept
+    # deliberately, because it is the reference arm for re-running that A/B and
+    # for re-measuring every baseline taken before today. Not dead code.
+    if os.environ.get("MAGEBENCH_APPEND_ONLY", "1") != "0":
+        messages.extend(history)
+        # MAGEBENCH_CONTEXT_LIMIT is the SERVER's max_model_len, not a budget we
+        # pick. It had a default of 40960 here, which was the server's setting the
+        # day it was written; the server moved to 32768 and the guard did not, so it
+        # sat 25% above the real ceiling and could never fire before vLLM rejected
+        # the request. A live run lost a game to exactly that, over by ONE token
+        # (31,745 prompt + 1,024 max_tokens = 32,769 against 32,768).
+        #
+        # So: no default. rollout_games.sh reads it from /v1/models, which is the
+        # only source that cannot go stale. A number restated in a second place is a
+        # number that will disagree with the first.
+        limit = os.environ.get("MAGEBENCH_CONTEXT_LIMIT")
+        assert limit, (
+            "MAGEBENCH_CONTEXT_LIMIT is unset and append-only rendering needs it. Set it to "
+            "the serving engine's max_model_len -- `curl -s $BASE_URL/models` reports it as "
+            "max_model_len. Do not guess: a guard above the real ceiling never fires."
+        )
+        budget = int(limit) - MAX_TOKENS
+        chars = sum(len(str(m.get("content") or "")) for m in messages)
+        # chars//3 is not a token count and is biased LOW, which is the wrong direction
+        # for a guard: unscaled it trips ~4k tokens AFTER the server has already refused
+        # the request, which is the event it exists to prevent.
+        #
+        # Let r = (chars/3) / actual_tokens. Then this guard trips at
+        # actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires EARLY only while
+        # CHARS_PER_TOKEN_WORST <= r. The bound therefore has to be the MINIMUM observed
+        # ratio, not the mean and not the max -- a larger divisor fires later, which is
+        # the direction that fails silently.
+        #
+        # Measured against usage.prompt_tokens over 678 live calls:
+        #   all prompts    min 0.660  median 0.813  max 0.872
+        #   >15k tokens    min 0.805  median 0.855  max 0.872   (n=261)
+        # The 0.660 tail is short prompts, where fixed per-message overhead dominates;
+        # those are nowhere near the ceiling and using their minimum would fire ~7k
+        # tokens early on every long game. 0.805 is the worst case among prompts large
+        # enough to reach the limit, which is the population this guard is about.
+        approx = int(chars / 3 / CHARS_PER_TOKEN_WORST)
+        assert approx < budget, (
+            f"append-only prompt ~{approx} tokens (from {chars} chars) exceeds {budget} "
+            f"(context limit {limit} minus {MAX_TOKENS} reserved for the completion, which "
+            f"vLLM counts against the same ceiling): head truncation would silently drop the "
+            f"system prompt and tool grammar. Shorten the game, or raise the limit AND the "
+            f"training row capacity together -- raising only the server opens a band where a "
+            f"game completes and its training row is dropped."
+        )
+        return messages
 
     if len(history) <= CONTEXT_RECENT_COUNT:
         messages.extend(history)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,22 +16,50 @@ from magebench.common.log import get_logger
 from magebench.common.process_manager import ProcessManager
 from magebench.orchestration.config import Config, PilotPlayer
 
+# Every `mvn exec:java` below inherits the DEFAULT ~/.m2 unless told otherwise, so a
+# worktree built against an isolated repository still RUNS the shared jars. That makes
+# an isolated build silently ineffective: the code is compiled, installed, and never
+# loaded. Set MAVEN_REPO_LOCAL to point the runtime at the same repository the build
+# used.
+_MVN_REPO_ARGS = (
+    [f"-Dmaven.repo.local={os.environ['MAVEN_REPO_LOCAL']}"]
+    if os.environ.get("MAVEN_REPO_LOCAL")
+    else []
+)
+
 logger = get_logger(__name__)
 
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
 _SPECTATOR_GAME_STARTED = "AI Puppeteer: all players joined"
+# Matches the spectator's table announcement, which carries the table uuid.
+_SPECTATOR_TABLE_ID_RE = re.compile(
+    r"AI Puppeteer: waiting for .*? to join table ([0-9a-fA-F-]{36})"
+)
 
 
-def wait_for_spectator_table(log_path: Path, proc: subprocess.Popen, timeout: int = 300) -> None:
-    """Block until the spectator log indicates the game table is ready."""
+def wait_for_spectator_table(log_path: Path, proc: subprocess.Popen, timeout: int = 300) -> str:
+    """Block until the game table is ready, and return its id.
+
+    The id matters because a bridge client launched without ``-Dxmage.bridge.tableId``
+    joins the *first* table it finds in state WAITING with an open seat. That is
+    correct only while exactly one table is open at a time, which is why batch setup
+    has to be serialised. Returning the id here is what lets a caller pin each bridge
+    to its own table and start games concurrently.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             raise RuntimeError("Spectator process exited before creating the game table")
         if log_path.exists():
             text = log_path.read_text()
-            if _SPECTATOR_TABLE_READY in text:
-                return
+            match = _SPECTATOR_TABLE_ID_RE.search(text)
+            if match:
+                return match.group(1)
+            assert _SPECTATOR_TABLE_READY not in text, (
+                f"spectator announced a table but no id could be parsed from {log_path}; "
+                f"the log format changed and pinning would silently fall back to "
+                f"join-any-table"
+            )
         time.sleep(2)
     raise TimeoutError(f"Spectator did not create a table within {timeout}s — check {log_path}")
 
@@ -98,11 +127,38 @@ def start_server(
     log_path: Path,
 ) -> subprocess.Popen:
     """Start the XMage server."""
+    # AiDecisionRecorder lives in ComputerPlayer6, which runs HERE in the server
+    # JVM -- not in the Swing client. System properties do not travel over the
+    # wire, so this has to be set on the server process. (AI skill is different:
+    # the client reads it and passes it through joinTable as a parameter.)
+    ai_record_dir = os.environ.get("MAGEBENCH_AI_RECORD_DIR", "")
+    # AiHintProvider runs in the same place and for the same reason: it hooks
+    # HumanPlayer, which lives in the server JVM. Naming the seats rather than a
+    # boolean keeps the cost on the one seat being labelled -- each hint is a full
+    # AI search, so hinting every seat would double the engine work per game.
+    hint_seats = os.environ.get("MAGEBENCH_HINT_SEATS", "")
+    hint_dir = os.environ.get("MAGEBENCH_HINT_DIR", "")
+    hint_skill = os.environ.get("MAGEBENCH_HINT_SKILL", "")
+    game_seed = os.environ.get("MAGEBENCH_GAME_SEED", "")
+    assert not hint_seats or hint_dir, (
+        "MAGEBENCH_HINT_SEATS is set but MAGEBENCH_HINT_DIR is not -- hints would go to "
+        "the server log instead of a file, which no consumer reads"
+    )
     jvm_args = " ".join(
         [
             config.jvm_bridge_opts,
             "-Xmx1024m",
             f"-Dxmage.config.path={config_path}",
+            *([f"-Dxmage.ai.recordDir={ai_record_dir}"] if ai_record_dir else []),
+            *([f"-Dxmage.hint.seats={hint_seats}"] if hint_seats else []),
+            *([f"-Dxmage.hint.dir={hint_dir}"] if hint_seats else []),
+            *([f"-Dxmage.hint.skill={hint_skill}"] if hint_seats and hint_skill else []),
+            # Common random numbers for GRPO: every game in a group shares one
+            # shuffle, so the group baseline measures play rather than draw. The
+            # engine seeds immediately before its shuffle, and RandomUtil is a
+            # process-global static -- so this is only sound with ONE game per
+            # server JVM. Two games in one JVM would interleave their draws.
+            *([f"-Dxmage.game.seed={game_seed}"] if game_seed else []),
         ]
     )
 
@@ -117,11 +173,36 @@ def start_server(
     }
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", "exec:java"],
+        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Server",
         env=env,
         log_file=log_path,
     )
+
+
+def prefs_isolation_args(game_dir: Path) -> list[str]:
+    """Give a client JVM its own java.util.prefs tree.
+
+    Every Swing client writes preferences during shutdown, and WhatsNewDialog's
+    cookie store does it unconditionally -- `disableWhatsNew` suppresses the dialog,
+    not the store. They all share one backing store under $HOME, and java.util.prefs
+    serialises access to it with a file lock.
+
+    At 8 concurrent games this is invisible. At 20 it put `spectator.log` last in 19
+    of 20 game dirs with a 33-113s tail after the server was done, and four of the
+    twenty gave up with `BackingStoreException: Couldn't get file lock`. Games that
+    never errored still waited -- the exception is the tip, the queue is the cost.
+    It gets worse as concurrency rises, which is the direction we are going.
+
+    A per-game tree removes the shared resource. Nothing reads it back: these clients
+    are configured entirely by system properties.
+    """
+    prefs = game_dir / "prefs"
+    prefs.mkdir(parents=True, exist_ok=True)
+    return [
+        f"-Djava.util.prefs.userRoot={prefs}",
+        f"-Djava.util.prefs.systemRoot={prefs}",
+    ]
 
 
 def start_gui_client(
@@ -132,14 +213,28 @@ def start_gui_client(
     game_dir: Path | None = None,
 ) -> subprocess.Popen:
     """Start the GUI spectator client."""
-    del game_dir
+    # TablesPanel.java:1761 reads this property and calls MatchOptions.setGameLogDir;
+    # that reaches the server via TableController:684, and ServerGameEventLogCollector
+    # no-ops while gameLogDir is null. Dropping game_dir here is why
+    # server_game_events.jsonl was absent from every game directory, and why the winner
+    # had to be inferred from last-seen life totals -- which yields "unresolved" whenever
+    # neither player is at or below 0.
+    #
+    # The same file carries the per-decision query/response record for BOTH seats,
+    # including the engine AI, which is what makes it the join target for teacher data.
+    assert game_dir is not None, "game_dir is required to record server game events"
     config_json = config.get_players_config_json()
+
+    ai_skills = os.environ.get("MAGEBENCH_AI_SKILLS", "")
 
     jvm_args = " ".join(
         [
             config.jvm_opens,
             config.jvm_rendering,
             "-Xmx1536m",
+            f"-Dxmage.observer.gameDir={game_dir}",
+            *prefs_isolation_args(game_dir),
+            *([f"-Dxmage.ai.skills={ai_skills}"] if ai_skills else []),
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",
@@ -170,7 +265,7 @@ def start_gui_client(
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", "exec:java"],
+        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Client",
         env=env,
         log_file=log_path,
@@ -184,6 +279,7 @@ def start_sleepwalker_client(
     name: str,
     deck_path: str | None,
     log_path: Path,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start a sleepwalker client."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -202,6 +298,8 @@ def start_sleepwalker_client(
     ]
     if deck_path:
         args.extend(["--deck", str(project_root / deck_path)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,
@@ -220,6 +318,7 @@ def start_replay_client(
     script_path: str | None,
     log_path: Path,
     game_dir: Path | None = None,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start a replay client."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -242,6 +341,8 @@ def start_replay_client(
         args.extend(["--script", str(project_root / script_path)])
     if game_dir:
         args.extend(["--game-dir", str(game_dir)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,
@@ -258,6 +359,7 @@ def start_pilot_client(
     player: PilotPlayer,
     log_path: Path,
     game_dir: Path | None = None,
+    table_id: str | None = None,
 ) -> subprocess.Popen:
     """Start an LLM-powered pilot client via MCP."""
     env = {"PYTHONUNBUFFERED": "1"}
@@ -315,6 +417,8 @@ def start_pilot_client(
         args.extend(["--cache-control", json.dumps(player.cache_control)])
     if game_dir:
         args.extend(["--game-dir", str(game_dir)])
+    if table_id:
+        args.extend(["--table-id", table_id])
 
     return pm.start_process(
         args=args,
@@ -332,12 +436,16 @@ def start_observer_client(
     game_dir: Path | None = None,
 ) -> subprocess.Popen:
     """Start the observer spectator client."""
+    # Same contract as start_gui_client: without game_dir the server-side event log
+    # never gets a directory and the game produces no server_game_events.jsonl.
+    assert game_dir is not None, "game_dir is required to record server game events"
     config_json = config.get_players_config_json()
 
     jvm_args_list = [
         config.jvm_opens,
         config.jvm_rendering,
         "-Xmx1536m",
+        *prefs_isolation_args(game_dir),
         "-Dxmage.aiPuppeteer.autoConnect=true",
         "-Dxmage.aiPuppeteer.autoStart=true",
         "-Dxmage.aiPuppeteer.disableWhatsNew=true",
@@ -346,11 +454,9 @@ def start_observer_client(
         f"-Dxmage.aiPuppeteer.user={config.user}",
         f"-Dxmage.aiPuppeteer.password={config.password}",
     ]
-    if game_dir:
-        jvm_args_list.append(f"-Dxmage.observer.gameDir={game_dir}")
+    jvm_args_list.append(f"-Dxmage.observer.gameDir={game_dir}")
     if config.record:
-        resolved_game_dir = game_dir or (project_root / config.log_dir / f"game_{config.timestamp}").resolve()
-        record_path = config.record_output or (resolved_game_dir / "recording.mov")
+        record_path = config.record_output or (game_dir / "recording.mov")
         jvm_args_list.append(f"-Dxmage.observer.record={record_path}")
 
     jvm_args = " ".join(jvm_args_list)
@@ -373,7 +479,7 @@ def start_observer_client(
     if config.skip_init_shuffling:
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
-    args = ["mvn", "-q", "exec:java"]
+    args = ["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"]
     if sys.platform == "linux" and "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
         xvfb = shutil.which("xvfb-run")
         assert xvfb is not None, (

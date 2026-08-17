@@ -10,42 +10,11 @@ import pytest
 from magebench.orchestration.config import DeckEntry, PilotPlayer
 from magebench.orchestration.deck_choice import (
     _build_choice_prompt,
-    _parse_card_name,
     _parse_choice,
     _summarize_entry,
     list_available_decks,
     resolve_choice_decks,
 )
-
-# --- _parse_card_name ---
-
-
-def test_parse_card_name_maindeck():
-    count, name, sb = _parse_card_name("4 [M21:1] Lightning Bolt")
-    assert count == 4
-    assert name == "Lightning Bolt"
-    assert sb is False
-
-
-def test_parse_card_name_sideboard():
-    count, name, sb = _parse_card_name("SB: 1 [FRF:87] Tasigur, the Golden Fang")
-    assert count == 1
-    assert name == "Tasigur, the Golden Fang"
-    assert sb is True
-
-
-def test_parse_card_name_unparseable():
-    assert _parse_card_name("") is None
-    assert _parse_card_name("# comment") is None
-    assert _parse_card_name("NAME:Burn") is None
-
-
-def test_parse_card_name_multiword_set():
-    count, name, sb = _parse_card_name("2 [CSP:152] Snow-Covered Island")
-    assert count == 2
-    assert name == "Snow-Covered Island"
-    assert sb is False
-
 
 # --- _summarize_entry ---
 

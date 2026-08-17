@@ -11,7 +11,9 @@ from magebench.pilot.pilot import (
 )
 from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
+    CHARS_PER_TOKEN_WORST,
     CONTEXT_SUMMARY_COUNT,
+    MAX_TOKENS,
     RENDER_INTERVAL,
     TOOL_SUMMARY_TRIGGER_CHARS,
     _find_tool_name,
@@ -22,6 +24,61 @@ from magebench.pilot.pilot_rendering import (
     render_context,
 )
 from magebench.pilot.pilot_state import PilotLoopState
+
+
+@pytest.fixture(autouse=True)
+def _windowed_arm(monkeypatch):
+    """Pin the windowed path for this module.
+
+    Append-only became the default on 2026-08-17, which made every windowing test
+    here exercise a code path it was not written for. The windowed renderer is not
+    dead -- it is the reference arm for re-running the append-only A/B and for
+    re-measuring baselines taken before the switch -- so these tests select it
+    explicitly rather than relying on a default that has now changed once.
+    """
+    monkeypatch.setenv("MAGEBENCH_APPEND_ONLY", "0")
+
+
+def test_append_only_is_the_default(monkeypatch):
+    """Unset means append-only: full history, no summarisation, no state bridge."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")
+    history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"m{i}"}
+        for i in range(CONTEXT_RECENT_COUNT + CONTEXT_SUMMARY_COUNT + 10)
+    ]
+    messages = render_context(history, "SYS", "STATE", None)
+    assert messages[0] == {"role": "system", "content": "SYS"}
+    assert messages[1:] == history, "append-only must pass history through untouched"
+
+
+def test_append_only_refuses_to_overrun_the_context(monkeypatch):
+    """Head truncation drops the system prompt and tool grammar, so it must raise."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "2000")
+    history = [{"role": "user", "content": "x" * 5000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
+
+
+def test_append_only_requires_the_context_limit_to_be_set(monkeypatch):
+    """No default. The old one was 40960 while the server served 32768, so the guard
+    sat above the real ceiling and a live game was lost by a single token."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.delenv("MAGEBENCH_CONTEXT_LIMIT", raising=False)
+    with pytest.raises(AssertionError, match="MAGEBENCH_CONTEXT_LIMIT is unset"):
+        render_context([{"role": "user", "content": "hi"}], "SYS", "STATE", None)
+
+
+def test_append_only_reserves_the_completion_against_the_same_ceiling(monkeypatch):
+    """vLLM validates prompt + max_tokens <= max_model_len, so a prompt that fits the
+    raw limit but not the limit minus the completion must still raise."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", str(MAX_TOKENS + 500))
+    # ~600 estimated tokens: under the raw limit, over limit-minus-completion
+    history = [{"role": "user", "content": "x" * 1800}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
 
 # ---------------------------------------------------------------------------
 # _summarize_tool_result
@@ -924,3 +981,27 @@ def test_short_history_tail_breakpoint():
 
     # Original history dict must not be mutated
     assert history[-1].get("content") == original_history_content
+
+
+def test_append_only_guard_estimate_is_biased_high_not_low(monkeypatch):
+    """The guard must trip BEFORE the server refuses, so its estimate must not
+    under-count. chars//3 measured 0.818-0.870 of actual tokens over 276 live calls;
+    unscaled it trips ~4k tokens after the server already 400'd, which is the whole
+    failure it exists to prevent."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", str(MAX_TOKENS + 10_000))
+    # 30,000 chars: chars//3 is 10,000 and would just fit; scaled it is ~12,225 and must not
+    history = [{"role": "user", "content": "x" * 30_000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        render_context(history, "SYS", "STATE", None)
+
+
+def test_guard_bound_is_a_minimum_ratio_not_a_mean():
+    """Direction check, because getting it backwards restores the silent failure.
+
+    The guard trips at actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires early
+    only while the constant is at or below the smallest real ratio. Measured minimum on
+    prompts large enough to reach the ceiling is 0.805; the mean (0.818) and the max
+    (0.872) both sit above it and would fire late on the worst-behaved prompts.
+    """
+    assert CHARS_PER_TOKEN_WORST <= 0.805

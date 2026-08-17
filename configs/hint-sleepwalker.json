@@ -1,0 +1,18 @@
+{
+  "_comment": "Validates AiHintProvider end to end with no LLM and no GPU. The sleepwalker seat is a HumanPlayer on the server, so it fires the same hint hooks a pilot seat would, while playing randomly. If hints appear here they will appear for a pilot.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {
+      "type": "sleepwalker",
+      "name": "HintSeat",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    }
+  ]
+}

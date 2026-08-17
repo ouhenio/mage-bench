@@ -11,6 +11,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from magebench.common.atomic_write import atomic_write_text
+
 
 @dataclass
 class Card:
@@ -127,7 +129,8 @@ def create_random_jumpstart_deck(project_root: Path, exclude_themes: set[str] | 
     t1, t2 = sorted([half1.theme, half2.theme])
     safe_name = f"{t1.replace(' ', '-')}+{t2.replace(' ', '-')}.dck"
     deck_path = tmp_dir / safe_name
-    deck_path.write_text(content)
+    # Atomic: a sibling game in the same batch can resolve to this same path.
+    atomic_write_text(deck_path, content)
 
     display_name = f"{t1} + {t2}"
     return deck_path.relative_to(project_root), display_name

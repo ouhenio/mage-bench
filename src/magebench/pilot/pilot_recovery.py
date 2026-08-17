@@ -102,6 +102,10 @@ async def _recover_from_stall(
             "stall",
             turns_without_progress=state.turns_without_progress,
             last_tools=last_tools,
+            # The auto-pass below is chosen by the harness, not the policy. Trajectories that
+            # include it carry an action the model never selected, so training data must be able
+            # to find and exclude it. Filter on this flag rather than on the event name.
+            harness_action=True,
         )
     try:
         await execute_tool(
@@ -182,6 +186,23 @@ async def _handle_timeout(
         reset_board_context=full_reset,
     )
     return False
+
+
+# vLLM rejects prompt + max_tokens > max_model_len with a 400 whose body names the
+# ceiling. Matched on the text because the status code alone cannot distinguish it
+# from any other 400, and the two need opposite handling: a malformed request is a
+# bug, an overflow is the game having gone on too long.
+_CONTEXT_OVERFLOW_MARKERS = (
+    "maximum context length",
+    "reduce the length",
+    "longer than the maximum model length",
+)
+
+
+def is_context_overflow(error_str: str) -> bool:
+    """True if this LLM error is the prompt outgrowing the server's context."""
+    lowered = error_str.lower()
+    return any(m in lowered for m in _CONTEXT_OVERFLOW_MARKERS)
 
 
 def _classify_permanent_llm_failure(error_str: str) -> str | None:

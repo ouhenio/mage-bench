@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -150,9 +151,29 @@ def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
         "players": players,
         "git_branch": run_git("rev-parse --abbrev-ref HEAD", project_root),
         "git_commit": run_git("rev-parse --short HEAD", project_root),
+        # `git_commit` exists to answer "which code produced this data" when the
+        # results are read back weeks later. Against a dirty tree it answers it
+        # WRONG -- the seat-order fix ran for a whole verification batch while
+        # every artifact pointed at a commit that did not contain it. A label
+        # that is silently wrong is worse than no label.
+        "git_dirty": bool(run_git("status --porcelain", project_root)),
     }
     if config.tournament_game:
         meta["tournament_game"] = True
+
+    # Sampling and RNG conditions, recorded per game rather than left implicit in
+    # launch order or recoverable by grepping server.log. For a common-random-
+    # numbers experiment the seed IS the independent variable: if one game fails
+    # and an arm comes up short, arms misalign silently and nothing detects it.
+    # Temperature is here for the same reason from the other side -- "the only
+    # difference between the arms is the seed" has to be assertable from the
+    # artefacts, not trusted because an env var was set once.
+    for key, env in (("seed", "MAGEBENCH_GAME_SEED"), ("temperature", "MAGEBENCH_TEMPERATURE"),
+                     ("arm", "MAGEBENCH_ARM")):
+        raw = os.environ.get(env, "")
+        if raw:
+            meta[key] = int(raw) if key == "seed" else float(raw) if key == "temperature" else raw
+
     (game_dir / "game_meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 

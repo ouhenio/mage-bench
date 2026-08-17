@@ -1189,6 +1189,50 @@ public class HumanPlayer extends PlayerImpl {
         return true;
     }
 
+
+    // --- AI hint hook ---------------------------------------------------------
+    // Publishes what the engine AI would do at this seat, so an LLM seat's decisions
+    // can be labelled by a stronger player without the AI ever taking the seat.
+    // Off entirely unless -Dxmage.hint.seats names this player.
+    //
+    // Reached reflectively so Mage.Player.Human does not gain a compile-time
+    // dependency on Mage.Player.AI.MA. That resolves at runtime because
+    // Main.loadPlugin() adds every plugin jar to ONE shared MageClassLoader and loads
+    // every plugin class through it, so HumanPlayer and AiHintProvider share a loader.
+    private static volatile java.lang.reflect.Method hintMethod;
+    private static volatile boolean hintLookupDone;
+
+    private void aiHint(Game game, String kind) {
+        if (System.getProperty("xmage.hint.seats") == null) {
+            return;
+        }
+        if (!hintLookupDone) {
+            synchronized (HumanPlayer.class) {
+                if (!hintLookupDone) {
+                    try {
+                        Class<?> c = Class.forName("mage.player.ai.AiHintProvider", true,
+                                HumanPlayer.class.getClassLoader());
+                        hintMethod = c.getMethod("hint", Game.class, UUID.class, String.class, String.class);
+                    } catch (ReflectiveOperationException e) {
+                        // Deliberately fatal rather than a silent no-op: the property was
+                        // set, so someone is generating a labelled dataset right now, and
+                        // a run that quietly produces no hints looks exactly like a run
+                        // whose hints were all passes.
+                        throw new IllegalStateException("xmage.hint.seats is set but "
+                                + "mage.player.ai.AiHintProvider could not be loaded", e);
+                    } finally {
+                        hintLookupDone = true;
+                    }
+                }
+            }
+        }
+        try {
+            hintMethod.invoke(null, game, getId(), getName(), kind);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("AI hint invocation failed", e);
+        }
+    }
+
     @Override
     public boolean priority(Game game) {
         passed = false;
@@ -1357,6 +1401,13 @@ public class HumanPlayer extends PlayerImpl {
             while (canRespond()) {
                 holdingPriority = false;
 
+                // Hint HERE, not at method entry. priority() is called on every
+                // priority pass, but 16 skip/auto-pass branches above return before
+                // the seat is ever asked anything: measured 95 priority calls against
+                // 4 actual prompts in one game. Hinting at entry produced a stream 24x
+                // denser than the prompts it was meant to label, which no positional
+                // join can survive. Here it is one hint per published query.
+                aiHint(game, "priority");
                 prepareForResponse(game);
                 if (!isExecutingMacro()) {
                     game.firePriorityEvent(playerId);
@@ -1778,6 +1829,9 @@ public class HumanPlayer extends PlayerImpl {
         if (!canCallFeedback(game)) {
             return;
         }
+        // Once at method entry, not inside the per-attacker loop: the bridge collapses
+        // that loop into a single prompt, so one hint here is exactly one per prompt.
+        aiHint(game, "declare_attackers");
 
         FilterCreatureForCombat filter = filterCreatureForCombat.copy();
         filter.add(new ControllerIdPredicate(attackingPlayerId));
@@ -2048,6 +2102,7 @@ public class HumanPlayer extends PlayerImpl {
         if (!canCallFeedback(game)) {
             return;
         }
+        aiHint(game, "declare_blockers");
 
         FilterCreatureForCombatBlock filter = filterCreatureForCombatBlock.copy();
         filter.add(new ControllerIdPredicate(defendingPlayerId));

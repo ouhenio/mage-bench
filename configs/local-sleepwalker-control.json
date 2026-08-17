@@ -1,0 +1,18 @@
+{
+  "_comment": "Harness control: no LLM. If this cannot finish a game, a pilot failure says nothing about the model. Same mirror match as local-q38b-vs-cpu.json.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {
+      "type": "sleepwalker",
+      "name": "Sleepwalker",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    }
+  ]
+}

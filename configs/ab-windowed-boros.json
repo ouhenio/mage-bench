@@ -1,0 +1,21 @@
+{
+  "_comment": "Append-only A/B, windowed arm. Identical to seed-spread-boros in every respect except the config NAME, which is the population discriminator recorded in game_meta.json -- the arms differ only in ROLLOUT_APPEND_ONLY. Distinct names also give the two invocations distinct run_tags, which rules the last-<run_tag> symlink race in or out at the same time.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "ABwindowed",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}

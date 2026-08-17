@@ -1,0 +1,17 @@
+{
+  "_comment": "Seed-spread experiment ONLY -- not training, not eval. Its own config name so the two arms are separable from game_meta.json alone rather than from which directory they were written to; mtg-d1's population guard keys on this field. Identical to corpus-boros-mirror-q34b in every other respect: same deck, same frozen notalk-strategy prompt, same Qwen3-4B. The arms differ ONLY in the seed, which is recorded per game alongside the temperature so that claim is assertable from the artefacts.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "SeedBoros",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {"type": "cpu", "name": "XMage AI", "deck": "tmp/decks/Boros-Aggro.dck"}
+  ]
+}

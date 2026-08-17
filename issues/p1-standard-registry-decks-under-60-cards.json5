@@ -1,0 +1,45 @@
+{
+  "title": "17 of 26 Standard registry decks have illegal maindecks under 60 \
+cards",
+  "description": "Measured across data/decks/standard/ by summing maindeck \
+card counts (excluding SB: lines): 17 of the 26 decks are below the 60-card \
+minimum, ranging from 48 (bant-airbending-combo) to 59 (4c-toolbox, \
+dimir-control, jeskai-control). mono-red-aggro is 53. Only 9 are legal: \
+4c-reanimator (61), azorius-control, boros-aggro, dimir-excruciator, \
+esper-self-bounce, izzet-lessons, rakdos-monument, selesnya-landfall, \
+temur-lessons (60 each).\n\n\
+The failure is silent. The server rejects the join, but \
+TablesPanel.java:1816-1817 logs the join result without checking it, so the \
+seat simply never joins and the game hangs to its timeout instead of \
+reporting an illegal deck.\n\n\
+It is also format-dependent, which is a nasty way for it to present. \
+Constructed.getDeckMinSize() (Mage/src/main/java/mage/cards/decks/\
+Constructed.java:206) returns 60; Freeform.getDeckMinSize() \
+(Mage.Server.Plugins/Mage.Deck.Constructed/src/mage/deck/Freeform.java:21) \
+returns 40. Every one of the 17 is at least 48, so all of them validate \
+cleanly under Constructed - Freeform and fail under Standard. A deck that \
+works in one config and silently hangs in another looks like a config bug \
+rather than a deck bug.\n\n\
+Two things are worth noting about why this survived. \
+tests/test_deck_registry.py validates JSON shape, .dck line format, duplicate \
+names and strategy length, and for Jumpstart it explicitly asserts each \
+variant totals 20 cards -- so a size check exists in that file for the format \
+where it was thought about, and was never written for constructed. And \
+Config.validate_deck_sizes (added in this branch) now blocks a run whose own \
+decks are undersized, but it only sees the decks a run actually uses; a deck \
+sitting unused in the registry is still broken and still available to \
+deck='random' and deck='choice'.\n\n\
+Fix: add a constructed-maindeck-size test to tests/test_deck_registry.py \
+mirroring test_jumpstart_files_valid, then repair the 17 decks. The test \
+should land with the repairs, not before -- on its own it turns make test red \
+for everyone.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "decks",
+    "data",
+  ],
+  "created_at": "2026-08-16T12:30:00.000000-08:00",
+  "updated_at": "2026-08-16T12:30:00.000000-08:00",
+}
