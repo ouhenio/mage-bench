@@ -97,7 +97,14 @@ public class ComputerPlayer6 extends ComputerPlayer {
             maxDepth = skill;
         }
         maxThinkTimeSecs = skill * 3;
-        maxNodes = MAX_SIMULATED_NODES_PER_CALC;
+        // Scale the node budget with skill, per the TODO above the constant.
+        // Measured before this change: skill 8 and skill 1 were indistinguishable
+        // over 16 games (8-8) with no latency separation, because maxDepth and
+        // maxThinkTimeSecs are both non-binding -- the timeout only fires on
+        // overrun, and the search aborts at maxNodes long before depth 8 matters.
+        // Every skill level therefore explored the same 5000-node tree. Skill 1
+        // keeps the historical budget exactly, so it remains a valid control.
+        maxNodes = MAX_SIMULATED_NODES_PER_CALC * Math.max(1, skill);
         this.actionCache = new HashSet<>();
     }
 
@@ -170,13 +177,22 @@ public class ComputerPlayer6 extends ComputerPlayer {
     }
 
     protected void act(Game game) {
+        // Capture the legal options BEFORE acting: once an ability resolves the
+        // set of alternatives is gone, and alternatives are what make the record
+        // trainable. Only computed when recording is switched on -- getPlayable is
+        // not free and this runs inside the AI's hot path.
+        List<ActivatedAbility> recordedOptions = AiDecisionRecorder.isEnabled()
+                ? getPlayable(game, true)
+                : null;
         if (actions == null
                 || actions.isEmpty()) {
+            AiDecisionRecorder.record(game, this, null, recordedOptions);
             pass(game);
         } else {
             boolean usedStack = false;
             while (actions.peek() != null) {
                 Ability ability = actions.poll();
+                AiDecisionRecorder.record(game, this, ability, recordedOptions);
                 // example: ===> SELECTED ACTION for PlayerA: Play Swamp
                 logger.info(String.format("===> SELECTED ACTION for %s: %s",
                         getName(),
