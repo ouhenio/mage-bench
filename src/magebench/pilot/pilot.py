@@ -37,6 +37,7 @@ from magebench.pilot.pilot_bridge import (
 from magebench.pilot.pilot_recovery import (
     _classify_permanent_llm_failure,
     is_context_overflow,
+    recover_unwrapped_tool_call,
 )
 from magebench.pilot.pilot_recovery import (
     _handle_timeout as _handle_timeout_impl,
@@ -298,8 +299,14 @@ async def _process_tool_calls(
     username: str,
     game_dir: Path | None,
     game_log: GameLogWriter | None,
+    tool_calls: list | None = None,
 ) -> tuple[bool, set[str]]:
-    """Execute a single LLM tool-calling turn."""
+    """Execute a single LLM tool-calling turn.
+
+    `tool_calls` overrides the response's own list, for a call the model emitted
+    without its <tool_call> envelope. Same execution path deliberately: a
+    recovered call must be indistinguishable downstream from a parsed one.
+    """
     turn_state = PilotTurnState()
 
     if choice.message.content:
@@ -308,8 +315,9 @@ async def _process_tool_calls(
     state.last_was_empty = False
     state.history.append(_build_assistant_tool_message(choice.message))
 
-    assert choice.message.tool_calls is not None, "expected tool_calls in LLM response"
-    for tool_call in choice.message.tool_calls:
+    calls = tool_calls if tool_calls is not None else choice.message.tool_calls
+    assert calls is not None, "expected tool_calls in LLM response"
+    for tool_call in calls:
         fn = tool_call.function
         args = json.loads(fn.arguments) if fn.arguments else {}
 
@@ -555,6 +563,13 @@ async def run_pilot_loop(
     (`return_token_ids` / `return_prompt_text`) and must stay off for providers that
     reject unknown request fields.
     """
+    # Names of the tools this game actually offers. The unwrapped-tool-call recovery
+    # below requires a match here, so prose that merely mentions a tool name cannot
+    # be mistaken for a call.
+    _toolset_names = {
+        tool["function"]["name"] for tool in tools
+        if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
+    }
     try:
         initial_message = await _prefetch_first_action(session)
     except ToolExecutionError as exc:
@@ -741,7 +756,23 @@ async def run_pilot_loop(
                 game_log.emit("llm_response", **llm_event)
 
             turn_tools_called: set[str] = set()
-            if choice.message.tool_calls:
+            # A tool call the model wrote correctly but emitted without its
+            # <tool_call> tags parses to nothing, and the branch below then tells it
+            # to pass -- turning a correct decision into a pass on a main phase with
+            # a land available. Measured at 1.29% of turns across 36.5% of games.
+            recovered = None
+            if not choice.message.tool_calls:
+                recovered = recover_unwrapped_tool_call(choice.message.content, _toolset_names)
+                if recovered:
+                    logger.warning(
+                        "[pilot] Recovered an unwrapped tool call: %s. The model answered correctly "
+                        "and the envelope was missing.",
+                        recovered[0].function.name,
+                    )
+                    if game_log:
+                        game_log.emit("unwrapped_tool_call", tool=recovered[0].function.name)
+
+            if choice.message.tool_calls or recovered:
                 finished, turn_tools_called = await _process_tool_calls(
                     session,
                     choice,
@@ -749,6 +780,7 @@ async def run_pilot_loop(
                     username,
                     game_dir,
                     game_log,
+                    tool_calls=recovered,
                 )
                 if finished:
                     return
@@ -793,7 +825,12 @@ async def run_pilot_loop(
                 state.history.append(
                     {
                         "role": "user",
-                        "content": "Continue playing. Call pass_priority.",
+                        # NOT "call pass_priority". This nudge fires when a turn produced
+                        # no tool call, and naming a specific action makes the model take
+                        # THAT action -- so a formatting slip on a main phase with a land
+                        # available became a pass, in every one of the 319 measured cases.
+                        # The recovery was worse than the failure it recovered from.
+                        "content": "Respond with a tool call.",
                     }
                 )
 

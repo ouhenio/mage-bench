@@ -1,6 +1,7 @@
 """Tests for pilot context window management: summarisation and rendering."""
 
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,6 +10,7 @@ from magebench.pilot.pilot import (
     _build_loop_messages,
     _mark_tail_cache_breakpoint,
 )
+from magebench.pilot.pilot_recovery import recover_unwrapped_tool_call
 from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
     CHARS_PER_TOKEN_WORST,
@@ -1005,3 +1007,55 @@ def test_guard_bound_is_a_minimum_ratio_not_a_mean():
     (0.872) both sit above it and would fire late on the worst-behaved prompts.
     """
     assert CHARS_PER_TOKEN_WORST <= 0.805
+
+
+# --- unwrapped tool calls ---
+#
+# Qwen sometimes writes a correct tool call into `content` and omits the
+# <tool_call> envelope; the hermes parser then returns nothing. Measured at 319 of
+# 24,721 assistant turns (1.29%) across 114 of 312 games, every one with
+# finish_reason "stop". Accepting them is not fabrication -- the model stated one
+# action in the schema's own shape. These tests pin the line between the two.
+
+_TOOLS = {"choose_action", "pass_priority", "send_chat_message"}
+
+
+def test_recovers_a_correct_call_that_lost_its_envelope():
+    got = recover_unwrapped_tool_call('{"name": "choose_action", "arguments": {"choice": "p7"}}', _TOOLS)
+    assert got is not None
+    assert got[0].function.name == "choose_action"
+    assert json.loads(got[0].function.arguments) == {"choice": "p7"}
+
+
+def test_recovers_when_arguments_arrive_as_a_json_string():
+    got = recover_unwrapped_tool_call('{"name": "pass_priority", "arguments": "{\\"until\\": \\"draw\\"}"}', _TOOLS)
+    assert got is not None and json.loads(got[0].function.arguments) == {"until": "draw"}
+
+
+def test_refuses_a_tool_not_in_this_games_toolset():
+    """The name check is what keeps this from being fabrication: a call to something
+    the game does not offer is not a decision, it is a hallucination."""
+    assert recover_unwrapped_tool_call('{"name": "concede", "arguments": {}}', _TOOLS) is None
+
+
+def test_refuses_prose_that_merely_mentions_a_tool():
+    assert recover_unwrapped_tool_call("I will call choose_action with p7 next turn.", _TOOLS) is None
+    assert recover_unwrapped_tool_call('Thinking: {"name": "choose_action"} looks right', _TOOLS) is None
+
+
+def test_refuses_malformed_or_argumentless_json():
+    assert recover_unwrapped_tool_call('{"name": "choose_action", "arguments": ', _TOOLS) is None
+    assert recover_unwrapped_tool_call('{"name": "choose_action", "arguments": "p7"}', _TOOLS) is None
+    assert recover_unwrapped_tool_call('["choose_action"]', _TOOLS) is None
+    assert recover_unwrapped_tool_call(None, _TOOLS) is None
+    assert recover_unwrapped_tool_call("", _TOOLS) is None
+
+
+def test_the_no_tool_call_nudge_does_not_name_an_action():
+    """It named pass_priority, the model obeyed, and a main phase with a land
+    available became a pass -- in all 319 measured cases. A nudge that prescribes an
+    action manufactures that action."""
+    from magebench.pilot import pilot as pilot_mod
+    src = Path(pilot_mod.__file__).read_text()
+    assert '"content": "Respond with a tool call."' in src
+    assert '"content": "Continue playing. Call pass_priority."' not in src
