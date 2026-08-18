@@ -1,0 +1,21 @@
+{
+  "_comment": "Night generation, 2026-08-18. Mirror unless noted. Reminders ON (generate scaffolded, train unscaffolded). deckType Freeform: Freeform.java validates size only, and these are 2010-2015 tournament lists whose cards ship with XMage so every one is guaranteed implemented. Seat name <=12 chars: server_config.xml maxUserNameLength=14 and the fan-out appends a numeric suffix; longer fails login and burns a 120s bridge timeout per game. NON-MIRROR: pilot plays RedDeckWins, engine AI plays AbzanMidrange. A fast deck into a slower one should win more than its own mirror, which serves the requirement that every deck's slice contain wins rather than filtering for them after.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34RDWx",
+      "preset": "q3-4b-local-deckaware-reddeckwins",
+      "provider": "local",
+      "deck": "tmp/decks/RedDeckWins.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/AbzanMidrange.dck"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "_comment": "Night generation, 2026-08-18. Mirror unless noted. Reminders ON (generate scaffolded, train unscaffolded). deckType Freeform: Freeform.java validates size only, and these are 2010-2015 tournament lists whose cards ship with XMage so every one is guaranteed implemented. Seat name <=12 chars: server_config.xml maxUserNameLength=14 and the fan-out appends a numeric suffix; longer fails login and burns a 120s bridge timeout per game.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Infect",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/GbInfect.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/GbInfect.dck"
+    }
+  ]
+}
