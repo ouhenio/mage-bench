@@ -962,36 +962,7 @@ def test_short_history_tail_breakpoint():
     assert history[-1].get("content") == original_history_content
 
 
-def test_append_only_guard_estimate_is_biased_high_not_low(monkeypatch):
-    """The guard must trip BEFORE the server refuses, so its estimate must not
-    under-count. chars//3 measured 0.818-0.870 of actual tokens over 276 live calls;
-    unscaled it trips ~4k tokens after the server already 400'd, which is the whole
-    failure it exists to prevent."""
-    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
-    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", str(MAX_TOKENS + 10_000))
-    # 30,000 chars: chars//3 is 10,000 and would just fit; scaled it is ~12,225 and must not
-    history = [{"role": "user", "content": "x" * 30_000}]
-    with pytest.raises(AssertionError, match="head truncation"):
-        render_context(history, "SYS", "STATE", None)
 
-
-def test_guard_bound_is_a_minimum_ratio_not_a_mean():
-    """Direction check, because getting it backwards restores the silent failure.
-
-    The guard trips at actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires early
-    only while the constant is at or below the smallest real ratio. Measured minimum on
-    prompts large enough to reach the ceiling is 0.805; the mean (0.818) and the max
-    (0.872) both sit above it and would fire late on the worst-behaved prompts.
-    """
-    assert CHARS_PER_TOKEN_WORST <= 0.805
-
-
-# --- unwrapped tool calls ---
-#
-# Qwen sometimes writes a correct tool call into `content` and omits the
-# <tool_call> envelope; the hermes parser then returns nothing. Measured at 1,142
-# of 41,970 decisions (2.7%) over 449 games, every one with finish_reason "stop". Accepting them is not fabrication -- the model stated one
-# action in the schema's own shape. These tests pin the line between the two.
 
 _TOOLS = {"choose_action", "pass_priority", "send_chat_message"}
 

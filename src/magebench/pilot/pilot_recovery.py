@@ -213,6 +213,21 @@ async def _handle_timeout(
     return False
 
 
+@dataclass(frozen=True)
+class _RecoveredFunction:
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True)
+class _RecoveredToolCall:
+    """A tool call the model stated correctly but emitted without its envelope."""
+
+    id: str
+    function: _RecoveredFunction
+    type: str = "function"
+
+
 def recover_unwrapped_tool_call(content: str | None, tool_names: set[str]) -> list | None:
     """Accept a well-formed tool call the model emitted without <tool_call> tags.
 
