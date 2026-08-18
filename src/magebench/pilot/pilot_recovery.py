@@ -36,7 +36,25 @@ def _handle_truncated_response(
     max_tokens: int,
     max_consecutive_truncations: int,
 ) -> bool:
-    """Handle max-token truncation and reset context after repeated failures."""
+    """Handle max-token truncation and reset context after repeated failures.
+
+    UNREACHABLE UNDER THE CURRENT CONFIGURATION, and kept deliberately.
+    finish_reason "length" fired 0 times in 41,970 decisions across 449 games:
+    with thinking disabled a tool call is ~18 completion tokens against
+    MAX_TOKENS=1024, so the budget is never approached.
+
+    Not dead code, conditionally dead. Before MAGEBENCH_DISABLE_THINKING was set,
+    ~19% of decisions were truncated mid-<think> and this path carried them. It
+    becomes live again the moment a model reasons at length -- Qwen3.5-4B was
+    measured at 10.5x the completion tokens of Qwen3-4B (median 89 vs 20), so
+    re-measure this rate before switching rather than after.
+
+    Its nudge still names pass_priority, unlike the no-tool-call nudge in pilot.py
+    which was changed because it was coercing passes. That difference is not an
+    oversight: nobody has measured this path coercing anything, because nobody can
+    -- it does not currently execute. Editing it would be changing code on the
+    strength of an analogy.
+    """
     if choice.finish_reason != "length":
         state.consecutive_truncations = 0
         return False
@@ -200,9 +218,21 @@ def recover_unwrapped_tool_call(content: str | None, tool_names: set[str]) -> li
 
     Qwen sometimes writes the call correctly into `content` and omits the wrapper.
     vLLM's hermes parser then returns no tool_calls, and the harness treats a
-    correct decision as a non-answer. Measured over 312 games / 24,721 assistant
-    turns: 319 turns (1.29%), spread across 114 of 312 games (36.5%), every one
-    with finish_reason "stop" -- a clean finish, not truncation.
+    correct decision as a non-answer. Measured across all tier-1 traces, 449 games
+    and 41,970 decisions: 1,142 (2.7%) are a well-formed call that lost its
+    envelope, every one with finish_reason "stop" -- a clean finish, not
+    truncation.
+
+    A second, smaller population shares the symptom and is NOT this bug: of the
+    1,765 no-call turns, the other 623 (35%) are prose, the model answering the
+    "[It's been N turns since you last chatted]" prompt instead of playing. The
+    guards below refuse those, correctly -- they are not tool calls and must not
+    be coerced into one. MAGEBENCH_CHAT_PROMPTS=0 is their fix.
+
+    An earlier revision of this docstring said 1.29% over 312 games. That was the
+    rate in the published corpus -- turns surviving into the final message list --
+    not the rate at which the harness drops calls. Same quantity, wrong
+    denominator, and it understated the fix by about half.
 
     The damage was not the dropped turn. The recovery nudge then said "Call
     pass_priority", the model obeyed, and a main phase with a land available
