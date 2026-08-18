@@ -1,0 +1,21 @@
+{
+  "_comment": "Speed screen: does this archetype terminate inside the 40,960-token context budget? The Azorius mirror did not -- 18.2 decisions/turn, 13/20 aborted at the ceiling. Boros runs at 8.9 dec/turn and 9.6 turns. deckType Freeform because these are 2011-2014 tournament decks: Freeform.java validates size only, no set legality, and every card ships with XMage so it is guaranteed implemented -- which a downloaded decklist is not.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34RDW",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/RedDeckWins.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/RedDeckWins.dck"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ sources:
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Sequence
 
 from magebench.game.game_export_types import (
@@ -266,7 +267,7 @@ def _render_board(snapshot: Snapshot, deciding_player: str | None) -> str:
             if hand_count:
                 s += f" hand={hand_count}"
         else:
-            hand_strs = [card_display(c) for c in hand] if hand else []
+            hand_strs = _aggregate_duplicates([card_display(c) for c in hand]) if hand else []
             s = f"{name}: {life}hp hand=[{', '.join(hand_strs)}]" if hand_strs else f"{name}: {life}hp hand=0"
 
         s += f" lib={p.library_size}"
@@ -277,18 +278,52 @@ def _render_board(snapshot: Snapshot, deciding_player: str | None) -> str:
             s += _format_counters(counters)
 
         if bf:
-            bf_strs = [permanent_display(c) for c in bf]
+            bf_strs = _aggregate_duplicates([permanent_display(c) for c in bf])
             s += f" bf=[{', '.join(bf_strs)}]"
         if gy:
-            gy_strs = [card_display(c) for c in gy]
+            gy_strs = _aggregate_duplicates([card_display(c) for c in gy])
             s += f" gy=[{', '.join(gy_strs)}]"
         if exile:
-            exile_strs = [card_display(c) for c in exile]
+            exile_strs = _aggregate_duplicates([card_display(c) for c in exile])
             s += f" exile=[{', '.join(exile_strs)}]"
 
         players_parts.append(s)
 
     return " | ".join(players_parts)
+
+
+def _aggregate_duplicates(items: list[str]) -> list[str]:
+    """Collapse identical zone entries into "Nx Name", preserving first-appearance order.
+
+    A board line renders every permanent individually, so a mono-colour deck emits
+    "Swamp, Swamp, Swamp, Swamp, Swamp". Measured over one 215-decision game, duplicate
+    battlefield entries alone were ~8,800 characters, about 9% of all tool output, and
+    tool output is 76.7% of the prompt.
+
+    This is safe to collapse because the board line carries NO object ids -- ids appear
+    only in the Choices list -- so two entries with the same display string are
+    interchangeable in the render and nothing downstream can tell them apart. State that
+    differs still differs: "Swamp" and "Swamp (tapped)" are distinct strings and stay on
+    separate entries.
+
+    Opt-in via MAGEBENCH_COMPACT_BOARD=1. Default off: state encoding changes agent
+    behaviour even when the information is identical, so this needs an A/B against the
+    screen seeds before it becomes the default, not just a smaller token count.
+    """
+    if os.environ.get("MAGEBENCH_COMPACT_BOARD") != "1":
+        return items
+    counts: dict[str, int] = {}
+    for item in items:
+        counts[item] = counts.get(item, 0) + 1
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        n = counts[item]
+        out.append(f"{n}x {item}" if n > 1 else item)
+    return out
 
 
 def card_display(c: object) -> str:

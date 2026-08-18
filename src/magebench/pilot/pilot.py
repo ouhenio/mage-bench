@@ -297,6 +297,25 @@ def _maybe_extract_result_dict(result_text: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _chat_prompts_enabled() -> bool:
+    """Whether to nag the pilot to chat with its opponent.
+
+    Chatting is a MageBench benchmark feature -- models play Magic *and* talk to their
+    opponent -- and it is dead weight for RL data collection in two ways. Measured over
+    one 215-decision game it was 7,084 characters, 7.5% of all tool output, and because
+    the nag is appended to display_text it lands in state.history and is then re-sent on
+    every subsequent decision under append-only rendering.
+
+    It also tells the model, in the middle of a game decision, to do something that is
+    not a game action -- a candidate explanation for the "N consecutive responses emitted
+    no tool call" stalls that collect.py rejects whole games for.
+
+    Set MAGEBENCH_CHAT_PROMPTS=0 to suppress. Default on, so the benchmark keeps its
+    behaviour and only training runs opt out.
+    """
+    return os.environ.get("MAGEBENCH_CHAT_PROMPTS") != "0"
+
+
 async def _process_tool_calls(
     session: ClientSession,
     choice: _ChoiceLike,
@@ -480,7 +499,7 @@ async def _process_tool_calls(
             display_text, state.last_board = render_for_pilot(result_text, state.last_board, state.seen_oracle_cards)
             turns_since_chat = state.current_game_turn - state.last_chat_turn
             chat_budget_left = turn_state.chat_messages_this_turn < MAX_CHAT_MESSAGES_PER_TURN
-            if turns_since_chat >= 2 and display_text != result_text and chat_budget_left:
+            if _chat_prompts_enabled() and turns_since_chat >= 2 and display_text != result_text and chat_budget_left:
                 display_text += (
                     f"\n\n[It's been {turns_since_chat} turns since you last "
                     f"chatted — send a message to your opponent!]"

@@ -70,6 +70,13 @@ class TestConfigDeckTypes:
         "Constructed - Standard",
         "Constructed - Modern",
         "Constructed - Legacy",
+        # Freeform validates deck SIZE only -- Freeform.java overrides getDeckMinSize()
+        # to 40 and its validate() checks nothing else, no set-legality pass. Used by the
+        # deck-conditioning corpus, whose decks come from Mage.Client's shipped
+        # sample-decks ("Decks to Beat", 2011-2015 tournament Standard). Those cards are
+        # guaranteed implemented -- they ship with the engine -- but are long out of
+        # Standard, so the Standard validator would reject them.
+        "Constructed - Freeform",
         "Limited",
         "Variant Magic - Freeform Commander",
         "Variant Magic - Commander",

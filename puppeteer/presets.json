@@ -319,6 +319,48 @@
       "status": "active",
       "system_prompt": "notalk-strategy-reminders",
       "toolset": "notalk"
+    },
+    "q3-4b-local-strategy-literal": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy-literal",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-azorius": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-azorius",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-reddeckwins": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-reddeckwins",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-temperedsteel": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-temperedsteel",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-gruulaggro": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-gruulaggro",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-devotionblack": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-devotionblack",
+      "toolset": "notalk"
     }
   }
 }
