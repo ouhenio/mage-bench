@@ -1801,8 +1801,20 @@ public class TablesPanel extends javax.swing.JPanel {
                     // Headless players (sleepwalker, pilot, replay, bridge) join via the headless client
                     LOGGER.info("AI Puppeteer: slot reserved for headless client: " + name);
                 } else {
-                    boolean joined = SessionHandler.joinTable(roomId, table.getTableId(), name, playerType, 1, deckToUse, "");
-                    LOGGER.info("AI Puppeteer: joined " + name + " (" + playerType + ") -> " + joined);
+                    // AI strength. ComputerPlayer6 derives maxDepth from this (floored at 4
+                    // below skill 4) and maxThinkTimeSecs = skill * 3, so it is the only knob
+                    // that makes the bot search harder. It was hardcoded to 1 -- the weakest
+                    // setting the engine offers -- which is invisible from any config file.
+                    // -Dxmage.ai.skills=8,1 assigns per bot in join order, so a strong bot can
+                    // be measured against a weak one; a single value applies to all bots.
+                    int aiSkill = Integer.getInteger("xmage.ai.skill", 1);
+                    String skillList = System.getProperty("xmage.ai.skills");
+                    if (skillList != null && !skillList.isEmpty()) {
+                        String[] parts = skillList.split(",");
+                        aiSkill = Integer.parseInt(parts[Math.min(deckIndex, parts.length - 1)].trim());
+                    }
+                    boolean joined = SessionHandler.joinTable(roomId, table.getTableId(), name, playerType, aiSkill, deckToUse, "");
+                    LOGGER.info("AI Puppeteer: joined " + name + " (" + playerType + ", skill=" + aiSkill + ") -> " + joined);
                 }
                 if (player.isBot()) {
                     deckIndex++;
