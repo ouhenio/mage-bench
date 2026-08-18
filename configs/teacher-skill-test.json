@@ -1,0 +1,10 @@
+{
+  "_comment": "Teacher measurement: engine AI vs engine AI, no LLM, no GPU. Skill is set per bot in join order via MAGEBENCH_AI_SKILLS (e.g. '8,1'). Same fixed mirror deck as the policy baseline, so a win rate here reflects search depth and nothing else.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {"type": "cpu", "name": "Strong", "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"},
+    {"type": "cpu", "name": "Weak", "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "_comment": "Teacher measurement, take 2: Standard instead of Jumpstart. Jumpstart was measured to have a median branching factor of 1 (28% of decisions had zero options, 25% exactly one), so no search depth could express itself and skill 8 tied skill 1 at 8-8 over 16 games. A 60-card control deck with instants, counterspells, board wipes and planeswalkers is the discriminating instrument that test needed. Mirror match, so a win rate reflects search depth alone.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {"type": "cpu", "name": "Strong", "deck": "tmp/decks/Azorius-Control.dck"},
+    {"type": "cpu", "name": "Weak", "deck": "tmp/decks/Azorius-Control.dck"}
+  ]
+}
