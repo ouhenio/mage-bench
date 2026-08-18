@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from dataclasses import dataclass
 from logging import Logger
 from typing import Protocol
 
@@ -182,10 +183,66 @@ async def _handle_timeout(
         state.consecutive_timeouts = 0
     reset_context(
         state,
+        # Deliberately still names pass_priority, unlike the no-tool-call nudge in
+        # pilot.py. Two differences: this follows a context WIPE, so it is the entire
+        # opening message of a fresh conversation and needs to orient rather than
+        # correct; and the harness has already executed pass_priority above, so this
+        # tells the model how to re-read a state it can no longer see. The measured
+        # 319 coerced passes were all the other path.
         "Continue playing. Call pass_priority.",
         reset_board_context=full_reset,
     )
     return False
+
+
+def recover_unwrapped_tool_call(content: str | None, tool_names: set[str]) -> list | None:
+    """Accept a well-formed tool call the model emitted without <tool_call> tags.
+
+    Qwen sometimes writes the call correctly into `content` and omits the wrapper.
+    vLLM's hermes parser then returns no tool_calls, and the harness treats a
+    correct decision as a non-answer. Measured over 312 games / 24,721 assistant
+    turns: 319 turns (1.29%), spread across 114 of 312 games (36.5%), every one
+    with finish_reason "stop" -- a clean finish, not truncation.
+
+    The damage was not the dropped turn. The recovery nudge then said "Call
+    pass_priority", the model obeyed, and a main phase with a land available
+    became a pass -- manufacturing the exact defect the reminder work exists to
+    remove.
+
+    This is NOT fabrication. The model stated exactly one action, in the tool
+    schema's own shape, and we accept a valid call that is missing its envelope.
+    The guards below are what keep it that way: it must parse, name a tool that
+    is actually in this game's toolset, and carry an arguments object. Prose that
+    merely mentions a tool name does not qualify.
+
+    Returns a one-element list shaped like the SDK's tool_calls, or None.
+    """
+    if not content:
+        return None
+    text = content.strip()
+    if not text.startswith("{"):
+        return None
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+
+    name = parsed.get("name")
+    if not isinstance(name, str) or name not in tool_names:
+        return None
+
+    args = parsed.get("arguments", {})
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except (json.JSONDecodeError, ValueError):
+            return None
+    if not isinstance(args, dict):
+        return None
+
+    return [_RecoveredToolCall(id=f"recovered_{name}", function=_RecoveredFunction(name=name, arguments=json.dumps(args)))]
 
 
 def _classify_permanent_llm_failure(error_str: str) -> str | None:
