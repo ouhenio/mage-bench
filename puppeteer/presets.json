@@ -367,6 +367,24 @@
       "status": "active",
       "system_prompt": "notalk-deckaware-selesnyaaggro",
       "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-kuldothared": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-kuldothared",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-deathsshadow": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-deathsshadow",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-brvampires": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-brvampires",
+      "toolset": "notalk"
     }
   }
 }

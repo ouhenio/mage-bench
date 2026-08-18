@@ -8,7 +8,7 @@
     {
       "type": "pilot",
       "name": "Q34Kuld",
-      "preset": "q3-4b-local-strategy",
+      "preset": "q3-4b-local-deckaware-kuldothared",
       "provider": "local",
       "deck": "tmp/decks/KuldothaRed.dck"
     },

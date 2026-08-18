@@ -8,7 +8,7 @@
     {
       "type": "pilot",
       "name": "Q34Vamp",
-      "preset": "q3-4b-local-strategy",
+      "preset": "q3-4b-local-deckaware-brvampires",
       "provider": "local",
       "deck": "tmp/decks/BrVampires.dck"
     },

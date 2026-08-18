@@ -8,7 +8,7 @@
     {
       "type": "pilot",
       "name": "Q34Shadow",
-      "preset": "q3-4b-local-strategy",
+      "preset": "q3-4b-local-deckaware-deathsshadow",
       "provider": "local",
       "deck": "tmp/decks/DeathsShadow.dck"
     },
