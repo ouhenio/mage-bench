@@ -107,3 +107,56 @@ class TestGoldenEpochCoherence:
             "Run `make regen-golden` after bumping the epoch.\n"
             "Untouched exports:\n  " + "\n  ".join(sorted(untouched))
         )
+
+
+def _declared_epoch() -> int:
+    """HARNESS_EPOCH as the source declares it, read without importing magebench."""
+    source = (REPO_ROOT / "src" / "magebench" / "game" / "harness_epoch.py").read_text()
+    for node in ast.walk(ast.parse(source)):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "HARNESS_EPOCH"
+            and isinstance(node.value, ast.Constant)
+        ):
+            return int(node.value.value)
+    raise AssertionError("HARNESS_EPOCH not found in harness_epoch.py")
+
+
+class TestGoldenEpochIsCurrent:
+    """The epoch the goldens claim must be the epoch the source declares.
+
+    This is the same invariant TestGoldenEpochCoherence guards, checked a way that
+    does not depend on git. Both of its tests call changed_files_since_master(),
+    which returns None -- and skips -- when HEAD is master. So the gate that stops
+    an unbacked epoch bump reaching trunk was disabled precisely on trunk, and all
+    15 exports sat at harness_epoch 60 against a constant of 61 for a whole epoch
+    with a green suite. The failure was not that the check was wrong. It never ran,
+    and nothing said so.
+
+    A skip is not a pass. Read pytest -rs before believing a green run of a gate
+    whose whole job is to fail.
+
+    Unconditional on purpose: no merge-base, no upstream, no branch. It holds on
+    master, on a feature branch, in a fresh clone with no remotes, and in CI.
+    """
+
+    def test_every_export_golden_carries_the_declared_epoch(self) -> None:
+        epoch = _declared_epoch()
+        exports = sorted((REPO_ROOT / "tests" / "golden" / "exports").glob("*.json5"))
+        assert exports, "No export goldens found -- this test would pass vacuously."
+
+        wrong: list[str] = []
+        for path in exports:
+            found = re.findall(r'"harness_epoch"\s*:\s*(\d+)', path.read_text())
+            rel = str(path.relative_to(REPO_ROOT))
+            if not found:
+                wrong.append(f"{rel}: no harness_epoch field")
+            elif {int(v) for v in found} != {epoch}:
+                wrong.append(f"{rel}: {sorted({int(v) for v in found})}")
+
+        assert not wrong, (
+            f"HARNESS_EPOCH is {epoch} but {len(wrong)} of {len(exports)} export golden(s) "
+            "disagree. Run `make regen-golden`.\n  " + "\n  ".join(wrong)
+        )
