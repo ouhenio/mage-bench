@@ -123,8 +123,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - You\n\
-  Board: TestPlayer: 20hp hand=7 lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no",
@@ -155,7 +155,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -181,7 +182,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -209,7 +211,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (3): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -237,7 +240,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
     "role": "tool",
     "tool_call_id": "call_6",
   },

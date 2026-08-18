@@ -295,7 +295,9 @@ def recover_unwrapped_tool_call(content: str | None, tool_names: set[str]) -> li
     if not isinstance(name, str) or name not in tool_names:
         return None
 
-    args = parsed.get("arguments", {})
+    args = parsed["arguments"] if "arguments" in parsed else None
+    if args is None:
+        return None
     if isinstance(args, str):
         try:
             args = json.loads(args)

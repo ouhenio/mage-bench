@@ -1,0 +1,21 @@
+{
+  "_comment": "Azorius control mirror, arm 7. Deck-aware system prompt written from Scryfall oracle text for all 20 maindeck cards, plus the same per-decision land/cast reminders as arm 6. The cast reminder ('passing your own main phase is almost always wrong') is archetype-wrong for a control deck and is deliberately left unchanged so that arm 7 differs from arm 6 in deck and prompt only; the prompt states the exception in words instead. Prediction registered in advance: the per-decision reminder wins and the model casts anyway.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Azorius",
+      "preset": "q3-4b-local-deckaware-azorius",
+      "provider": "local",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    }
+  ]
+}

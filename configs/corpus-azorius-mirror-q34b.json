@@ -1,0 +1,21 @@
+{
+  "_comment": "Azorius control mirror, CONTROL arm for arm 7. Base notalk-strategy prompt, same model and settings as corpus-boros-mirror-q34b.json. Must be run with MAGEBENCH_DECISION_REMINDERS=0 -- the reminder code is now in the tree and fires by default, so a control collected today is not comparable to the Boros control (arm 1), which predates it.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Azorius",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    }
+  ]
+}

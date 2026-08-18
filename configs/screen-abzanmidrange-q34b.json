@@ -1,0 +1,21 @@
+{
+  "_comment": "Admissibility screen only: BASE notalk-strategy prompt, not deck-aware. Peak prompt tokens is a property of the deck (game length x board density); the deck-aware prompt adds a CONSTANT ~2.5k tokens to the system prefix, so a deck-aware peak is this measurement plus that constant. Screening with the base prompt avoids writing a 14k-char prompt for a deck that may not survive. Deck from mage-bench sample-decks 'Decks to Beat'; deckType Freeform because Freeform.java validates size only.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Abzan",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/AbzanMidrange.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/AbzanMidrange.dck"
+    }
+  ]
+}

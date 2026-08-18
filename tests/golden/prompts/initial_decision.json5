@@ -121,8 +121,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - You\n\
-  Board: TestPlayer: 20hp hand=7 lib=43 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon] lib=43 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no",
@@ -173,8 +173,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - You\n\
-  Board: TestPlayer: 20hp hand=7 lib=43 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon] lib=43 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no",

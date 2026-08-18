@@ -117,8 +117,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - You\n\
-  Board: TestPlayer: 20hp hand=7 lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no",
@@ -149,7 +149,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (7): Mountain [id=p10, land], Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -175,7 +176,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (7): Mountain [id=p10, land], Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -283,6 +285,7 @@ TestPlayer played Mountain\n\
   Message: Play spells and abilities\n\
   Choices (7): Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land], Mountain [id=p24, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
   Recent chat: Opponent: You too, glhf!",
     "role": "tool",
     "tool_call_id": "call_8",

@@ -1,0 +1,21 @@
+{
+  "_comment": "Deck-conditioning corpus. Mirror match, Qwen3-4B, temperature 1.0, append-only. Deck from mage-bench sample-decks 'Decks to Beat' -- ships with XMage so every card is guaranteed implemented; deckType Freeform because Freeform.java validates size only. Seat name kept short: server_config.xml maxUserNameLength=14 and the fan-out appends a numeric suffix. CONTROL: base notalk-strategy. MUST run with MAGEBENCH_DECISION_REMINDERS=0 -- the reminder code fires by default, so a control collected without it is a reminder arm wearing a control's name.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Sel",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/SelesnyaAggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/SelesnyaAggro.dck"
+    }
+  ]
+}

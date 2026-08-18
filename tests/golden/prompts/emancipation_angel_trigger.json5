@@ -121,8 +121,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - You\n\
-  Board: TestPlayer: 20hp hand=7 lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Emancipation Angel, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no",
@@ -153,7 +153,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (6): Black Lotus [id=p10, cast, {0}], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -179,7 +180,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (6): Black Lotus [id=p10, cast, {0}], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -207,7 +209,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (1): Black Lotus [id=p10, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -290,7 +293,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (1): Emancipation Angel [id=p11, cast, {1}{W}{W}]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
     "role": "tool",
     "tool_call_id": "call_8",
   },

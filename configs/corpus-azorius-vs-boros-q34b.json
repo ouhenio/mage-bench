@@ -1,0 +1,21 @@
+{
+  "_comment": "Azorius control vs Boros aggro, CONTROL arm. Base notalk-strategy prompt. Must be run with MAGEBENCH_DECISION_REMINDERS=0 -- the reminder code is in the tree now and fires by default, so a control collected today without it is a reminder arm wearing a control's name, and it looks entirely normal in the output.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Azorius",
+      "preset": "q3-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}

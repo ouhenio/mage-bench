@@ -1,0 +1,21 @@
+{
+  "_comment": "Azorius control piloted against Boros aggro -- the non-mirror form of arm 7. The Azorius MIRROR is not runnable: measured 16.7 decisions per turn against Boros's 8.9, needing 25+ turns to resolve, which exceeds the 40,960-token context budget in append-only rendering. A 2-game smoke aborted at turn 7 with BadRequestError. Against Boros the game ends by turn 9-12, the same regime arm 6 was collected in, so the trajectory fits.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Azorius",
+      "preset": "q3-4b-local-deckaware-azorius",
+      "provider": "local",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}
