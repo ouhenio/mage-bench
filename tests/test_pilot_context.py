@@ -1012,9 +1012,8 @@ def test_guard_bound_is_a_minimum_ratio_not_a_mean():
 # --- unwrapped tool calls ---
 #
 # Qwen sometimes writes a correct tool call into `content` and omits the
-# <tool_call> envelope; the hermes parser then returns nothing. Measured at 319 of
-# 24,721 assistant turns (1.29%) across 114 of 312 games, every one with
-# finish_reason "stop". Accepting them is not fabrication -- the model stated one
+# <tool_call> envelope; the hermes parser then returns nothing. Measured at 1,142
+# of 41,970 decisions (2.7%) over 449 games, every one with finish_reason "stop". Accepting them is not fabrication -- the model stated one
 # action in the schema's own shape. These tests pin the line between the two.
 
 _TOOLS = {"choose_action", "pass_priority", "send_chat_message"}
