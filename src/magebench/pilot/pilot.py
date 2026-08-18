@@ -784,7 +784,7 @@ async def run_pilot_loop(
             # A tool call the model wrote correctly but emitted without its
             # <tool_call> tags parses to nothing, and the branch below then tells it
             # to pass -- turning a correct decision into a pass on a main phase with
-            # a land available. Measured at 1,142 of 41,970 decisions (2.7%) over 449 games.
+            # a land available. Measured at 1.29% of turns across 36.5% of games.
             recovered = None
             if not choice.message.tool_calls:
                 recovered = recover_unwrapped_tool_call(choice.message.content, _toolset_names)
