@@ -85,7 +85,17 @@ from magebench.game.season import SEASON_1_START_EPOCH as GAME_EXPORT_SEASON_1_S
 #  --- Golden exports updated: game export wire format v9 uses snake_case keys (Mar 21)
 #  --- Golden exports updated: add model to test pilot players for stricter export validation (Mar 16)
 #  --- Golden exports updated: dataclass serialization includes null optional fields (Mar 17)
-HARNESS_EPOCH = 61
+#  62 - Reconciliation: master and teacher-skill unified. Rendering changed (blocker
+#       legality now surfaced per attacker, e0d576d1) and the pilot accepts a tool call
+#       emitted without its <tool_call> envelope (1bfb40d9), which alters the action
+#       distribution on ~2.7% of decisions. ALSO: removing the cause of stalls removed
+#       an accidental context-relief valve -- the stall-wipe had been resetting long
+#       games and buying ~130 decisions of headroom. Measured on Tempered Steel over 40
+#       distinct seeds: aborts 14% -> 61%, stall-wipes 81% -> 22%. Every abort rate
+#       recorded at epoch 61 or earlier is therefore biased OPTIMISTIC and is not
+#       comparable to anything collected here (Aug 17)
+
+HARNESS_EPOCH = 62
 
 # Re-exported here so existing callers keep a stable import path while the
 # canonical season boundary now lives with the export pipeline.

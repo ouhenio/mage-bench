@@ -1,5 +1,5 @@
 {
-  "_comment": "Never remove a preset \u2014 old presets are needed to identify models in historical game data. To retire a model, set its status to 'retired', 'buggy', or 'expensive'. Active pool = presets with status 'active'.",
+  "_comment": "Never remove a preset — old presets are needed to identify models in historical game data. To retire a model, set its status to 'retired', 'buggy', or 'expensive'. Active pool = presets with status 'active'.",
   "presets": {
     "gem25f-medium": {
       "model": "google/gemini-2.5-flash",
@@ -318,6 +318,54 @@
       "model": "Qwen/Qwen3-4B",
       "status": "active",
       "system_prompt": "notalk-strategy-reminders",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-strategy-literal": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy-literal",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-azorius": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-azorius",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-reddeckwins": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-reddeckwins",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-temperedsteel": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-temperedsteel",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-gruulaggro": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-gruulaggro",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-devotionblack": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-devotionblack",
+      "toolset": "notalk"
+    },
+    "q3-4b-local-deckaware-selesnyaaggro": {
+      "model": "Qwen/Qwen3-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-selesnyaaggro",
       "toolset": "notalk"
     }
   }

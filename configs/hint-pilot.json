@@ -1,0 +1,20 @@
+{
+  "_comment": "First labelled-prompt run: an LLM pilot seat with engine-AI hints alongside. The seat is named explicitly because MAGEBENCH_HINT_SEATS matches on player name, and a generated name cannot be passed to the JVM before the game exists.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Limited",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "HintPilot",
+      "preset": "q38b-local-notalk",
+      "provider": "local",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/jumpstart-decks/MIRROR-Basri+Dogs.dck"
+    }
+  ]
+}

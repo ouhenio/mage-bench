@@ -1,0 +1,21 @@
+{
+  "_comment": "Qwen3-4B arm -- the 3 family, not 3.5. Isolates parameter count from model generation: same hermes tool-call format, same 152k vocab and no vision tower as the Qwen3-8B everything was measured on. Qwen3.5-4B was rejected because it emitted 10.5x more completion tokens (median 89 vs 20), making its rollout 1.9x SLOWER in wall clock than the larger 8B and cancelling the FLOPs advantage.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34Boros",
+      "preset": "q3-4b-local-strategy-literal",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}
