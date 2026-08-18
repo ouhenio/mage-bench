@@ -1,0 +1,17 @@
+{
+  "_comment": "STAGING ONLY, not a corpus. One Standard pilot game with engine-AI hints, to de-risk the path and take the first Standard reading of the two gates (material label ambiguity, context-window slide). Standard has more board presence than Jumpstart, so both rates are expected to move; measured on Jumpstart they are 0 and 0/103. The eventual deck SET is undecided and this commits to nothing -- Azorius-Control mirror is simply the one Standard deck already on disk.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "HintStd",
+      "preset": "q38b-local-notalk",
+      "provider": "local",
+      "deck": "tmp/decks/Azorius-Control.dck"
+    },
+    {"type": "cpu", "name": "XMage AI", "deck": "tmp/decks/Azorius-Control.dck"}
+  ]
+}
