@@ -1,0 +1,21 @@
+{
+  "_comment": "Fast-into-slow matchup, generated 2026-08-18 07:0x. MEASURED: red-deck-wins vs abzan-midrange won 77% (48/62) where mirrors win 20-33% at identical GPU cost, and boros vs selesnya -- aggro into AGGRO -- won only 26%. So the lever is the SPEED DIFFERENTIAL, not the non-mirror. Abzan Midrange is the slow side: 60 cards, all implemented, 4 generators (cleanest of its seven versions). Reminders ON.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Freeform",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q34VamA",
+      "preset": "q3-4b-local-deckaware-brvampires",
+      "provider": "local",
+      "deck": "tmp/decks/BrVampires.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/AbzanMidrange.dck"
+    }
+  ]
+}
