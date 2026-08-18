@@ -122,6 +122,7 @@ class _ChoiceLike(Protocol):
 
 class _UsageLike(Protocol):
     completion_tokens: int | None
+    prompt_tokens: int | None
 
 
 class _ResponseLike(Protocol):
@@ -240,11 +241,19 @@ async def _build_loop_messages(
         if not state.state_summary or state.render_counter % RENDER_INTERVAL == 0:
             state.state_summary = await _fetch_state_summary(session)
             state.render_counter = 0
-        messages = render_context(state.history, system_prompt, state.state_summary, cache_control)
+        messages = render_context(
+            state.history, system_prompt, state.state_summary, cache_control,
+            last_prompt_tokens=state.last_prompt_tokens,
+            last_prompt_chars=state.last_prompt_chars,
+        )
         state.cache_breakpoint_idx = _find_cache_breakpoint_idx(messages)
         return messages
 
-    messages = render_context(state.history, system_prompt, state.state_summary, cache_control)
+    messages = render_context(
+        state.history, system_prompt, state.state_summary, cache_control,
+        last_prompt_tokens=state.last_prompt_tokens,
+        last_prompt_chars=state.last_prompt_chars,
+    )
     state.cache_breakpoint_idx = len(messages) - 1 if messages else None
     state.render_counter = 0
     return messages
@@ -699,6 +708,14 @@ async def run_pilot_loop(
                     request=create_kwargs,
                     response=response.model_dump(),
                 )
+
+            # Anchor for the append-only context guard: the engine's OWN token count
+            # for the prompt we just sent, paired with that prompt's character count.
+            # Without this the guard falls back to estimating the whole prompt from
+            # characters, which is deck-dependent and was wrong by 18% on Azorius.
+            if response.usage and response.usage.prompt_tokens:
+                state.last_prompt_tokens = response.usage.prompt_tokens
+                state.last_prompt_chars = sum(len(str(m.get("content") or "")) for m in messages)
 
             call_cost = 0.0
             if response.usage and model_price is not None:

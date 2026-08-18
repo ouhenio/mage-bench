@@ -58,6 +58,13 @@ class PilotLoopState:
     cache_breakpoint_idx: int | None = None
     render_counter: int = 0
     context_overflow_resets: int = 0
+    # Actual prompt_tokens from the serving engine's last response. The
+    # append-only context guard measures the DELTA against this instead of
+    # estimating the whole prompt from characters -- see render_context.
+    last_prompt_tokens: int | None = None
+    # Character count of the messages list that produced last_prompt_tokens.
+    # The pair is the anchor: tokens from the engine, chars from what we sent.
+    last_prompt_chars: int | None = None
 
 
 @dataclass

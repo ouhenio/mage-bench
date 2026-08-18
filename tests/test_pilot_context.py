@@ -1058,3 +1058,44 @@ def test_the_no_tool_call_nudge_does_not_name_an_action():
     src = Path(pilot_mod.__file__).read_text()
     assert '"content": "Respond with a tool call."' in src
     assert '"content": "Continue playing. Call pass_priority."' not in src
+
+
+# --- the context guard anchors on the engine's own count ---
+#
+# The old guard estimated the WHOLE prompt from characters, with a constant taken
+# from Boros's worst ratio. That ratio is deck-dependent -- boros min 0.660, azorius
+# min 0.948, non-overlapping, and on azorius the estimate can exceed real tokens --
+# so the constant fired ~18% early on azorius, killing games with ~7,000 tokens
+# spare. These pin the replacement.
+
+
+def test_guard_measures_the_delta_when_anchored(monkeypatch):
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")
+    history = [{"role": "user", "content": "x" * 30_000}]
+    # Anchored: the engine said the previous 29,700-char prompt was 9,000 tokens, so
+    # only the ~300 new chars are estimated. Unanchored, chars/3/0.805 would be
+    # ~12,400 and the two answers would differ by thousands.
+    render_context(history, "SYS", "STATE", None,
+                   last_prompt_tokens=9_000, last_prompt_chars=29_700)
+
+
+def test_guard_still_fires_when_anchored_and_genuinely_over(monkeypatch):
+    """Anchoring must not disable the guard -- a real overrun still raises."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")
+    history = [{"role": "user", "content": "x" * 30_000}]
+    with pytest.raises(AssertionError, match="head truncation"):
+        # budget is 32768 - 1024 = 31,744; anchor + ~100 tokens of delta clears it
+        render_context(history, "SYS", "STATE", None,
+                       last_prompt_tokens=31_700, last_prompt_chars=29_700)
+
+
+def test_guard_falls_back_when_history_shrank(monkeypatch):
+    """A reset makes the anchor meaningless: the new prompt is SMALLER than the one
+    the anchor describes, so delta arithmetic would understate it."""
+    monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
+    monkeypatch.setenv("MAGEBENCH_CONTEXT_LIMIT", "32768")
+    history = [{"role": "user", "content": "x" * 200}]
+    render_context(history, "SYS", "STATE", None,
+                   last_prompt_tokens=31_000, last_prompt_chars=90_000)

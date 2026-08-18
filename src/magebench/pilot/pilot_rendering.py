@@ -376,6 +376,8 @@ def render_context(
     system_prompt: str,
     state_summary: str,
     cache_control: dict | None = None,
+    last_prompt_tokens: int | None = None,
+    last_prompt_chars: int | None = None,
 ) -> list[dict]:
     """Build the LLM messages list from append-only history."""
     messages: list[dict]
@@ -431,33 +433,42 @@ def render_context(
             "the serving engine's max_model_len -- `curl -s $BASE_URL/models` reports it as "
             "max_model_len. Do not guess: a guard above the real ceiling never fires."
         )
-        budget = int(limit) - MAX_TOKENS
         chars = sum(len(str(m.get("content") or "")) for m in messages)
-        # chars//3 is not a token count and is biased LOW, which is the wrong direction
-        # for a guard: unscaled it trips ~4k tokens AFTER the server has already refused
-        # the request, which is the event it exists to prevent.
+
+        # MEASURE THE DELTA, DO NOT ESTIMATE THE WHOLE PROMPT.
         #
-        # Let r = (chars/3) / actual_tokens. Then this guard trips at
-        # actual = budget * CHARS_PER_TOKEN_WORST / r, so it fires EARLY only while
-        # CHARS_PER_TOKEN_WORST <= r. The bound therefore has to be the MINIMUM observed
-        # ratio, not the mean and not the max -- a larger divisor fires later, which is
-        # the direction that fails silently.
+        # This used to be `chars // 3 / CHARS_PER_TOKEN_WORST`, with the constant
+        # taken from the worst observed ratio on Boros. That ratio is DECK-DEPENDENT:
+        #   boros    (chars//3)/actual  median 0.834  min 0.660  max 0.870
+        #   azorius                     median 0.978  min 0.948  max 1.070
+        # Non-overlapping, and on Azorius the estimate can EXCEED real tokens, which
+        # the "always underestimates" derivation assumed impossible. A constant tuned
+        # on Boros fires ~18% early on Azorius, killing games with ~7,000 tokens of
+        # headroom. Per-deck constants would be the same bug with more entries.
         #
-        # Measured against usage.prompt_tokens over 678 live calls:
-        #   all prompts    min 0.660  median 0.813  max 0.872
-        #   >15k tokens    min 0.805  median 0.855  max 0.872   (n=261)
-        # The 0.660 tail is short prompts, where fixed per-message overhead dominates;
-        # those are nowhere near the ceiling and using their minimum would fire ~7k
-        # tokens early on every long game. 0.805 is the worst case among prompts large
-        # enough to reach the limit, which is the population this guard is about.
-        approx = int(chars / 3 / CHARS_PER_TOKEN_WORST)
+        # Under append-only the prompt only grows, and the serving engine already
+        # told us exactly how big the last one was. So anchor on that and estimate
+        # only what was added -- ~270 tokens per decision, where even a 20% error is
+        # ~54 tokens rather than thousands. Deck-independent by construction.
+        if last_prompt_tokens is not None and last_prompt_chars is not None and chars >= last_prompt_chars:
+            # chars/3 is a poor absolute estimator and a fine differential one
+            approx = last_prompt_tokens + (chars - last_prompt_chars) // 3
+        else:
+            # First call of a game, or history was reset: nothing to anchor on.
+            approx = int(chars / 3 / CHARS_PER_TOKEN_WORST)
+
+        # TWO CEILINGS, NOT ONE. Serving refuses prompt + max_tokens > max_model_len.
+        # Training drops a row longer than max_response_length. They are different
+        # numbers and the threshold is the MIN; collapsing them is why a limit set
+        # from the training side was defended with games that tested neither.
+        budget = int(limit) - MAX_TOKENS
         assert approx < budget, (
-            f"append-only prompt ~{approx} tokens (from {chars} chars) exceeds {budget} "
-            f"(context limit {limit} minus {MAX_TOKENS} reserved for the completion, which "
-            f"vLLM counts against the same ceiling): head truncation would silently drop the "
-            f"system prompt and tool grammar. Shorten the game, or raise the limit AND the "
-            f"training row capacity together -- raising only the server opens a band where a "
-            f"game completes and its training row is dropped."
+            f"append-only prompt ~{approx} tokens exceeds {budget} (serving ceiling {limit} "
+            f"minus {MAX_TOKENS} reserved for the completion, which vLLM counts against the "
+            f"same limit): head truncation would silently drop the system prompt and tool "
+            f"grammar. Note this is the SERVING ceiling only -- a row that fits here can still "
+            f"be dropped at training for exceeding max_response_length. Raising one without "
+            f"the other opens a band where a game completes and its training row vanishes."
         )
         return messages
 
