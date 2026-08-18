@@ -1202,7 +1202,7 @@ public class HumanPlayer extends PlayerImpl {
     private static volatile java.lang.reflect.Method hintMethod;
     private static volatile boolean hintLookupDone;
 
-    private void aiHint(Game game, String kind) {
+    private void aiHint(Game game, String kind, String site) {
         if (System.getProperty("xmage.hint.seats") == null) {
             return;
         }
@@ -1212,7 +1212,7 @@ public class HumanPlayer extends PlayerImpl {
                     try {
                         Class<?> c = Class.forName("mage.player.ai.AiHintProvider", true,
                                 HumanPlayer.class.getClassLoader());
-                        hintMethod = c.getMethod("hint", Game.class, UUID.class, String.class, String.class);
+                        hintMethod = c.getMethod("hint", Game.class, UUID.class, String.class, String.class, String.class);
                     } catch (ReflectiveOperationException e) {
                         // Deliberately fatal rather than a silent no-op: the property was
                         // set, so someone is generating a labelled dataset right now, and
@@ -1227,7 +1227,7 @@ public class HumanPlayer extends PlayerImpl {
             }
         }
         try {
-            hintMethod.invoke(null, game, getId(), getName(), kind);
+            hintMethod.invoke(null, game, getId(), getName(), kind, site);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("AI hint invocation failed", e);
         }
@@ -1235,6 +1235,10 @@ public class HumanPlayer extends PlayerImpl {
 
     @Override
     public boolean priority(Game game) {
+        // Hooked at BOTH sites, tagged, so one game measures which is right against the
+        // server's own published-decision count. Entry fires before 16 skip branches;
+        // publish fires per query actually sent.
+        aiHint(game, "priority", "entry");
         passed = false;
         // TODO: fix problems with turn under out control:
         // TODO: change pass and other states like passedUntilStackResolved for controlling player, not for "this"
@@ -1407,7 +1411,7 @@ public class HumanPlayer extends PlayerImpl {
                 // 4 actual prompts in one game. Hinting at entry produced a stream 24x
                 // denser than the prompts it was meant to label, which no positional
                 // join can survive. Here it is one hint per published query.
-                aiHint(game, "priority");
+                aiHint(game, "priority", "publish");
                 prepareForResponse(game);
                 if (!isExecutingMacro()) {
                     game.firePriorityEvent(playerId);
@@ -1831,7 +1835,7 @@ public class HumanPlayer extends PlayerImpl {
         }
         // Once at method entry, not inside the per-attacker loop: the bridge collapses
         // that loop into a single prompt, so one hint here is exactly one per prompt.
-        aiHint(game, "declare_attackers");
+        aiHint(game, "declare_attackers", "entry");
 
         FilterCreatureForCombat filter = filterCreatureForCombat.copy();
         filter.add(new ControllerIdPredicate(attackingPlayerId));
@@ -2102,7 +2106,7 @@ public class HumanPlayer extends PlayerImpl {
         if (!canCallFeedback(game)) {
             return;
         }
-        aiHint(game, "declare_blockers");
+        aiHint(game, "declare_blockers", "entry");
 
         FilterCreatureForCombatBlock filter = filterCreatureForCombatBlock.copy();
         filter.add(new ControllerIdPredicate(defendingPlayerId));

@@ -111,24 +111,24 @@ public final class AiHintProvider {
      * @param kind "priority", "declare_attackers" or "declare_blockers" -- which
      *             prompt this hint is meant to label.
      */
-    public static void hint(Game game, UUID playerId, String playerName, String kind) {
+    public static void hint(Game game, UUID playerId, String playerName, String kind, String site) {
         if (!isHintedSeat(playerName)) {
             return;
         }
         int seq = SEQ.getAndIncrement();
         long started = System.currentTimeMillis();
         try {
-            emit(compute(game, playerId, playerName, kind, seq, started));
+            emit(game, compute(game, playerId, playerName, kind, site, seq, started));
         } catch (Throwable t) {
             // Includes the timeout path. Record the failure rather than dropping it:
             // a silent gap in the hint stream is indistinguishable from a decision the
             // hook never fired on, and the consumer must be able to drop those games.
             logger.warn("hint failed for " + playerName + " (" + kind + "): " + t, t);
-            emit(errorRecord(playerName, kind, seq, started, t));
+            emit(game, errorRecord(playerName, kind, site, seq, started, t));
         }
     }
 
-    private static String compute(Game game, UUID playerId, String playerName, String kind,
+    private static String compute(Game game, UUID playerId, String playerName, String kind, String site,
                                   int seq, long started) throws Exception {
         int skill = intProperty(SKILL_PROPERTY, 1);
         int timeout = intProperty(TIMEOUT_PROPERTY, Math.max(10, skill * 3 + 5));
@@ -150,6 +150,7 @@ public final class AiHintProvider {
         field(sb, "seq", seq).append(',');
         quoted(sb, "seat", playerName).append(',');
         quoted(sb, "kind", kind).append(',');
+        quoted(sb, "site", site).append(',');
         field(sb, "turn", game.getTurnNum()).append(',');
         quoted(sb, "phase", String.valueOf(game.getPhase() == null ? "" : game.getPhase().getType())).append(',');
         quoted(sb, "step", String.valueOf(game.getStep() == null ? "" : game.getStep().getType())).append(',');
@@ -166,12 +167,13 @@ public final class AiHintProvider {
         return sb.toString();
     }
 
-    private static String errorRecord(String playerName, String kind, int seq, long started, Throwable t) {
+    private static String errorRecord(String playerName, String kind, String site, int seq, long started, Throwable t) {
         StringBuilder sb = new StringBuilder(128);
         sb.append('{');
         field(sb, "seq", seq).append(',');
         quoted(sb, "seat", playerName).append(',');
         quoted(sb, "kind", kind).append(',');
+        quoted(sb, "site", site).append(',');
         field(sb, "elapsed_ms", System.currentTimeMillis() - started).append(',');
         quoted(sb, "error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()));
         sb.append('}');
@@ -220,7 +222,9 @@ public final class AiHintProvider {
         return sb.toString();
     }
 
-    private static synchronized void emit(String json) {
+    // One file per game. A single shared hints.jsonl is overwritten by the next run,
+    // which is why "was the old hook closer?" could not be answered without re-running.
+    private static synchronized void emit(Game game, String json) {
         String dir = System.getProperty(DIR_PROPERTY);
         if (dir == null || dir.isEmpty()) {
             logger.info("AI_HINT " + json);
@@ -229,7 +233,7 @@ public final class AiHintProvider {
         try {
             Path out = Paths.get(dir);
             Files.createDirectories(out);
-            try (BufferedWriter w = Files.newBufferedWriter(out.resolve("hints.jsonl"),
+            try (BufferedWriter w = Files.newBufferedWriter(out.resolve("hints-" + game.getId() + ".jsonl"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 w.write(json);
                 w.newLine();
