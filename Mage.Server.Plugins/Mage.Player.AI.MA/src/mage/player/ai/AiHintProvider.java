@@ -1,6 +1,7 @@
 package mage.player.ai;
 
 import mage.abilities.Ability;
+import mage.abilities.SpellAbility;
 import mage.abilities.common.PassAbility;
 import mage.constants.RangeOfInfluence;
 import mage.game.Game;
@@ -266,6 +267,29 @@ public final class AiHintProvider {
         return sb.toString();
     }
 
+    /**
+     * A non-empty label for an ability, so an action can never be mistaken for a pass.
+     *
+     * getRule() is the EFFECTS text and is empty for a vanilla creature spell.
+     * SpellAbility.getRule(true) appends the card name, which is what makes a cast
+     * expressible at all; for everything else the effects text is already the useful
+     * label. The final fallback is the class name -- honest about being unresolved,
+     * which an empty string is not.
+     */
+    private static String describeAbility(Ability a) {
+        String rule = a.getRule();
+        if (rule != null && !rule.isEmpty()) {
+            return rule;
+        }
+        if (a instanceof SpellAbility) {
+            String full = ((SpellAbility) a).getRule(true);
+            if (full != null && !full.isEmpty()) {
+                return full;
+            }
+        }
+        return "unresolved:" + a.getClass().getSimpleName();
+    }
+
     private static String errorRecord(String playerName, String kind, String site, int seq, long started,
                                       int gameSeq, Throwable t) {
         StringBuilder sb = new StringBuilder(128);
@@ -440,13 +464,29 @@ public final class AiHintProvider {
 
             HintResult r = new HintResult();
             for (Ability a : this.actions) {
-                // A planned PassAbility renders as an empty rule with a null source.
-                // Counting it as an action makes every pass look like a real play, so
-                // it is dropped here and reported through the `pass` flag instead.
-                if (a instanceof PassAbility || a.getRule() == null || a.getRule().isEmpty()) {
+                // DROP ONLY A REAL PASS. This condition used to also drop any ability
+                // whose rule text was empty, which is far broader than the intent and
+                // silently deleted the primary action of every aggro deck.
+                //
+                // AbilityImpl.getRule() returns the EFFECTS text. A vanilla creature
+                // spell has none, so `getRule().isEmpty()` was true for it, the cast was
+                // skipped, and `pass = abilityRules.isEmpty()` then reported that the
+                // engine PASSED on a decision where it had chosen to deploy a creature.
+                // Measured by karn-research over 6,337 non-pass hint rows across 150
+                // files and every deck: hints starting with "Cast" = 0, hints naming any
+                // Boros creature = 0. And the control that settles it -- same 84 games,
+                // pilot advised at skill 8 fielded a creature in 7 (8%), the opposing
+                // real ComputerPlayer at skill 1 in 63 (75%). The engine is not passive;
+                // this channel could not say "cast that".
+                //
+                // AiDecisionRecorder.describe() already guards this exact case ("Never
+                // emit an empty label. As a training target, '' is indistinguishable from
+                // a genuine pass"). The same defect was fixed in one recorder and left in
+                // the other.
+                if (a instanceof PassAbility) {
                     continue;
                 }
-                r.abilityRules.add(a.getRule());
+                r.abilityRules.add(describeAbility(a));
                 UUID sourceId = a.getSourceId();
                 r.sourceIds.add(String.valueOf(sourceId));
                 // THIS is what makes a hint joinable to a prompt option by object
