@@ -233,6 +233,19 @@ public final class AiDecisionRecorder {
     }
 
     public static void record(Game game, Player player, Ability chosen, List<ActivatedAbility> options) {
+        record(game, player, chosen, options, null);
+    }
+
+    /**
+     * @param searchOutcome why the AI's search ended -- "complete", "timeout",
+     *                      "error", or null when the caller cannot say. A record
+     *                      with no chosen action and searchOutcome="timeout" is
+     *                      NOT a pass; it is a decision the teacher never finished
+     *                      making, and training on it teaches the clock, not the
+     *                      game.
+     */
+    public static void record(Game game, Player player, Ability chosen,
+                              List<ActivatedAbility> options, String searchOutcome) {
         if (!isEnabled()) {
             return;
         }
@@ -282,6 +295,9 @@ public final class AiDecisionRecorder {
             // knows which happened. That is a two-file change and the call sites live
             // in uncommitted work in another tree; landing half of it here would
             // conflict with that. See the TODO item.
+            if (searchOutcome != null) {
+                kv(sb, "search", searchOutcome).append(',');
+            }
             sb.append("\"chosen\":");
             if (chosen == null) {
                 sb.append("null");

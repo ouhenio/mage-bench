@@ -187,15 +187,22 @@ public class ComputerPlayer6 extends ComputerPlayer {
         List<ActivatedAbility> recordedOptions = AiDecisionRecorder.isEnabled()
                 ? getPlayable(game, true)
                 : null;
+        // CONSUME the search outcome. act() also runs when no search happened at
+        // all (getNextAction short-circuits calculateActions), and a flag left set
+        // from the previous decision would be attributed to this one -- a stale
+        // "timeout" pinned on a deliberate pass is worse than no field. Reading it
+        // once and clearing means the absence of a search reads as "none".
+        String searchOutcome = lastSearchOutcome;
+        lastSearchOutcome = "none";
         if (actions == null
                 || actions.isEmpty()) {
-            AiDecisionRecorder.record(game, this, null, recordedOptions);
+            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome);
             pass(game);
         } else {
             boolean usedStack = false;
             while (actions.peek() != null) {
                 Ability ability = actions.poll();
-                AiDecisionRecorder.record(game, this, ability, recordedOptions);
+                AiDecisionRecorder.record(game, this, ability, recordedOptions, searchOutcome);
                 // example: ===> SELECTED ACTION for PlayerA: Play Swamp
                 logger.info(String.format("===> SELECTED ACTION for %s: %s",
                         getName(),
@@ -458,7 +465,23 @@ public class ComputerPlayer6 extends ComputerPlayer {
      *
      * @return
      */
+    /**
+     * WHY THE LAST SEARCH ENDED. act() reaches the recorder with no action both
+     * when the AI deliberately passes and when maxThinkTimeSecs cut the search
+     * short, and those were being written as the same label. Measured on 505
+     * priority records: 20% were "no action WITH options available", provenance
+     * unknown -- a fifth of the corpus that might be teaching a model to pass
+     * when the teacher merely ran out of clock. Only this method knows which
+     * happened, so it records it and act() reads it.
+     */
+    private volatile String lastSearchOutcome = "none";
+
+    protected String getLastSearchOutcome() {
+        return lastSearchOutcome;
+    }
+
     protected Integer addActionsTimed() {
+        lastSearchOutcome = "complete";
         // TODO: all actions added and calculated one by one,
         //  multithreading do not supported here
         // run new game simulation in parallel thread
@@ -475,6 +498,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 return res;
             }
         } catch (TimeoutException | InterruptedException e) {
+            lastSearchOutcome = "timeout";
             // AI thinks too long
             // how-to fix: look at stack info - it can contain bad ability with infinite choose dialog
             logger.warn("");
@@ -487,6 +511,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             logger.warn("");
             task.cancel(true);
         } catch (ExecutionException e) {
+            lastSearchOutcome = "error";
             // game error
             logger.error("AI player catch game error in simulation - " + getName() + " - " + root.game + ": " + e, e);
             task.cancel(true);
@@ -497,6 +522,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             }
         } catch (Throwable e) {
             // ?
+            lastSearchOutcome = "error";
             logger.error("AI simulation catch unknown error: " + e, e);
             task.cancel(true);
         }
