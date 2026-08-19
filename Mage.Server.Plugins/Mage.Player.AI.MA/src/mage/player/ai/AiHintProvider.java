@@ -212,7 +212,7 @@ public final class AiHintProvider {
 
         Future<HintResult> f = POOL.submit(() -> {
             HintPlayer hp = new HintPlayer("ai-hint", RangeOfInfluence.ALL, skill, playerId);
-            return hp.computeHint(game);
+            return hp.computeHint(game, kind);
         });
         HintResult r;
         try {
@@ -447,7 +447,7 @@ public final class AiHintProvider {
             throw new UnsupportedOperationException("hint player must never be copied into a game");
         }
 
-        HintResult computeHint(Game game) {
+        HintResult computeHint(Game game, String kind) {
             // The LIVE registry. calculateActions() copies the game internally, but UUIDs
             // survive the copy and the aliases the prompt shows are the live game's.
             ShortIdRegistry registry = game.getShortIdRegistry();
@@ -460,7 +460,44 @@ public final class AiHintProvider {
             this.root = null;
             this.combat = null;
 
-            calculateActions(game);
+            // COMBAT IS NOT AN ABILITY SEARCH, and calculateActions cannot answer it.
+            //
+            // calculateActions computes a sequence of ABILITIES to play. A combat
+            // declaration is not an ability, so at a declare_attackers hook it returns
+            // nothing: measured over six games, all 15 declare_attackers hints carried
+            // an empty abilities list AND an empty attacker list, and reported pass:true
+            // while the seat had creatures on the battlefield. `combat` is only ever
+            // assigned from `root.combat` (ComputerPlayer7:139, ComputerPlayer6:332),
+            // and a fresh search that never reaches a combat node leaves it null.
+            // The engine's own answer to "who attacks" is selectAttackers.
+            //
+            // ON A SIMULATION COPY, NEVER THE PASSED GAME. declareAttackers fires
+            // DECLARE_ATTACKERS_STEP_PRE and declares into game.getCombat(), so calling
+            // it on the live object would make the hint MUTATE THE GAME IT ADVISES --
+            // the attack would appear as the seat's own decision and be invisible in the
+            // artefact, which is how the previous two defects in this file hid. The
+            // whole provider rests on calculateActions being read-only; this is the one
+            // path that would break that, so it gets its own copy.
+            //
+            // UUIDs survive createSimulationForAI, which is why the ids read off the
+            // copy still resolve against the live game in nameAndId and peekShortId.
+            // ATTACKERS ONLY. selectBlockers trips XMage's own thread guard --
+            // "Wrong code usage: game related code must run in GAME thread, but it used
+            // in ai-hint" -- on 9 of 9 attempts, because the block path reaches
+            // game-thread-guarded code that the attack path does not. The attack path
+            // ran 14 of 14 clean. Leaving blockers on the old (empty) route is worse
+            // data but honest data; routing them through here would replace an empty
+            // list with an error record on every combat where the seat can block.
+            //
+            // Blockers therefore remain UNADVISED and the consumer must keep treating
+            // an empty blocker list as "no advice", not as "advised nothing to block".
+            if ("declare_attackers".equals(kind)) {
+                Game sim = game.createSimulationForAI();
+                selectAttackers(sim, sim.getActivePlayerId());
+                this.combat = sim.getCombat();
+            } else {
+                calculateActions(game);
+            }
 
             HintResult r = new HintResult();
             for (Ability a : this.actions) {
