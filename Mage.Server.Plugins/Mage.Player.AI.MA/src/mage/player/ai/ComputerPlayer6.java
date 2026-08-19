@@ -4,6 +4,9 @@ import mage.MageObject;
 import mage.abilities.Ability;
 import mage.abilities.ActivatedAbility;
 import mage.abilities.SpellAbility;
+import mage.cards.Card;
+import mage.abilities.Modes;
+import mage.abilities.Mode;
 import mage.abilities.StaticAbility;
 import mage.abilities.common.PassAbility;
 import mage.abilities.effects.Effect;
@@ -1203,13 +1206,171 @@ public class ComputerPlayer6 extends ComputerPlayer {
     @Override
     public void selectAttackers(Game game, UUID attackingPlayerId) {
         logger.debug("selectAttackers");
+        // Legal attackers BEFORE the declaration; afterwards the combat is already
+        // built and the untaken alternatives are gone.
+        List<String> ids = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
+        boolean recAtk = AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("select_attackers");
+        if (recAtk) {
+            for (Permanent p : game.getBattlefield().getAllActivePermanents(playerId)) {
+                if (p.canAttack(null, game)) {
+                    ids.add(p.getId().toString());
+                    texts.add(p.getName());
+                }
+            }
+        }
         declareAttackers(game, playerId);
+        if (recAtk) {
+            // Same as targets: an attack is a SET of creatures, and all of them are
+            // the label. The prompt interface takes them as a list too.
+            StringBuilder picked = new StringBuilder();
+            StringBuilder pickedIds = new StringBuilder();
+            if (game.getCombat() != null) {
+                for (UUID aid : game.getCombat().getAttackers()) {
+                    if (picked.length() > 0) {
+                        picked.append(", ");
+                        pickedIds.append(",");
+                    }
+                    picked.append(describeObject(game, aid));
+                    pickedIds.append(aid);
+                }
+            }
+            AiDecisionRecorder.recordChoice(game, this, "select_attackers", "Select attackers",
+                    ids, texts, pickedIds.toString(),
+                    picked.length() == 0 ? "none" : picked.toString());
+        }
     }
 
     @Override
     public void selectBlockers(Ability source, Game game, UUID defendingPlayerId) {
         logger.debug("selectBlockers");
         declareBlockers(game, playerId);
+    }
+
+    // ---------------------------------------------------------------------
+    // SUB-DECISION RECORDING.
+    //
+    // The priority loop in act() is only 73 of a game's ~86 decision points. The
+    // other 13 -- modes, which mana, which spell or ability, attackers, targets --
+    // are asked through these methods, and a corpus without them cannot answer
+    // everything the prompt interface asks.
+    //
+    // EVERY OVERRIDE HERE HAS THE SAME SHAPE, AND THE SHAPE IS THE SAFETY ARGUMENT:
+    // call super exactly once, record what it returned, return it unchanged. No
+    // branch depends on whether recording is on, and no engine input is read after
+    // super has run except to describe it. The recorder is hooked in the subclass
+    // rather than in ComputerPlayer because AiDecisionRecorder lives in this module
+    // and the base AI module cannot see it -- and because leaving the base class
+    // untouched means an unrecorded game runs exactly the code it ran before.
+    //
+    // These labels are NOT uniformly worth training on; see recordChoice's javadoc.
+    // chooseMode takes the first valid mode and chooseUse answers a blanket yes, so
+    // those two are format coverage, not skill. Filter on `kind`.
+    // ---------------------------------------------------------------------
+
+    private String describeObject(Game game, UUID id) {
+        if (id == null) {
+            return "";
+        }
+        Player p = game.getPlayer(id);
+        if (p != null) {
+            return p.getName();
+        }
+        MageObject o = game.getObject(id);
+        return o == null ? id.toString() : o.getName();
+    }
+
+    @Override
+    public Mode chooseMode(Modes modes, Ability source, Game game) {
+        Mode chosen = super.chooseMode(modes, source, game);
+        if (AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_mode")) {
+            List<String> ids = new ArrayList<>();
+            List<String> texts = new ArrayList<>();
+            for (Mode m : modes.getAvailableModes(source, game)) {
+                ids.add(m.getId() == null ? "" : m.getId().toString());
+                texts.add(String.valueOf(m));
+            }
+            AiDecisionRecorder.recordChoice(game, this, "choose_mode",
+                    "Choose mode: " + describeObject(game, source == null ? null : source.getSourceId()),
+                    ids, texts,
+                    chosen == null || chosen.getId() == null ? "" : chosen.getId().toString(),
+                    chosen == null ? null : String.valueOf(chosen));
+        }
+        return chosen;
+    }
+
+    @Override
+    public boolean chooseUse(Outcome outcome, String message, Ability source, Game game) {
+        boolean chosen = super.chooseUse(outcome, message, source, game);
+        if (AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_use")) {
+            AiDecisionRecorder.recordChoice(game, this, "choose_use", message,
+                    Arrays.asList("", ""), Arrays.asList("yes", "no"),
+                    "", chosen ? "yes" : "no");
+        }
+        return chosen;
+    }
+
+    @Override
+    public boolean chooseTarget(Outcome outcome, Target target, Ability source, Game game) {
+        // Snapshot the legal set BEFORE super runs. Afterwards the target is already
+        // filled, and "what could it have picked" is no longer answerable.
+        List<String> ids = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
+        boolean recTarget = AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_target");
+        if (recTarget) {
+            try {
+                for (UUID id : target.possibleTargets(getId(), source, game)) {
+                    ids.add(id.toString());
+                    texts.add(describeObject(game, id));
+                }
+            } catch (RuntimeException e) {
+                logger.debug("chooseTarget: could not enumerate possible targets", e);
+            }
+        }
+        boolean ok = super.chooseTarget(outcome, target, source, game);
+        if (recTarget) {
+            // A target set is a LIST, so both id and text carry every element,
+            // comma-joined. Keeping only the first would silently drop the rest of
+            // a multi-target spell, and the drop would be invisible downstream.
+            StringBuilder picked = new StringBuilder();
+            StringBuilder pickedIds = new StringBuilder();
+            for (UUID id : target.getTargets()) {
+                if (picked.length() > 0) {
+                    picked.append(", ");
+                    pickedIds.append(",");
+                }
+                picked.append(describeObject(game, id));
+                pickedIds.append(id);
+            }
+            AiDecisionRecorder.recordChoice(game, this, "choose_target",
+                    "Select target: " + describeObject(game, source == null ? null : source.getSourceId()),
+                    ids, texts,
+                    pickedIds.toString(), picked.length() == 0 ? null : picked.toString());
+        }
+        return ok;
+    }
+
+    @Override
+    public SpellAbility chooseAbilityForCast(Card card, Game game, boolean noMana) {
+        SpellAbility chosen = super.chooseAbilityForCast(card, game, noMana);
+        if (AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_ability_for_cast")) {
+            List<String> ids = new ArrayList<>();
+            List<String> texts = new ArrayList<>();
+            for (Ability a : card.getAbilities(game)) {
+                if (!(a instanceof SpellAbility)) {
+                    continue;
+                }
+                SpellAbility sa = (SpellAbility) a;
+                ids.add(sa.getId() == null ? "" : sa.getId().toString());
+                texts.add(sa.getRule());
+            }
+            AiDecisionRecorder.recordChoice(game, this, "choose_ability_for_cast",
+                    "Choose spell or ability to play: " + card.getName(),
+                    ids, texts,
+                    chosen == null || chosen.getId() == null ? "" : chosen.getId().toString(),
+                    chosen == null ? null : chosen.getRule());
+        }
+        return chosen;
     }
 
     /**

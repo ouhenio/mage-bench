@@ -42,6 +42,27 @@ public final class AiDecisionRecorder {
     private AiDecisionRecorder() {
     }
 
+
+    /**
+     * Bisect switch for the sub-decision hooks. Set MAGEBENCH_AI_RECORD_SKIP to a
+     * comma list of kinds ("choose_target,select_attackers") to disable those hooks
+     * while leaving the rest recording. Exists because a hook that merely LOOKS at
+     * the game before it decides can still change it, and the only way to find out
+     * which one is to turn them off one at a time.
+     */
+    public static boolean hookEnabled(String kind) {
+        String skip = System.getenv("MAGEBENCH_AI_RECORD_SKIP");
+        if (skip == null || skip.isEmpty()) {
+            return true;
+        }
+        for (String s : skip.split(",")) {
+            if (s.trim().equals(kind)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static boolean isEnabled() {
         String dir = System.getProperty(DIR_PROPERTY);
         return dir != null && !dir.isEmpty();
@@ -51,12 +72,14 @@ public final class AiDecisionRecorder {
      * Append one decision. `chosen` is the ability the AI committed to; `options`
      * is what it could legally have played at that moment.
      */
-    public static void record(Game game, Player player, Ability chosen, List<ActivatedAbility> options) {
-        if (!isEnabled()) {
-            return;
-        }
-        try {
-            StringBuilder sb = new StringBuilder(512);
+    /**
+     * The board state every record shares, up to but not including the decision
+     * itself. Two callers append to this: an ability decision from the priority
+     * loop, and the sub-decisions (mode, target, attackers, yes/no) that the
+     * prompt format also asks for.
+     */
+    private static StringBuilder header(Game game, Player player) {
+        StringBuilder sb = new StringBuilder(512);
             sb.append('{');
             // Wall-clock at the moment of commitment. Consecutive stamps for one
             // seat give think-time per decision, which is the only behavioural
@@ -189,6 +212,16 @@ public final class AiDecisionRecorder {
             }
             sb.append("],");
 
+        return sb;
+    }
+
+    public static void record(Game game, Player player, Ability chosen, List<ActivatedAbility> options) {
+        if (!isEnabled()) {
+            return;
+        }
+        try {
+            StringBuilder sb = header(game, player);
+            boolean first;
             // The alternatives are what make this trainable. A chosen action with
             // no record of what else was available teaches nothing about judgement.
             sb.append("\"options\":[");
@@ -256,6 +289,76 @@ public final class AiDecisionRecorder {
         } catch (IOException | RuntimeException e) {
             // Never let data collection break a game.
             logger.warn("AiDecisionRecorder: failed to record decision", e);
+        }
+    }
+
+    /**
+     * Record a decision that is NOT the priority loop's "which ability to play".
+     * <p>
+     * The prompt format asks for more than actions. Measured over one pilot game's
+     * 86 decision points: 73 were priority actions, which {@link #record} already
+     * covers, and the remaining 13 were modes, which mana to produce, which spell
+     * or ability, attacker declarations and targets. A corpus missing those cannot
+     * be replayed against the prompt interface, because the interface will ask
+     * questions the corpus has no answer for.
+     * <p>
+     * BE CLEAR ABOUT WHAT THESE LABELS ARE WORTH. Some of these engine methods do
+     * not decide anything: chooseMode takes the first valid mode (its own TODO says
+     * so) and chooseUse returns a blanket yes. Recording them is honest -- it is
+     * what the engine did -- but a model trained on them learns the engine's
+     * placeholder, not skill. They are here for FORMAT COVERAGE. Targets and
+     * attackers are genuine searched decisions and are worth training on. Anything
+     * consuming this file should treat `kind` as the axis to filter on.
+     *
+     * @param optionIds   ids parallel to optionTexts; may be empty when the choice
+     *                    is over strings (a mana symbol, yes/no) with no game object
+     */
+    public static void recordChoice(Game game, Player player, String kind, String message,
+                                    List<String> optionIds, List<String> optionTexts,
+                                    String chosenId, String chosenText) {
+        if (!isEnabled()) {
+            return;
+        }
+        try {
+            StringBuilder sb = header(game, player);
+            kv(sb, "kind", kind).append(',');
+            kv(sb, "message", message == null ? "" : message).append(',');
+            sb.append("\"options\":[");
+            if (optionTexts != null) {
+                for (int i = 0; i < optionTexts.size(); i++) {
+                    if (i > 0) {
+                        sb.append(',');
+                    }
+                    String id = (optionIds != null && i < optionIds.size() && optionIds.get(i) != null)
+                            ? optionIds.get(i) : "";
+                    sb.append("{\"id\":\"").append(esc(id))
+                            .append("\",\"text\":\"").append(esc(optionTexts.get(i)))
+                            .append("\",\"mana\":\"\"}");
+                }
+            }
+            sb.append("],");
+            sb.append("\"chosen\":");
+            if (chosenText == null) {
+                sb.append("null");
+            } else {
+                sb.append("{\"id\":\"").append(esc(chosenId == null ? "" : chosenId))
+                        .append("\",\"text\":\"").append(esc(chosenText))
+                        .append("\"}");
+            }
+            sb.append("}\n");
+            flush(sb);
+        } catch (IOException | RuntimeException e) {
+            logger.warn("AiDecisionRecorder: failed to record choice", e);
+        }
+    }
+
+    private static void flush(StringBuilder sb) throws IOException {
+        Path out = Paths.get(System.getProperty(DIR_PROPERTY), "ai_decisions.jsonl");
+        Files.createDirectories(out.getParent());
+        try (BufferedWriter w = Files.newBufferedWriter(
+                out, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            w.write(sb.toString());
         }
     }
 
