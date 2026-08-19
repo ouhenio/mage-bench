@@ -130,7 +130,9 @@ public final class AiDecisionRecorder {
                 }
                 first = false;
                 sb.append("{\"id\":\"").append(esc(c.getId().toString()))
-                        .append("\",\"name\":\"").append(esc(c.getName())).append("\"}");
+                        .append("\",\"name\":\"").append(esc(c.getName())).append('"');
+                appendRules(sb, c.getRules(game));
+                sb.append('}');
             }
             sb.append("],");
 
@@ -160,8 +162,9 @@ public final class AiDecisionRecorder {
                         .append("\",\"controller\":\"").append(esc(nameOf(game, p.getControllerId())))
                         .append("\",\"tapped\":").append(p.isTapped())
                         .append(",\"power\":").append(p.getPower().getValue())
-                        .append(",\"toughness\":").append(p.getToughness().getValue())
-                        .append('}');
+                        .append(",\"toughness\":").append(p.getToughness().getValue());
+                appendRules(sb, p.getRules(game));
+                sb.append('}');
             }
             sb.append("],");
 
@@ -440,6 +443,32 @@ public final class AiDecisionRecorder {
             }
         }
         sb.append("]}\n");
+    }
+
+    /**
+     * Rules text for ONE OCCURRENCE, written per decision rather than cached by
+     * name. Rules are not static: XMage appends live hints, so the same card reads
+     * "ICON_GOODYou control a Mountain or a Plains" in one state and "ICON_BAD..."
+     * in another, and a card in hand carries no hint at all where the same card on
+     * the battlefield does. Measured against real pilot prompts on a shared deck,
+     * a by-name cache got 10 of 13 cards byte-identical and the 3 misses were all
+     * this: a hint frozen at first sighting and stamped onto every later decision,
+     * once with the truth value inverted. A cache keyed by name cannot be correct
+     * here, so there is no cache.
+     */
+    private static void appendRules(StringBuilder sb, List<String> rules) {
+        sb.append(",\"rules\":[");
+        if (rules != null) {
+            boolean f = true;
+            for (String r : rules) {
+                if (!f) {
+                    sb.append(',');
+                }
+                f = false;
+                sb.append('"').append(esc(r)).append('"');
+            }
+        }
+        sb.append(']');
     }
 
     private static String describe(Game game, Ability a) {
