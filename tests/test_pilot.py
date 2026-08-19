@@ -122,7 +122,7 @@ def _no_prefetch():
     with patch(
         "magebench.pilot.pilot._prefetch_first_action",
         new_callable=AsyncMock,
-        return_value="Game starting.",
+        return_value=("Game starting.", None),
     ):
         yield
 
@@ -398,7 +398,7 @@ async def test_prefetch_mulligan():
         raise AssertionError(f"Unexpected tool: {name}")
 
     session.call_tool = AsyncMock(side_effect=fake_call_tool)
-    msg = await _prefetch_first_action(session)
+    msg, _seq = await _prefetch_first_action(session)
     assert "Mulligan" in msg
     assert "choose_action" in msg
 
@@ -419,7 +419,7 @@ async def test_prefetch_waits_for_action():
         raise AssertionError(f"Unexpected tool: {name}")
 
     session.call_tool = AsyncMock(side_effect=fake_call_tool)
-    msg = await _prefetch_first_action(session)
+    msg, _seq = await _prefetch_first_action(session)
     assert "GAME_ASK" in msg
     # Single blocking call, no separate get_action_choices
     assert calls == ["pass_priority"]
@@ -430,7 +430,7 @@ async def test_prefetch_game_over():
     """If pass_priority returns game_over, return a game-over message."""
     session = MagicMock()
     session.call_tool = AsyncMock(return_value=_mock_tool_result('{"game_over": true}'))
-    msg = await _prefetch_first_action(session)
+    msg, _seq = await _prefetch_first_action(session)
     assert "over" in msg.lower()
 
 
@@ -1409,3 +1409,265 @@ def test_is_context_overflow_matches_the_server_and_nothing_else():
     assert is_context_overflow("please reduce the length of the messages")
     assert not is_context_overflow("Error code: 400 - invalid tool_choice")
     assert not is_context_overflow("Error code: 404 - model not found")
+
+
+# --- decision identity: the seq stamp and the gated passthrough ---
+
+_DECISION_RESULTS = [
+    '{"action_pending": true, "action_type": "GAME_SELECT", "message": "Play spells", '
+    '"game_seq": 6, "choices": []}',
+    '{"action_pending": true, "action_type": "GAME_SELECT", "message": "Play spells", '
+    '"game_seq": 6, "choices": []}',
+    '{"action_pending": true, "action_type": "GAME_SELECT", "message": "Play spells", '
+    '"game_seq": 14, "choices": []}',
+    '{"game_over": true}',
+]
+
+
+async def _run_scripted_decisions(*, results, decision_identity=False, trace_log=None, prefetch=("Go.", 6)):
+    """Drive run_pilot_loop over a fixed list of tool results; return the request kwargs."""
+    seen = {"i": 0}
+
+    async def fake_call_tool(_name, _args):
+        i = seen["i"]
+        seen["i"] += 1
+        return _mock_tool_result(results[min(i, len(results) - 1)])
+
+    session = MagicMock()
+    session.call_tool = AsyncMock(side_effect=fake_call_tool)
+
+    client = MagicMock()
+    client.chat.completions.create = AsyncMock(
+        side_effect=lambda **_kw: _make_llm_response("pass_priority", "{}")
+    )
+
+    with (
+        patch("magebench.pilot.pilot._prefetch_first_action", new_callable=AsyncMock, return_value=prefetch),
+        patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock),
+    ):
+        await run_pilot_loop(
+            session=session,
+            client=client,
+            model="test-model",
+            system_prompt="You are a test.",
+            tools=_TOOLS,
+            prices={},
+            username="test-player",
+            trace_log=trace_log,
+            decision_identity=decision_identity,
+        )
+    return [c.kwargs for c in client.chat.completions.create.call_args_list]
+
+
+
+@pytest.mark.asyncio
+async def test_decision_identity_off_leaves_the_request_untouched():
+    """Constraint: OFF must mean the request is UNCHANGED, not changed-but-empty.
+
+    Mirrors test_blunder_experiment.py's `assert "extra_body" not in kwargs`. With no
+    other extras set, `if extra_body:` leaves the key off create_kwargs entirely, so a
+    provider that rejects unknown fields sees exactly the bytes it sees today.
+    """
+    kwargs_list = await _run_scripted_decisions(results=_DECISION_RESULTS, decision_identity=False)
+
+    assert kwargs_list, "the scripted game produced no LLM calls, so this proves nothing"
+    for kwargs in kwargs_list:
+        assert "extra_body" not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_decision_identity_on_adds_exactly_the_decision_seq():
+    """Positive control for the test above: the same check must FAIL when the flag is on.
+
+    Without this, `extra_body not in kwargs` would also pass if the passthrough were
+    silently broken, and an absence is not a negative result.
+    """
+    kwargs_list = await _run_scripted_decisions(results=_DECISION_RESULTS, decision_identity=True)
+
+    assert [kw["extra_body"] for kw in kwargs_list] == [
+        {"magebench_decision": {"game_seq": 6}},
+        {"magebench_decision": {"game_seq": 6}},
+        {"magebench_decision": {"game_seq": 6}},
+        {"magebench_decision": {"game_seq": 14}},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_trace_rows_carry_the_decision_seq_and_repeat_within_one_decision():
+    """The stamp is per CALL, not a counter, and repeats while one decision is worked on.
+
+    Two calls on seq 6 then one on 14: a decision can take several LLM turns (measured
+    153 trace rows over 115 distinct seqs in one recorded game, seq=19 twenty times), so
+    a stamp that advanced per row would be a different quantity with the same name.
+    Row 1 is stamped from the prefetch, which is why there is no leading None.
+    """
+    trace = MagicMock()
+    trace.emit = MagicMock()
+
+    await _run_scripted_decisions(results=_DECISION_RESULTS, trace_log=trace)
+
+    stamped = [c.kwargs["game_seq"] for c in trace.emit.call_args_list]
+    assert stamped == [6, 6, 6, 14]
+    assert None not in stamped
+
+
+@pytest.mark.asyncio
+async def test_trace_seq_is_absent_when_the_result_carries_none():
+    """Negative control for the test above.
+
+    If the stamp were coming from anywhere but the tool result -- a counter, a constant,
+    the writer's own seq -- the assertion above would hold for the wrong reason. Strip
+    game_seq from the results and the stamp must go to None.
+    """
+    trace = MagicMock()
+    trace.emit = MagicMock()
+
+    await _run_scripted_decisions(
+        results=[
+            '{"action_pending": true, "action_type": "GAME_SELECT", "message": "Play", "choices": []}',
+            '{"game_over": true}',
+        ],
+        trace_log=trace,
+        prefetch=("Go.", None),
+    )
+
+    stamped = [c.kwargs["game_seq"] for c in trace.emit.call_args_list]
+    assert stamped and set(stamped) == {None}, stamped
+
+
+@pytest.mark.asyncio
+async def test_decision_seq_follows_the_forced_pass_not_the_llm_call():
+    """The stamp comes from the result that is RENDERED, after the forced-pass rebind.
+
+    pilot.py's forced-pass path rebinds result_text after the earlier per-tool capture,
+    and it is that new text which reaches render_for_pilot. Capturing at the earlier
+    site would label the prompt with the decision it replaced. Never fired in the
+    recorded corpus (0 forced_pass events across 688 game dirs) -- this test is the only
+    thing exercising it.
+    """
+    trace = MagicMock()
+    trace.emit = MagicMock()
+    pass_calls = {"n": 0}
+
+    async def fake_call_tool(name, _args):
+        if name != "pass_priority":
+            return _mock_tool_result('{"action_type": "GAME_SELECT", "message": "Choose"}')
+        pass_calls["n"] += 1
+        if pass_calls["n"] <= 3:
+            return _mock_tool_result(_PASS_ERROR)
+        if pass_calls["n"] == 4:  # the forced plain pass, a DIFFERENT decision
+            return _mock_tool_result(
+                '{"action_pending": true, "action_type": "GAME_SELECT", '
+                '"message": "Play", "game_seq": 99, "choices": []}'
+            )
+        return _mock_tool_result('{"game_over": true}')
+
+    session = MagicMock()
+    session.call_tool = AsyncMock(side_effect=fake_call_tool)
+    bad = _make_llm_response("pass_priority", _BAD_PASS_ARGS)
+    client = MagicMock()
+    client.chat.completions.create = AsyncMock(side_effect=[bad, bad, bad, bad])
+
+    with (
+        patch("magebench.pilot.pilot._prefetch_first_action", new_callable=AsyncMock, return_value=("Go.", 1)),
+        patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock),
+    ):
+        await run_pilot_loop(
+            session=session,
+            client=client,
+            model="test-model",
+            system_prompt="You are a test.",
+            tools=_TOOLS,
+            prices={},
+            username="test-player",
+            trace_log=trace,
+        )
+
+    stamped = [c.kwargs["game_seq"] for c in trace.emit.call_args_list]
+    assert stamped[-1] == 99, stamped
+
+
+def test_decision_identity_refuses_a_hosted_provider_at_startup(caplog: pytest.LogCaptureFixture):
+    """Constraint: fail at startup, not mid-batch.
+
+    OpenRouter/Anthropic/OpenAI reject unknown request fields with a 400, and a 400 found
+    on the first LLM call means every game in the batch is played by the error handler.
+    Return 2 before asyncio.run, the same shape as the --ignore-providers guard beside it.
+    """
+    with (
+        patch("magebench.pilot.pilot.DECISION_IDENTITY", new=True),
+        patch.object(sys, "argv", ["pilot", "--provider", "openrouter", "--api-key", "k"]),
+        caplog.at_level(logging.ERROR),
+    ):
+        assert main() == 2
+    assert "MAGEBENCH_DECISION_IDENTITY=1 requires --provider=local" in caplog.text
+
+
+class TestHarnessPassAdvancesTheDecisionSeq:
+    """The harness's OWN pass must move the decision stamp.
+
+    The stamp used to be written only inside _process_tool_calls, which handles the
+    POLICY's tool calls. _recover_from_stall and _handle_timeout call execute_tool
+    directly, so their pass_priority -- which can answer several decisions at once --
+    never moved it. Measured on game_20260818_025636 from its bridge log: the stall
+    auto-pass answered server decisions 23, 26, 30, 36 and 39, and the next policy call
+    was still stamped 23 while the engine was on 44.
+
+    That is the failure the field exists to prevent, arriving through the path nobody
+    reads: a join keyed on it looks exact and is silently wrong.
+    """
+
+    @staticmethod
+    def _session(result_text: str):
+        class _Stub:
+            async def call_tool(self, name, args=None):
+                class _R:
+                    isError = False
+                    content = [type("C", (), {"type": "text", "text": result_text})()]
+                return _R()
+        return _Stub()
+
+    def _state(self):
+        from magebench.pilot.pilot_state import PilotLoopState
+        st = PilotLoopState(history=[])
+        st.last_decision_seq = 23          # the pre-stall value, from the real trace
+        return st
+
+    @pytest.mark.asyncio
+    async def test_stall_auto_pass_moves_the_stamp(self):
+        import logging
+        from magebench.pilot.pilot_recovery import _recover_from_stall
+        st = self._state()
+        await _recover_from_stall(
+            self._session('{"game_seq": 44, "action_pending": true}'),
+            st, None, set(), logger=logging.getLogger("t"),
+        )
+        assert st.last_decision_seq == 44, (
+            "the harness answered decisions the policy never saw and the stamp stayed "
+            f"at {st.last_decision_seq}; every later row would name a consumed decision"
+        )
+
+    @pytest.mark.asyncio
+    async def test_timeout_auto_pass_moves_the_stamp(self):
+        import logging
+        from magebench.pilot.pilot_recovery import _handle_timeout
+        st = self._state()
+        await _handle_timeout(
+            self._session('{"game_seq": 44, "action_pending": true}'),
+            st, None, logger=logging.getLogger("t"),
+            llm_request_timeout_secs=1, max_consecutive_timeouts=99,
+        )
+        assert st.last_decision_seq == 44
+
+    @pytest.mark.asyncio
+    async def test_a_result_without_a_seq_leaves_the_stamp_alone(self):
+        """Absent stays absent. 0 is a legal seq, so a sentinel would be indistinguishable
+        from decision zero -- the third instance of that encoding error on this project."""
+        import logging
+        from magebench.pilot.pilot_recovery import _recover_from_stall
+        st = self._state()
+        await _recover_from_stall(
+            self._session('{"action_pending": true}'),
+            st, None, set(), logger=logging.getLogger("t"),
+        )
+        assert st.last_decision_seq == 23, "a seq-less result must not overwrite or zero the stamp"

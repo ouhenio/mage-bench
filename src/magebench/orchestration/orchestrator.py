@@ -30,6 +30,7 @@ from magebench.orchestration.game_finalization import (
     run_git,
 )
 from magebench.orchestration.game_processes import (
+    MVN_REPO_ARGS,
     bring_to_foreground_macos,
     start_server,
     wait_with_pilot_monitoring,
@@ -168,9 +169,17 @@ def compile_project(
     if observer:
         modules += ",Mage.Client.Observer"
 
+    # Same repository the game JVMs resolve from. Without this the compile INSTALLS
+    # into ~/.m2 while every `mvn exec:java` below loads from MAVEN_REPO_LOCAL, so the
+    # modules just built are not the modules that run -- the Makefile's own version of
+    # this defect, living outside the Makefile. Measured 2026-08-18: a golden session
+    # wrote mage-player-ai-ma into ~/.m2 at 18:26:06 while m2-teacher still held an
+    # entirely different build. Conditional, exactly as MVN_REPO_ARGS already is:
+    # unset, both sides use ~/.m2 and agree.
     cmd = [
         "mvn",
         "-q",
+        *MVN_REPO_ARGS,
         "-DskipTests",
         "-pl",
         modules,
@@ -190,6 +199,7 @@ def refresh_observer_resources(project_root: Path) -> bool:
         [
             "mvn",
             "-q",
+            *MVN_REPO_ARGS,
             "-pl",
             "Mage.Client.Observer",
             "resources:resources",

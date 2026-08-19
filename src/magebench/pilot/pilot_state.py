@@ -50,6 +50,20 @@ class PilotLoopState:
     consecutive_truncations: int = 0
     consecutive_empty_errors: int = 0
     last_game_seq: int | None = None
+    # The seq of the decision the CURRENT prompt is about, captured from the same
+    # result_text that gets rendered into history. Deliberately a second field rather
+    # than a reuse of last_game_seq above:
+    #   - last_game_seq is stamped from EVERY tool result (pilot.py:378-380) and
+    #     tool_call rows are joined on it, so its meaning is "the last seq any tool
+    #     mentioned" and it must not change;
+    #   - get_game_state's result also carries game_seq -- the current VIEW's seq, not
+    #     the pending decision's -- and would clobber it. (Unexercised: 0 get_game_state
+    #     calls across the recorded corpus, but 8 games were offered the tool.)
+    # This one is written only at the three publish-site tools, so it always names a
+    # decision that was actually put to the policy. It repeats across calls on purpose:
+    # one decision can take several LLM turns (measured: 153 rows over 115 distinct
+    # seqs in one game, seq=19 repeated 20 times).
+    last_decision_seq: int | None = None
     board_tracker: BoardCursorTracker = field(default_factory=BoardCursorTracker)
     last_board: list[dict] | None = None
     current_game_turn: int = 0
@@ -82,6 +96,40 @@ def _reset_render_cache(state: PilotLoopState) -> None:
     state.state_summary = ""
     state.cache_breakpoint_idx = None
     state.render_counter = 0
+
+
+
+def record_decision_seq(state: "PilotLoopState", result_text: str) -> None:
+    """Stamp the server's decision seq from a tool result, wherever that result came from.
+
+    THIS MUST BE CALLED FROM EVERY PATH THAT EXECUTES A TOOL, not just the model's.
+
+    It used to live inline in _process_tool_calls, which is the ONLY place the policy's
+    own tool calls are handled -- so the harness's own recovery passes never reached it.
+    _recover_from_stall and _handle_timeout call execute_tool directly, and their
+    pass_priority can answer several decisions at once. Measured on game_20260818_025636:
+    the stall auto-pass answered server decisions 23, 26, 30, 36 and 39, and the next
+    policy call was still stamped 23 while the engine was on 44. Every row after that
+    named a decision the harness had already answered, and a join keyed on it would look
+    exact and be silently wrong -- in exactly the recovery paths, which is where nobody
+    looks.
+
+    A positive control makes that a negative result rather than an absence: the identical
+    game_seq=44 result DOES advance the stamp when it arrives through the model's own tool
+    call, so the check can see an advance when there is one.
+
+    Absent stays absent. A result with no game_seq leaves the previous value alone rather
+    than writing a sentinel; 0 is a legal seq, so a consumer cannot tell "no decision
+    behind this call" from "decision zero".
+    """
+    if not result_text:
+        return
+    try:
+        parsed = json.loads(result_text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return
+    if isinstance(parsed, dict) and isinstance(parsed.get("game_seq"), int):
+        state.last_decision_seq = parsed["game_seq"]
 
 
 def reset_context(

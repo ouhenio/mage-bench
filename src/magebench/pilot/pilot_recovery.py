@@ -10,7 +10,7 @@ from mcp import ClientSession
 
 from magebench.game.game_log import GameLogWriter
 from magebench.pilot.pilot_bridge import execute_tool
-from magebench.pilot.pilot_state import PilotLoopState, reset_context
+from magebench.pilot.pilot_state import PilotLoopState, record_decision_seq, reset_context
 from magebench.pilot.tool_error import ToolExecutionError
 
 
@@ -137,6 +137,10 @@ async def _recover_from_stall(
     game_ended = False
     try:
         result_text = await execute_tool(session, "pass_priority", {})
+        # The harness just answered one or more decisions the POLICY never saw. Stamp the
+        # seq here or every later row names a decision this pass already consumed --
+        # measured at 5 decisions in one stall on game_20260818_025636.
+        record_decision_seq(state, result_text)
         logger.info("[pilot] Auto-passed stalled action")
         reason = _parse_game_ended_reason(result_text)
         if reason:
@@ -184,6 +188,9 @@ async def _handle_timeout(
         )
     try:
         result_text = await execute_tool(session, "pass_priority", {})
+        # Same reason as the stall path: this pass is the HARNESS answering, and the stamp
+        # must move with it.
+        record_decision_seq(state, result_text)
         reason = _parse_game_ended_reason(result_text)
         if reason:
             logger.info("[pilot] %s detected during timeout recovery", reason)

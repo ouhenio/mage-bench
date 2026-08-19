@@ -49,6 +49,7 @@ from magebench.game.export_game import build_export
 from magebench.game.game_export_types import Decision, json_default
 from magebench.game.game_log import GameLogWriter
 from magebench.game.harness_epoch import HARNESS_EPOCH
+from magebench.orchestration.game_processes import MVN_REPO_ARGS
 from magebench.pilot.pilot import DEFAULT_MODEL, run_pilot_loop
 from magebench.pilot.pilot_bridge import mcp_tools_to_openai
 from magebench.pilot.prompts import load_prompts
@@ -387,8 +388,13 @@ def compute_module_classpath(project_root: Path, module: str) -> str:
         return _classpath_cache[module]
     module_dir = project_root / module
     cp_file = module_dir / "target" / "classpath.txt"
+    # Resolve from the repository the runtime loads from, not whichever one mvn
+    # defaults to. _replace_reactor_jars below already neutralises stale org.mage
+    # jars, but every THIRD-PARTY entry on this classpath would otherwise come from
+    # ~/.m2 while the game JVMs resolve from MAVEN_REPO_LOCAL. Conditional, matching
+    # game_processes.MVN_REPO_ARGS: unset, both sides agree on the default.
     result = subprocess.run(
-        ["mvn", "-q", "dependency:build-classpath", f"-Dmdep.outputFile={cp_file}"],
+        ["mvn", "-q", *MVN_REPO_ARGS, "dependency:build-classpath", f"-Dmdep.outputFile={cp_file}"],
         cwd=module_dir,
         capture_output=True,
         text=True,

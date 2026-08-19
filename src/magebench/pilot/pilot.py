@@ -58,7 +58,7 @@ from magebench.pilot.pilot_rendering import (
     render_context,
     render_for_pilot,
 )
-from magebench.pilot.pilot_state import PilotLoopState, PilotTurnState, reset_context
+from magebench.pilot.pilot_state import record_decision_seq, PilotLoopState, PilotTurnState, reset_context
 from magebench.pilot.prompts import load_prompts
 from magebench.pilot.tool_error import ToolExecutionError
 
@@ -78,6 +78,35 @@ PERMANENT_FAILURE_EXIT_CODE = 3
 # `provider == "local"` because run_pilot_loop is not passed the provider; if that
 # changes, prefer the provider check.
 CAPTURE_TOKEN_IDS = os.environ.get("MAGEBENCH_CAPTURE_TOKEN_IDS") == "1"
+
+# Send the decision's identity alongside the request, so a serving-side brain can answer
+# "which prompt option is the engine's hint pointing at" by OBJECT IDENTITY rather than
+# by matching rules text against card names -- the text match resolves only 31.9% of
+# hints, which is why a text-keyed generator acted on 3.79% of decisions where the engine
+# acted on 11.74%.
+#
+# The consumer is NOT vLLM. vLLM 0.26 (the pinned engine) ignores unknown request fields
+# outright: OpenAIBaseModel sets `model_config = ConfigDict(extra="allow")`
+# (entrypoints/openai/engine/protocol.py:31-33) and only logs "the following fields were
+# present in the request but ignored". The real consumer is the synth shim's
+# `brain.handle(payload)` (pipelines/synth/engine_shim.py), which receives the whole
+# request body because the OpenAI client merges extra_body into the top-level JSON --
+# the same mechanism that makes chat_template_kwargs and return_token_ids work. Do not
+# delete this as dead weight because vLLM ignores it.
+#
+# The gate exists for OpenRouter/Anthropic/OpenAI, which DO reject unknown fields, and it
+# is enforced at startup in main() rather than per-request: a 400 discovered mid-batch
+# costs the whole batch. Read from the environment rather than from `provider` for the
+# same reason CAPTURE_TOKEN_IDS is -- run_pilot_loop is not passed the provider -- but
+# main() does have it and checks there.
+#
+# Carries only the seq. The alias -> UUID map is deliberately NOT here: putting it on an
+# MCP tool result would move prompt text, because a result whose `action_pending` is
+# falsy is forwarded to the model VERBATIM (pilot_rendering.py:131-132) and 13 of the 15
+# prompt goldens contain exactly such a raw-JSON tool message. The alias channel is
+# `source_aliases` on the hint row plus the per-game alias side file instead, both
+# written by AiHintProvider, both outside the prompt.
+DECISION_IDENTITY = os.environ.get("MAGEBENCH_DECISION_IDENTITY") == "1"
 LLM_REQUEST_TIMEOUT_SECS = 120
 MAX_CONSECUTIVE_TIMEOUTS = 3
 MAX_CONSECUTIVE_EMPTY_CHOICES = 5
@@ -506,6 +535,15 @@ async def _process_tool_calls(
 
         display_text = result_text
         if fn.name in ("pass_priority", "get_action_choices", "choose_action"):
+            # Stamp the decision seq HERE, from the same result_text that is about to be
+            # rendered into history -- not from the capture at :378, which happens BEFORE
+            # the forced-pass path at :474 can rebind result_text. Reading it there would
+            # label the prompt with decision N while the prompt shows decision N+1.
+            # (The forced-pass path has never fired: 0 forced_pass events across 688
+            # recorded game dirs. The same counter finds stall=79 and context_reset=4, so
+            # the zero is a real negative, not a broken check. Closing it by construction
+            # costs nothing.)
+            record_decision_seq(state, result_text)
             display_text, state.last_board = render_for_pilot(result_text, state.last_board, state.seen_oracle_cards)
             turns_since_chat = state.current_game_turn - state.last_chat_turn
             chat_budget_left = turn_state.chat_messages_this_turn < MAX_CHAT_MESSAGES_PER_TURN
@@ -555,14 +593,21 @@ def build_initial_message(pass_priority_result: dict) -> str:
     return "The game is starting. Call pass_priority to get your first decision."
 
 
-async def _prefetch_first_action(session: ClientSession) -> str:
-    """Wait for the first game decision and return a descriptive initial message."""
+async def _prefetch_first_action(session: ClientSession) -> tuple[str, int | None]:
+    """Wait for the first game decision; return its message and the decision's seq.
+
+    The seq is returned rather than discarded because without it the FIRST trace row of
+    every game carries no decision identity -- measured, exactly one unstamped row per
+    game in 6 of 6 games. The initial message describes a decision that is already
+    pending, and the seq is already in this result, so the gap is pure loss.
+    """
     result_text = await execute_tool(session, "pass_priority", {})
     try:
         result = json.loads(result_text)
     except (json.JSONDecodeError, TypeError):
-        return "The game is starting. Call pass_priority to get your first decision."
-    return build_initial_message(result)
+        return "The game is starting. Call pass_priority to get your first decision.", None
+    seq = result.get("game_seq") if isinstance(result, dict) else None
+    return build_initial_message(result), seq if isinstance(seq, int) else None
 
 
 async def run_pilot_loop(
@@ -582,6 +627,7 @@ async def run_pilot_loop(
     cache_control: dict | None = None,
     *,
     capture_token_ids: bool = False,
+    decision_identity: bool = False,
 ) -> None:
     """Run the LLM-driven game-playing loop.
 
@@ -589,6 +635,11 @@ async def run_pilot_loop(
     completion token ids for every call, for RL rollouts. It is vLLM-specific
     (`return_token_ids` / `return_prompt_text`) and must stay off for providers that
     reject unknown request fields.
+
+    `decision_identity` adds the decision's seq to the request body so a serving-side
+    brain can join it to the engine hint stream. Same shape and same reason as
+    `capture_token_ids`; see DECISION_IDENTITY. Off means the request is unchanged, not
+    changed-but-empty -- the field is never added.
     """
     # Names of the tools this game actually offers. The unwrapped-tool-call recovery
     # below requires a match here, so prose that merely mentions a tool name cannot
@@ -598,11 +649,12 @@ async def run_pilot_loop(
         if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
     }
     try:
-        initial_message = await _prefetch_first_action(session)
+        initial_message, first_decision_seq = await _prefetch_first_action(session)
     except ToolExecutionError as exc:
         _record_tool_execution_failure(exc, username, game_dir, game_log)
         raise
     state = PilotLoopState(history=[{"role": "user", "content": initial_message}])
+    state.last_decision_seq = first_decision_seq
     model_price = get_model_price(model, prices)
     game_start = time.monotonic()
 
@@ -671,6 +723,13 @@ async def run_pilot_loop(
                 if provider_order:
                     provider_cfg["order"] = provider_order
                 extra_body["provider"] = provider_cfg
+            if decision_identity and state.last_decision_seq is not None:
+                # Under a namespaced key so it cannot collide with a provider extension.
+                # Note the byte-identity argument is structural, not a promise about this
+                # block: when the flag is off nothing is added, so on a run with no other
+                # extras `extra_body` stays empty and the `if extra_body:` below leaves
+                # the key off create_kwargs entirely.
+                extra_body["magebench_decision"] = {"game_seq": state.last_decision_seq}
             if extra_body:
                 create_kwargs["extra_body"] = extra_body
             response = await asyncio.wait_for(
@@ -721,10 +780,23 @@ async def run_pilot_loop(
                 continue
 
             if trace_log:
+                # Which DECISION this call is about. The writer's own `seq` is a dense
+                # per-file counter over policy calls; the server's decision stream is
+                # sparse and global, and the two differ in both directions (measured
+                # decisions-published vs trace rows on six games: 83/67, 153/116, 138/154,
+                # 103/75, 106/85, 158/127). Without this the trace cannot be joined to the
+                # decision it labels at all.
+                #
+                # UNCONDITIONAL, and separate from the generation flag below: this is an
+                # observability field on a file nothing forwards to the server. It is safe
+                # on `llm_trace` specifically -- merge_game_log sorts game.jsonl by
+                # `game_seq` and its glob is `*_llm.jsonl`, which does not match
+                # `*_llm_trace.jsonl`, so no merge ordering moves.
                 trace_log.emit(
                     "llm_call",
                     request=create_kwargs,
                     response=response.model_dump(),
+                    game_seq=state.last_decision_seq,
                 )
 
             # Anchor for the append-only context guard: the engine's OWN token count
@@ -1092,6 +1164,7 @@ async def run_pilot(
                     provider_order=provider_order,
                     cache_control=cache_control,
                     capture_token_ids=CAPTURE_TOKEN_IDS,
+                    decision_identity=DECISION_IDENTITY,
                 )
         finally:
             if game_log:
@@ -1181,6 +1254,18 @@ def main() -> int:
     ignore_providers = args.ignore_providers.split(",") if args.ignore_providers else None
     provider_order = args.provider_order.split(",") if args.provider_order else None
     cache_control = json.loads(args.cache_control) if args.cache_control else None
+    if DECISION_IDENTITY and provider != "local":
+        # Fail HERE, before asyncio.run and before a single game starts. The field is a
+        # vLLM/shim extension; OpenRouter, Anthropic and OpenAI reject unknown request
+        # fields with a 400, and a 400 discovered on the first LLM call of a batch means
+        # every game in that batch is played by the error handler.
+        logger.error(
+            "[pilot] MAGEBENCH_DECISION_IDENTITY=1 requires --provider=local "
+            "(got %s). The magebench_decision passthrough is a vLLM/shim extension "
+            "and hosted providers 400 on unknown request fields.",
+            provider,
+        )
+        return 2
     if provider != DEFAULT_LLM_PROVIDER:
         if ignore_providers:
             logger.error(

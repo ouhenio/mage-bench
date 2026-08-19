@@ -7,6 +7,7 @@ import mage.game.Game;
 import mage.game.combat.CombatGroup;
 import mage.game.permanent.Permanent;
 import mage.players.PlayerImpl;
+import mage.util.ShortIdRegistry;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedWriter;
@@ -19,7 +20,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -62,6 +66,16 @@ public final class AiHintProvider {
     private static final String TIMEOUT_PROPERTY = "xmage.hint.timeoutSecs";
 
     private static final AtomicInteger SEQ = new AtomicInteger();
+
+    /**
+     * Aliases already written to a game's side file, so each is written once.
+     * <p>
+     * Keyed by game id and never evicted. Bounded in practice because a hinted JVM hosts
+     * exactly one game -- the same property that currently makes the global {@link #SEQ}
+     * above harmless. If that ever stops being true, this map and SEQ both need a
+     * per-game home, and they should move together.
+     */
+    private static final Map<UUID, Set<String>> EMITTED_ALIASES = new ConcurrentHashMap<>();
 
     /**
      * Single-threaded and daemon: hints run one at a time so they cannot contend with
@@ -116,20 +130,82 @@ public final class AiHintProvider {
             return;
         }
         int seq = SEQ.getAndIncrement();
+        // Read on the GAME thread, before POOL.submit, and with the NON-MUTATING peek.
+        // nextGameSeq() would consume the number the decision event is about to take
+        // (GameController.java:194), corrupting the very log this stamp exists to join.
+        int gameSeq = game.getGameSeq();
         long started = System.currentTimeMillis();
+        emitAliasDelta(game, gameSeq);
         try {
-            emit(game, compute(game, playerId, playerName, kind, site, seq, started));
+            emit(game, "hints-", compute(game, playerId, playerName, kind, site, seq, started, gameSeq));
         } catch (Throwable t) {
             // Includes the timeout path. Record the failure rather than dropping it:
             // a silent gap in the hint stream is indistinguishable from a decision the
             // hook never fired on, and the consumer must be able to drop those games.
             logger.warn("hint failed for " + playerName + " (" + kind + "): " + t, t);
-            emit(game, errorRecord(playerName, kind, site, seq, started, t));
+            emit(game, "hints-", errorRecord(playerName, kind, site, seq, started, gameSeq, t));
+        }
+    }
+
+    /**
+     * Append the aliases minted since the last hint to {@code aliases-<gameId>.jsonl}.
+     * <p>
+     * DELTAS, to a SIDE FILE, and both halves of that were measured. The alternative --
+     * stamping the whole map on every hint row -- costs 52 entries x 45 B = 2,352 B per
+     * row against 823,814 recorded rows: +1.94 GB, 11x the entire 193.7 MB hint corpus,
+     * which is what constraint "no per-row bloat" forbids. Deltas cost ~3.2 KB per game,
+     * +13.5 MB corpus-wide (+7.0%).
+     * <p>
+     * A side file rather than the hint row because the map is per GAME, not per decision,
+     * and rather than a single dump at game end because 423 of 4,215 recorded games
+     * (10.0%) have a truncated event log: a game-end-only dump loses the whole map for
+     * one game in ten, while deltas are already on disk when the JVM dies.
+     * <p>
+     * The delta written at decision N cannot contain the aliases minted FOR decision N --
+     * GameView.assignShortIds runs after this. That is by design and is why the reader
+     * must treat the file as a game-scoped map, not a per-decision one: register() has no
+     * callers, so an alias is permanent and an alias first seen at decision N+1 was
+     * already the right answer at N.
+     */
+    private static void emitAliasDelta(Game game, int gameSeq) {
+        try {
+            Set<String> seen = EMITTED_ALIASES.computeIfAbsent(game.getId(), k -> ConcurrentHashMap.newKeySet());
+            List<String> fresh = new ArrayList<>();
+            StringBuilder sb = new StringBuilder(128);
+            for (Map.Entry<String, UUID> e : game.getShortIdRegistry().snapshotAssignments().entrySet()) {
+                if (seen.contains(e.getKey())) {
+                    continue;
+                }
+                fresh.add(e.getKey());
+                if (sb.length() > 0) {
+                    sb.append(',');
+                }
+                quoted(sb, e.getKey(), String.valueOf(e.getValue()));
+            }
+            if (fresh.isEmpty()) {
+                return;
+            }
+            // Mark as emitted only AFTER the write lands. Marking first is the obvious
+            // one-pass version and it is wrong: emit() swallows an IOException by design
+            // (a hint must not take a game down), so a transient failure would silently
+            // retire those aliases forever and leave a permanent hole in the map for
+            // exactly the objects the failed decision was about. Caught by a probe that
+            // called this before xmage.hint.dir was set: alias p1 was marked emitted and
+            // never appeared in the file.
+            if (emit(game, "aliases-", "{\"game_seq\":" + gameSeq + ",\"new\":{" + sb + "}}")) {
+                seen.addAll(fresh);
+            }
+        } catch (Throwable t) {
+            // Same contract as hint() itself, and stated there: a hint is diagnostic data
+            // and taking a live game down to produce it would be a poor trade. Logged, not
+            // swallowed silently -- and deliberately NOT folded into hint()'s own catch,
+            // because a failure to write aliases must not also discard the hint.
+            logger.warn("could not write alias delta: " + t, t);
         }
     }
 
     private static String compute(Game game, UUID playerId, String playerName, String kind, String site,
-                                  int seq, long started) throws Exception {
+                                  int seq, long started, int gameSeq) throws Exception {
         int skill = intProperty(SKILL_PROPERTY, 1);
         int timeout = intProperty(TIMEOUT_PROPERTY, Math.max(10, skill * 3 + 5));
 
@@ -162,12 +238,36 @@ public final class AiHintProvider {
         sb.append("\"blockers\":").append(jsonArray(r.blockers)).append(',');
         // An empty ability list is a real, meaningful answer: the AI would pass. It is
         // reported as such and is distinguishable from the error record above.
-        sb.append("\"pass\":").append(r.abilityRules.isEmpty());
+        sb.append("\"pass\":").append(r.abilityRules.isEmpty()).append(',');
+        // APPENDED, never inserted: every field above keeps its byte position, so the
+        // existing prefix of every record is unchanged and readers that pin key order or
+        // slice the row are unaffected.
+        //
+        // game_seq is an OBSERVATION -- the seq the game had when this hint fired.
+        // decision_seq is a CLAIM about which decision row this hint labels, and it is
+        // emitted ONLY at the publish site, where it is provably exact: between
+        // aiHint(...,"publish") and the decision's own stamp there is exactly one
+        // nextGameSeq() call, at GameController.java:194, on this same thread. Measured
+        // over 363 complete games, publish hints and SELECT prompts match 363/363 (100%).
+        //
+        // The entry sites get no decision_seq. They fire once per METHOD CALL while the
+        // loop below them publishes 0..N queries: declare_attackers matched in 131/363
+        // games (574 hints -> 1130 prompts), declare_blockers in 25/363 (1257 -> 306,
+        // because the possibleBlockersCount==0 early return sits after the hint). A
+        // blocker hint that returns without prompting would take a seq belonging to some
+        // later, unrelated decision -- an off-by-one join is worse than no join.
+        field(sb, "game_seq", gameSeq);
+        if ("publish".equals(site)) {
+            sb.append(',');
+            field(sb, "decision_seq", gameSeq + 1);
+        }
+        sb.append(',').append("\"source_aliases\":").append(jsonArrayOrNull(r.sourceAliases));
         sb.append('}');
         return sb.toString();
     }
 
-    private static String errorRecord(String playerName, String kind, String site, int seq, long started, Throwable t) {
+    private static String errorRecord(String playerName, String kind, String site, int seq, long started,
+                                      int gameSeq, Throwable t) {
         StringBuilder sb = new StringBuilder(128);
         sb.append('{');
         field(sb, "seq", seq).append(',');
@@ -175,7 +275,15 @@ public final class AiHintProvider {
         quoted(sb, "kind", kind).append(',');
         quoted(sb, "site", site).append(',');
         field(sb, "elapsed_ms", System.currentTimeMillis() - started).append(',');
-        quoted(sb, "error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()));
+        quoted(sb, "error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage())).append(',');
+        // A timed-out hint must stay joinable. Without the stamp the consumer can only
+        // drop the whole GAME; with it, it drops exactly the one decision it has no
+        // label for.
+        field(sb, "game_seq", gameSeq);
+        if ("publish".equals(site)) {
+            sb.append(',');
+            field(sb, "decision_seq", gameSeq + 1);
+        }
         sb.append('}');
         return sb.toString();
     }
@@ -195,6 +303,29 @@ public final class AiHintProvider {
                 sb.append(',');
             }
             sb.append('"').append(escape(items.get(i))).append('"');
+        }
+        return sb.append(']').toString();
+    }
+
+    /**
+     * Like {@link #jsonArray}, but a null element renders as JSON {@code null} rather
+     * than the string "null". The distinction is load-bearing: a null here means "this
+     * object had no alias yet when the hint fired", which the consumer resolves from the
+     * alias side file, and it must not be confused with an object whose alias is absent
+     * for any other reason.
+     */
+    private static String jsonArrayOrNull(List<String> items) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            String v = items.get(i);
+            if (v == null) {
+                sb.append("null");
+            } else {
+                sb.append('"').append(escape(v)).append('"');
+            }
         }
         return sb.append(']').toString();
     }
@@ -224,22 +355,25 @@ public final class AiHintProvider {
 
     // One file per game. A single shared hints.jsonl is overwritten by the next run,
     // which is why "was the old hook closer?" could not be answered without re-running.
-    private static synchronized void emit(Game game, String json) {
+    /** @return true when the record was durably recorded (written, or logged as fallback). */
+    private static synchronized boolean emit(Game game, String basename, String json) {
         String dir = System.getProperty(DIR_PROPERTY);
         if (dir == null || dir.isEmpty()) {
-            logger.info("AI_HINT " + json);
-            return;
+            logger.info("AI_HINT " + basename.replace("-", "") + " " + json);
+            return true;
         }
         try {
             Path out = Paths.get(dir);
             Files.createDirectories(out);
-            try (BufferedWriter w = Files.newBufferedWriter(out.resolve("hints-" + game.getId() + ".jsonl"),
+            try (BufferedWriter w = Files.newBufferedWriter(out.resolve(basename + game.getId() + ".jsonl"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 w.write(json);
                 w.newLine();
             }
+            return true;
         } catch (IOException e) {
             logger.warn("could not write hint: " + e, e);
+            return false;
         }
     }
 
@@ -247,6 +381,8 @@ public final class AiHintProvider {
     private static final class HintResult {
         final List<String> abilityRules = new ArrayList<>();
         final List<String> sourceIds = new ArrayList<>();
+        /** Parallel to sourceIds: the alias for the same object, or null if unassigned. */
+        final List<String> sourceAliases = new ArrayList<>();
         final List<String> attackers = new ArrayList<>();
         final List<String> blockers = new ArrayList<>();
     }
@@ -288,6 +424,9 @@ public final class AiHintProvider {
         }
 
         HintResult computeHint(Game game) {
+            // The LIVE registry. calculateActions() copies the game internally, but UUIDs
+            // survive the copy and the aliases the prompt shows are the live game's.
+            ShortIdRegistry registry = game.getShortIdRegistry();
             // Fresh state per call. getNextAction() resumes a previous search from
             // `root`, and actionCache suppresses repeated zero-cost actions across
             // calls -- both are right for a seat that acts and wrong for one that only
@@ -308,7 +447,23 @@ public final class AiHintProvider {
                     continue;
                 }
                 r.abilityRules.add(a.getRule());
-                r.sourceIds.add(String.valueOf(a.getSourceId()));
+                UUID sourceId = a.getSourceId();
+                r.sourceIds.add(String.valueOf(sourceId));
+                // THIS is what makes a hint joinable to a prompt option by object
+                // identity. `abilities` is rules text ("{T}, Sacrifice {this}: ...") and
+                // the prompt lists names with aliases ("Sacred Foundry [id=p6, land]"):
+                // two namespaces, and matching them by text resolved only 31.9% of hints,
+                // which is why a text-keyed generator acted on 3.79% of decisions where
+                // the engine acted on 11.74% (11.74% x 31.9% = 3.745%, the mechanism).
+                // source_ids already carried the real UUID on 100.0% of publish-site
+                // action rows; this is the other half of the join, resolved in the hint
+                // itself. Costs 28 B on the 6.8% of rows that are action rows: +1.6 MB
+                // corpus-wide (+0.8%).
+                //
+                // peekShortId, never getOrAssign: minting here would advance nextId and
+                // renumber every alias the renderer assigns afterwards, i.e. change the
+                // text of every later prompt.
+                r.sourceAliases.add(sourceId == null ? null : registry.peekShortId(sourceId));
             }
             if (this.combat != null) {
                 for (UUID id : this.combat.getAttackers()) {

@@ -21,7 +21,10 @@ from magebench.orchestration.config import Config, PilotPlayer
 # an isolated build silently ineffective: the code is compiled, installed, and never
 # loaded. Set MAVEN_REPO_LOCAL to point the runtime at the same repository the build
 # used.
-_MVN_REPO_ARGS = (
+# Public because orchestrator.compile_project and the golden harness resolve from the
+# same repository -- a build that installs somewhere the runtime does not read is
+# compiled, installed, and never loaded.
+MVN_REPO_ARGS = (
     [f"-Dmaven.repo.local={os.environ['MAVEN_REPO_LOCAL']}"]
     if os.environ.get("MAVEN_REPO_LOCAL")
     else []
@@ -173,7 +176,7 @@ def start_server(
     }
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
+        args=["mvn", "-q", *MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Server",
         env=env,
         log_file=log_path,
@@ -265,7 +268,7 @@ def start_gui_client(
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
     return pm.start_jvm_process(
-        args=["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"],
+        args=["mvn", "-q", *MVN_REPO_ARGS, "exec:java"],
         cwd=project_root / "Mage.Client",
         env=env,
         log_file=log_path,
@@ -479,7 +482,7 @@ def start_observer_client(
     if config.skip_init_shuffling:
         env["XMAGE_AI_PUPPETEER_SKIP_INIT_SHUFFLING"] = "true"
 
-    args = ["mvn", "-q", *_MVN_REPO_ARGS, "exec:java"]
+    args = ["mvn", "-q", *MVN_REPO_ARGS, "exec:java"]
     if sys.platform == "linux" and "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
         xvfb = shutil.which("xvfb-run")
         assert xvfb is not None, (

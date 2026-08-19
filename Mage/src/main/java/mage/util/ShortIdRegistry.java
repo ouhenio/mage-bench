@@ -81,6 +81,27 @@ public class ShortIdRegistry {
     }
 
     /**
+     * Return the short ID already assigned to a UUID, or null if none is assigned yet.
+     * <p>
+     * NON-MUTATING, and that is the entire point. {@link #getOrAssign} mints on miss and
+     * advances {@code nextId}, so calling it from anywhere outside the renderer renumbers
+     * every alias the renderer assigns afterwards -- i.e. it changes the text of every
+     * later prompt. The hint recorder needs to read the map at a moment when the renderer
+     * has not run yet, so it needs a reader that cannot mint.
+     * <p>
+     * Null is a real answer, not a failure: the map is populated lazily by
+     * {@code GameView.assignShortIds}, which runs AFTER the hint fires. Measured over 40
+     * complete games, 1124 of 4372 decisions (25.7%) reference at least one alias that
+     * appears in no earlier server-game-event row, so a null here is expected on roughly
+     * one decision in four. The alias side file (see AiHintProvider) closes that gap:
+     * {@link #register} has zero callers in this tree, so alias -> UUID is a permanent
+     * bijection for the life of a game and an alias observed later is still valid earlier.
+     */
+    public String peekShortId(UUID uuid) {
+        return uuidToShort.get(uuid);
+    }
+
+    /**
      * Resolve a short ID back to its UUID.
      * @throws IllegalArgumentException if the short ID is not known
      */
@@ -106,6 +127,23 @@ public class ShortIdRegistry {
      */
     public Set<String> snapshotShortIds() {
         return Set.copyOf(shortToUuid.keySet());
+    }
+
+    /**
+     * Immutable snapshot of every short ID -> UUID assignment made so far.
+     * <p>
+     * Companion to {@link #snapshotShortIds()}, which returns only the keys; a consumer
+     * joining an engine hint's {@code source_ids} (real UUIDs) against a prompt's aliases
+     * needs both halves. Full UUIDs, not the 8-char truncation {@link #dumpAssignments()}
+     * emits -- truncated ids cannot be joined against {@code source_ids} without prefix
+     * matching, and the fidelity costs 9.9 MB against the recorded corpus rather than 3.4.
+     * <p>
+     * The weakly-consistent iteration of the underlying ConcurrentHashMap is acceptable
+     * here because the map is append-only: an entry missed by this snapshot is picked up
+     * by the next one.
+     */
+    public Map<String, UUID> snapshotAssignments() {
+        return Map.copyOf(shortToUuid);
     }
 
     /**

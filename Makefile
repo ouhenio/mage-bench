@@ -12,11 +12,29 @@ GOLDEN_N ?= 2
 # race on module target/ directories (build-cache restores delete class files
 # mid-compile) and on local-repository installs. Serialize every mvn that
 # make check can run concurrently.
-MVN_LOCKED = mkdir -p $(CURDIR)/tmp && flock $(CURDIR)/tmp/mvn.lock mvn
+# The RUNTIME loads jars from MAVEN_REPO_LOCAL: pipelines/rollout_games.sh exports it and
+# orchestration/game_processes.py turns it into -Dmaven.repo.local for every `mvn exec:java`.
+# A build with no repo argument installs into ~/.m2 instead, so the documented command
+# produces a build the JVM never loads -- compiled, installed, and never executed.
+# Measured 2026-08-18 in this worktree, with no .mvn/maven.config present:
+#     mvn -X -o -N validate                       -> "Using local repository at /home/ouhenio/.m2/repository"
+#     mvn -X -o -N -Dmaven.repo.local=$MTG/m2-teacher validate -> ".../mtg/m2-teacher"
+# That divergence cost an hour and hid a fix that had never executed once.
+#
+# Conditional, and deliberately the SAME condition game_processes.py uses: the defect is
+# build/runtime DIVERGENCE, not the default repository. Unset, both sides use ~/.m2 and
+# agree; set, both sides use it and agree. Unconditional expansion would emit an empty
+# -Dmaven.repo.local= in CI, which sets MAVEN_REPO_LOCAL nowhere.
+#
+# The argument lives HERE and not in the recipes so the four literal recipe strings
+# tests/test_quiet_check.py pins stay byte-identical.
+MVN_REPO_ARG = $(if $(MAVEN_REPO_LOCAL),-Dmaven.repo.local=$(MAVEN_REPO_LOCAL),)
+
+MVN_LOCKED = mkdir -p $(CURDIR)/tmp && flock $(CURDIR)/tmp/mvn.lock mvn $(MVN_REPO_ARG)
 
 .PHONY: clean
 clean:
-	mvn clean
+	mvn $(MVN_REPO_ARG) clean
 
 .PHONY: lint
 lint:
@@ -86,14 +104,28 @@ regen-golden:
 
 .PHONY: build
 build:
-	mvn install package -DskipTests
+	@test -n "$(MAVEN_REPO_LOCAL)" || { \
+	  printf '%s\n' \
+	    'ERROR: MAVEN_REPO_LOCAL is unset, so this build would install into ~/.m2.' \
+	    '  `build` is the one target whose PRODUCT is consumed by a separate process:' \
+	    '  the game JVM resolves from MAVEN_REPO_LOCAL (pipelines/rollout_games.sh,' \
+	    '  orchestration/game_processes.py). Every other mvn target builds and consumes' \
+	    '  in one run, so an unset variable is self-consistent there and this guard is' \
+	    '  deliberately only here.' \
+	    '  Point the build at the repository the runtime reads:' \
+	    '    export MAVEN_REPO_LOCAL=$$MTG/m2-teacher' \
+	    '  or name the default explicitly to opt out:' \
+	    '    MAVEN_REPO_LOCAL=$$HOME/.m2/repository make build' >&2; \
+	  exit 2; }
+	@echo "make build: installing into $(MAVEN_REPO_LOCAL)"
+	mvn $(MVN_REPO_ARG) -Dmaven.build.cache.enabled=false install -DskipTests
 
 .PHONY: package
 package:
 	# Packaging Mage.Client to zip
-	cd Mage.Client && mvn package assembly:single
+	cd Mage.Client && mvn $(MVN_REPO_ARG) package assembly:single
 	# Packaging Mage.Server to zip
-	cd Mage.Server && mvn package assembly:single
+	cd Mage.Server && mvn $(MVN_REPO_ARG) package assembly:single
 	# Copying the files to the target directory
 	mkdir -p $(TARGET_DIR)
 	cp ./Mage.Server/target/mage-server.zip $(TARGET_DIR)
@@ -144,14 +176,14 @@ list-configs:
 # Compiles first to pick up any Java source changes.
 .PHONY: regen-mcp-tools
 regen-mcp-tools:
-	mvn -q -pl Mage.Client.Bridge -am -DskipTests -Dmaven.build.cache.enabled=false install
-	cd Mage.Client.Bridge && mvn -q exec:exec -Dexec.executable=java '-Dexec.args=-cp %classpath mage.client.bridge.McpServer' \
+	mvn $(MVN_REPO_ARG) -q -pl Mage.Client.Bridge -am -DskipTests -Dmaven.build.cache.enabled=false install
+	cd Mage.Client.Bridge && mvn $(MVN_REPO_ARG) -q exec:exec -Dexec.executable=java '-Dexec.args=-cp %classpath mage.client.bridge.McpServer' \
 		| PYTHONPATH=../src:.. uv run --project .. python -m magebench.cli.mcp_tools_json5 > ../website/src/data/mcp-tools.json5
 
 # Launch the desktop client (for image downloads, deck building, etc.)
 .PHONY: run-client
 run-client:
-	cd Mage.Client && mvn -q exec:java
+	cd Mage.Client && mvn $(MVN_REPO_ARG) -q exec:java
 
 # Run the website dev server (port is set per-worktree in .env by worktree_setup.py)
 WEBSITE_PORT ?= 4321
