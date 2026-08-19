@@ -6,6 +6,7 @@ import mage.abilities.common.PassAbility;
 import mage.constants.RangeOfInfluence;
 import mage.game.Game;
 import mage.game.combat.CombatGroup;
+import mage.util.ThreadUtils;
 import mage.game.permanent.Permanent;
 import mage.players.PlayerImpl;
 import mage.util.ShortIdRegistry;
@@ -84,7 +85,18 @@ public final class AiHintProvider {
      * daemon so a hung search can never hold the server open.
      */
     private static final ExecutorService POOL = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ai-hint");
+        // NAME MATTERS: ThreadUtils.isRunGameThread() whitelists by thread-name PREFIX, and
+        // GameImpl.checkConcede -> ensureRunInGameThread throws for anything else. A bare
+        // "ai-hint" is not whitelisted, so any hint path that reaches checkStateAndTriggered
+        // died with "game related code must run in GAME thread" -- which is what made
+        // declare_blockers fail on 9 of 9 attempts while attackers passed 23 of 23, since
+        // only the block path calls CombatUtil.willItSurviveSimple.
+        //
+        // THREAD_PREFIX_AI_SIMULATION_MAD is the sanctioned prefix for exactly this: AI
+        // simulation running game-related code off the game thread. ComputerPlayer6:65 --
+        // the class HintPlayer extends -- names its own simulation pool with it. This is
+        // the engine's own mechanism, not a bypass of its guard.
+        Thread t = new Thread(r, ThreadUtils.THREAD_PREFIX_AI_SIMULATION_MAD + "-hint");
         t.setDaemon(true);
         return t;
     });
@@ -481,19 +493,17 @@ public final class AiHintProvider {
             //
             // UUIDs survive createSimulationForAI, which is why the ids read off the
             // copy still resolve against the live game in nameAndId and peekShortId.
-            // ATTACKERS ONLY. selectBlockers trips XMage's own thread guard --
-            // "Wrong code usage: game related code must run in GAME thread, but it used
-            // in ai-hint" -- on 9 of 9 attempts, because the block path reaches
-            // game-thread-guarded code that the attack path does not. The attack path
-            // ran 14 of 14 clean. Leaving blockers on the old (empty) route is worse
-            // data but honest data; routing them through here would replace an empty
-            // list with an error record on every combat where the seat can block.
-            //
-            // Blockers therefore remain UNADVISED and the consumer must keep treating
-            // an empty blocker list as "no advice", not as "advised nothing to block".
-            if ("declare_attackers".equals(kind)) {
+            if ("declare_attackers".equals(kind) || "declare_blockers".equals(kind)) {
                 Game sim = game.createSimulationForAI();
-                selectAttackers(sim, sim.getActivePlayerId());
+                if ("declare_attackers".equals(kind)) {
+                    selectAttackers(sim, sim.getActivePlayerId());
+                } else {
+                    // Reachable only because the pool thread now carries the AI-SIM-MAD
+                    // prefix: declareBlockers -> CombatUtil.blockWithGoodTrade2 ->
+                    // getBlockersThatWillSurvive2 -> willItSurviveSimple ->
+                    // checkStateAndTriggered -> checkConcede -> ensureRunInGameThread.
+                    selectBlockers(null, sim, this.playerId);
+                }
                 this.combat = sim.getCombat();
             } else {
                 calculateActions(game);
