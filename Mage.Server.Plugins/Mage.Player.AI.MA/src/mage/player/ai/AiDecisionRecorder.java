@@ -4,6 +4,7 @@ import mage.abilities.Ability;
 import mage.abilities.ActivatedAbility;
 import mage.cards.Card;
 import mage.game.Game;
+import mage.game.combat.CombatGroup;
 import mage.game.permanent.Permanent;
 import mage.players.Player;
 import org.apache.log4j.Logger;
@@ -104,12 +105,87 @@ public final class AiDecisionRecorder {
                     sb.append(',');
                 }
                 first = false;
-                sb.append("{\"name\":\"").append(esc(p.getName()))
+                // RAW UUID, NEVER A MINTED SHORT ID. An earlier version called the short-id
+                // registry's assigning accessor here, reasoning that no renderer runs in an
+                // engine-vs-engine game so minting was free. It is not: that call MUTATES
+                // the live game. Measured on three paired seeds, recording on vs off, it
+                // CHANGED THE GAMES -- one run had Slickshot Show-Off attacking at 3/2
+                // where the other had 6/4. The original recorder is byte-identical on the
+                // same three seeds, so the perturbation came from here, from a call whose
+                // own comment warned against it.
+                //
+                // A recorder that alters the games it observes is worse than none. UUIDs
+                // are stable and strictly more informative; pN aliases are a RENDERING
+                // concern and belong to whatever renders the prompt, which can assign them
+                // deterministically from encounter order.
+                sb.append("{\"id\":\"")
+                        .append(esc(p.getId().toString()))
+                        .append("\",\"name\":\"").append(esc(p.getName()))
                         .append("\",\"controller\":\"").append(esc(nameOf(game, p.getControllerId())))
                         .append("\",\"tapped\":").append(p.isTapped())
                         .append(",\"power\":").append(p.getPower().getValue())
                         .append(",\"toughness\":").append(p.getToughness().getValue())
                         .append('}');
+            }
+            sb.append("],");
+
+            // EVERYTHING BELOW EXISTS SO THE PROMPT CAN BE RENDERED FROM THIS RECORD.
+            //
+            // The seated engine never receives a rendered prompt -- only a client does --
+            // so the previous route to training data was to attach a client and relay the
+            // engine's advice into it. That relay wins 25% where this seat wins ~70%,
+            // because an advisory re-derives per decision while a seated player executes a
+            // plan. Recording the seat directly removes the relay, but only if the record
+            // carries everything the renderer would have shown. It did not: library and
+            // graveyard counts, exile, the opponent's hand size, combat, and the short ids
+            // were all absent, and all of them are one call away on the Game already here.
+            sb.append("\"zones\":{");
+            first = true;
+            for (UUID pid : game.getState().getPlayersInRange(player.getId(), game)) {
+                Player pl = game.getPlayer(pid);
+                if (pl == null) {
+                    continue;
+                }
+                if (!first) {
+                    sb.append(',');
+                }
+                first = false;
+                sb.append('"').append(esc(pl.getName())).append("\":{")
+                        .append("\"hand_size\":").append(pl.getHand().size())
+                        .append(",\"library\":").append(pl.getLibrary().size())
+                        .append(",\"graveyard\":[");
+                boolean g1 = true;
+                for (Card c : pl.getGraveyard().getCards(game)) {
+                    if (!g1) {
+                        sb.append(',');
+                    }
+                    g1 = false;
+                    sb.append('"').append(esc(c.getName())).append('"');
+                }
+                sb.append("]}");
+            }
+            sb.append("},");
+
+            // Combat as attacker -> defender pairs, which is how the prompt renders it.
+            sb.append("\"combat\":[");
+            if (game.getCombat() != null) {
+                first = true;
+                for (CombatGroup cg : game.getCombat().getGroups()) {
+                    for (UUID aid : cg.getAttackers()) {
+                        Permanent att = game.getPermanent(aid);
+                        if (att == null) {
+                            continue;
+                        }
+                        if (!first) {
+                            sb.append(',');
+                        }
+                        first = false;
+                        sb.append("{\"attacker\":\"").append(esc(att.getName()))
+                                .append("\",\"defender\":\"")
+                                .append(esc(nameOf(game, cg.getDefenderId())))
+                                .append("\"}");
+                    }
+                }
             }
             sb.append("],");
 
@@ -123,7 +199,16 @@ public final class AiDecisionRecorder {
                         sb.append(',');
                     }
                     first = false;
-                    sb.append('"').append(esc(describe(game, a))).append('"');
+                    // STRUCTURED, not a display string. The renderer needs the source's
+                    // alias to emit `Mountain [id=p6, land]`; a string like
+                    // "Mountain: Play Mountain" cannot be turned back into one. The
+                    // display text is kept alongside so nothing that reads the old shape
+                    // breaks.
+                    sb.append("{\"id\":\"")
+                            .append(esc(a.getSourceId() == null ? "" : a.getSourceId().toString()))
+                            .append("\",\"text\":\"").append(esc(describe(game, a)))
+                            .append("\",\"mana\":\"").append(esc(a.getManaCosts().getText()))
+                            .append("\"}");
                 }
             }
             sb.append("],");
@@ -150,7 +235,14 @@ public final class AiDecisionRecorder {
             if (chosen == null) {
                 sb.append("null");
             } else {
-                sb.append('"').append(esc(describe(game, chosen))).append('"');
+                // STRUCTURED, and the id is the point. A deck runs four Mountains, so the
+                // display string "Mountain: Play Mountain" appears several times in one
+                // option list and cannot say WHICH was taken. The options carry p11/p12;
+                // a label that cannot be matched back to one of them is not a label.
+                sb.append("{\"id\":\"")
+                        .append(esc(chosen.getSourceId() == null ? "" : chosen.getSourceId().toString()))
+                        .append("\",\"text\":\"").append(esc(describe(game, chosen)))
+                        .append("\"}");
             }
             sb.append("}\n");
 
