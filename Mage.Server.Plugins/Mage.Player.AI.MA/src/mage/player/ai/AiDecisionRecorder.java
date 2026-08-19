@@ -17,7 +17,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Records engine-AI decisions as (state, chosen action, alternatives) triples.
@@ -38,6 +40,11 @@ public final class AiDecisionRecorder {
 
     private static final Logger logger = Logger.getLogger(AiDecisionRecorder.class);
     private static final String DIR_PROPERTY = "xmage.ai.recordDir";
+
+    /**
+     * Cards already written to the sidecar, so each is emitted once per server.
+     */
+    private static final Set<String> SEEN_CARDS = ConcurrentHashMap.newKeySet();
 
     private AiDecisionRecorder() {
     }
@@ -110,6 +117,11 @@ public final class AiDecisionRecorder {
             }
             sb.append("},");
 
+            // ID AND NAME, NOT NAME ALONE. An option's id is the source card's uuid,
+            // so a hand of bare names cannot be joined to the options -- the chosen
+            // action names a card the rendered hand has no id for, and the label
+            // points at nothing. Found exactly that way: a converted example answered
+            // "p3" while its own hand ran p4..p10.
             sb.append("\"hand\":[");
             first = true;
             for (Card c : player.getHand().getCards(game)) {
@@ -117,7 +129,8 @@ public final class AiDecisionRecorder {
                     sb.append(',');
                 }
                 first = false;
-                sb.append('"').append(esc(c.getName())).append('"');
+                sb.append("{\"id\":\"").append(esc(c.getId().toString()))
+                        .append("\",\"name\":\"").append(esc(c.getName())).append("\"}");
             }
             sb.append("],");
 
@@ -183,7 +196,8 @@ public final class AiDecisionRecorder {
                         sb.append(',');
                     }
                     g1 = false;
-                    sb.append('"').append(esc(c.getName())).append('"');
+                    sb.append("{\"id\":\"").append(esc(c.getId().toString()))
+                            .append("\",\"name\":\"").append(esc(c.getName())).append("\"}");
                 }
                 sb.append("]}");
             }
@@ -220,6 +234,7 @@ public final class AiDecisionRecorder {
             return;
         }
         try {
+            noteCards(game, player);
             StringBuilder sb = header(game, player);
             boolean first;
             // The alternatives are what make this trainable. A chosen action with
@@ -320,6 +335,7 @@ public final class AiDecisionRecorder {
             return;
         }
         try {
+            noteCards(game, player);
             StringBuilder sb = header(game, player);
             kv(sb, "kind", kind).append(',');
             kv(sb, "message", message == null ? "" : message).append(',');
@@ -360,6 +376,70 @@ public final class AiDecisionRecorder {
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
             w.write(sb.toString());
         }
+    }
+
+    /**
+     * STATIC CARD DATA, written once per card to a sidecar rather than into every
+     * record. The decision records carry card NAMES; the prompt shows oracle text,
+     * mana cost and P/T as well. That data is identical every time a card appears,
+     * so repeating it per record would multiply the corpus for no information.
+     * <p>
+     * It has to come from here rather than from a card database: XMage builds rules
+     * text at runtime from each card's ability objects, so the text a prompt would
+     * show exists only in a live game. The banked pilot logs were the other
+     * candidate source and cover 16 distinct cards -- one deck's worth.
+     */
+    private static void noteCards(Game game, Player player) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (Card c : player.getHand().getCards(game)) {
+                appendCard(sb, game, c.getName(), c.getRules(game), c.getManaCostSymbols(),
+                        c.getPower().toString(), c.getToughness().toString(), c.isLand(game));
+            }
+            for (Permanent p : game.getBattlefield().getAllActivePermanents()) {
+                appendCard(sb, game, p.getName(), p.getRules(game), p.getManaCostSymbols(),
+                        p.getPower().toString(), p.getToughness().toString(), p.isLand(game));
+            }
+            if (sb.length() == 0) {
+                return;
+            }
+            Path out = Paths.get(System.getProperty(DIR_PROPERTY), "cards.jsonl");
+            Files.createDirectories(out.getParent());
+            try (BufferedWriter w = Files.newBufferedWriter(
+                    out, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                w.write(sb.toString());
+            }
+        } catch (IOException | RuntimeException e) {
+            logger.warn("AiDecisionRecorder: failed to note card data", e);
+        }
+    }
+
+    private static void appendCard(StringBuilder sb, Game game, String name, List<String> rules,
+                                   List<String> cost, String power, String toughness, boolean isLand) {
+        if (name == null || name.isEmpty() || !SEEN_CARDS.add(name)) {
+            return;
+        }
+        sb.append("{\"name\":\"").append(esc(name)).append("\",\"mana_cost\":\"");
+        if (cost != null) {
+            for (String m : cost) {
+                sb.append(esc(m));
+            }
+        }
+        sb.append("\",\"is_land\":").append(isLand)
+          .append(",\"power\":\"").append(esc(power))
+          .append("\",\"toughness\":\"").append(esc(toughness))
+          .append("\",\"rules\":[");
+        if (rules != null) {
+            boolean f = true;
+            for (String r : rules) {
+                if (!f) {
+                    sb.append(',');
+                }
+                f = false;
+                sb.append('"').append(esc(r)).append('"');
+            }
+        }
+        sb.append("]}\n");
     }
 
     private static String describe(Game game, Ability a) {
