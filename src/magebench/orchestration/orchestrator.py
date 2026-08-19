@@ -20,6 +20,8 @@ from magebench.orchestration.batch_coordination import (
     GameSession,
     attach_game,
     await_game_start,
+    claim_game_dir,
+    claim_run_file,
     finalize_game,
     launch_game,
     wait_for_all_games,
@@ -311,12 +313,19 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
         config.port = port_reservation.port
         logger.info("Using port %d", config.port)
 
+        # Claimed, not derived. Every one of these names is keyed on a timestamp
+        # that is only unique to the second, so two orchestrators started in the
+        # same second would otherwise share them silently -- one server config
+        # overwritten mid-read, one server log interleaved from two JVMs, and in
+        # the non-batch case one game directory holding two games' events.
+        first_game_dir: Path | None = None
         if batch:
-            server_config_path = log_dir / f"server_config_{config.timestamp}.xml"
-            server_log = log_dir / f"server_{config.timestamp}.log"
+            server_config_path = claim_run_file(
+                log_dir, f"server_config_{config.timestamp}", ".xml"
+            )
+            server_log = claim_run_file(log_dir, f"server_{config.timestamp}", ".log")
         else:
-            first_game_dir = log_dir / f"game_{config.timestamp}"
-            first_game_dir.mkdir(parents=True, exist_ok=True)
+            first_game_dir = claim_game_dir(log_dir, config.timestamp)
             server_config_path = first_game_dir / "server_config.xml"
             server_log = first_game_dir / "server.log"
 
@@ -390,6 +399,7 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
                         project_root,
                         log_dir,
                         config.timestamp,
+                        game_dir=first_game_dir,
                         used_player_names=used_player_names if batch else None,
                         cross_game_round_robin=cross_game_round_robin if batch else None,
                         cross_game_format_picks=cross_game_format_picks if batch else None,
@@ -397,6 +407,20 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
                 )
             except (TimeoutError, RuntimeError) as exc:
                 _skip(index, "launch", exc)
+
+        # N games announced must be N distinct directories. Two games sharing one
+        # directory do not fail: they interleave into the same
+        # server_game_events.jsonl and every downstream comparison between them
+        # then reads one file twice and calls the arms identical. The claim above
+        # makes that impossible; this is the witness that says so out loud, so a
+        # future change that reintroduces a derived path fails here rather than
+        # in somebody's conclusions six hours later.
+        launched_dirs = [session.game_dir for session in launched]
+        assert len(set(launched_dirs)) == len(launched_dirs), (
+            f"{len(launched_dirs)} games launched into {len(set(launched_dirs))} "
+            f"distinct directories -- two games are sharing a log directory and "
+            f"will overwrite each other: {sorted(str(d) for d in launched_dirs)}"
+        )
 
         attached: list[GameSession] = []
         for session in launched:

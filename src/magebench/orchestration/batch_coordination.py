@@ -50,6 +50,62 @@ class GameSession:
     pilot_procs: list[tuple[str, subprocess.Popen]] = field(default_factory=list)
 
 
+def _claim(parent: Path, stem: str, ext: str, *, directory: bool) -> Path:
+    """Create `parent/stem+ext`, or the next free `stem-N+ext`, and return it.
+
+    THE POINT IS THE ABSENCE OF exist_ok. `game_<timestamp>` is unique only to
+    the SECOND, and the game directory used to be created with
+    `mkdir(exist_ok=True)`, so two orchestrators launched in the same second
+    silently landed in ONE directory and overwrote each other's
+    server_game_events.jsonl. That cost three verification runs: 18 parallel
+    runs collapsed into 2 directories, after which every arm was reading the
+    same file, every "identical" verdict was a file compared against itself,
+    and a hook bisection built on it accused an innocent hook. The tell was
+    that only 2 of 18 runs had written an output file at all.
+
+    mkdir and O_EXCL are atomic on POSIX, so exactly one process can win a
+    name; the loser takes the next suffix instead of sharing. No lock, no
+    registry, and it holds between processes that know nothing about each other.
+
+    The name stays byte-identical to the old one whenever nothing collides,
+    which is deliberate rather than lazy. game_dir.name IS the game_id
+    downstream -- in exports, tournament brackets and uploads -- so a pid or
+    random suffix would reshape every id in the corpus to fix a case that only
+    arises in parallel. Collisions get `-1`, `-2`; solitary runs are unchanged.
+    """
+    for attempt in range(1000):
+        candidate = parent / f"{stem}{'' if attempt == 0 else f'-{attempt}'}{ext}"
+        try:
+            if directory:
+                candidate.mkdir(parents=True)
+            else:
+                parent.mkdir(parents=True, exist_ok=True)
+                candidate.touch(exist_ok=False)
+            return candidate
+        except FileExistsError:
+            continue
+    raise RuntimeError(
+        f"Could not claim a unique name for {stem}{ext} under {parent} after 1000 tries"
+    )
+
+
+def claim_game_dir(log_dir: Path, timestamp: str, suffix: str = "") -> Path:
+    """Claim this game's log directory, refusing to share one with another run."""
+    return _claim(log_dir, f"game_{timestamp}{suffix}", "", directory=True)
+
+
+def claim_run_file(log_dir: Path, stem: str, ext: str) -> Path:
+    """Claim a batch-level file (server config, server log) the same way.
+
+    Same defect, second surface, and nobody had hit it because nobody had run
+    the batch path in parallel: the orchestrator puts `server_config_<ts>.xml`
+    and `server_<ts>.log` at the log-dir level under the same second-granular
+    key, so two same-second batches would share one server config file and
+    interleave one server log.
+    """
+    return _claim(log_dir, stem, ext, directory=False)
+
+
 def launch_game(
     index: int,
     num_games: int,
@@ -58,6 +114,7 @@ def launch_game(
     project_root: Path,
     log_dir: Path,
     timestamp: str,
+    game_dir: Path | None = None,
     used_player_names: set[str] | None = None,
     cross_game_round_robin: list[tuple[str, ...]] | None = None,
     cross_game_format_picks: list[str] | None = None,
@@ -107,9 +164,12 @@ def launch_game(
     else:
         game_config = base_config
 
-    suffix = f"_g{index + 1}" if batch else ""
-    game_dir = log_dir / f"game_{timestamp}{suffix}"
-    game_dir.mkdir(parents=True, exist_ok=True)
+    # A caller that already needed the directory -- the non-batch path claims it
+    # early, to put server_config.xml and server.log inside it -- passes it in.
+    # Re-deriving it here from the timestamp is precisely what let two sites
+    # disagree about which directory this game owns.
+    if game_dir is None:
+        game_dir = claim_game_dir(log_dir, timestamp, f"_g{index + 1}" if batch else "")
 
     manifest: dict[str, str | list[str] | int | None] = {
         "timestamp": timestamp,
@@ -299,6 +359,7 @@ def setup_game(
     project_root: Path,
     log_dir: Path,
     timestamp: str,
+    game_dir: Path | None = None,
     used_player_names: set[str] | None = None,
     cross_game_round_robin: list[tuple[str, ...]] | None = None,
     cross_game_format_picks: list[str] | None = None,
@@ -316,6 +377,7 @@ def setup_game(
         project_root,
         log_dir,
         timestamp,
+        game_dir=game_dir,
         used_player_names=used_player_names,
         cross_game_round_robin=cross_game_round_robin,
         cross_game_format_picks=cross_game_format_picks,
