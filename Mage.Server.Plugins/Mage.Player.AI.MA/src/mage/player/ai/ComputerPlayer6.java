@@ -70,6 +70,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
     );
     protected int maxDepth;
     protected int maxNodes;
+    protected int maxNodesError;
     protected int maxThinkTimeSecs;
     protected LinkedList<Ability> actions = new LinkedList<>();
     protected List<UUID> targets = new ArrayList<>();
@@ -109,12 +110,24 @@ public class ComputerPlayer6 extends ComputerPlayer {
         // Every skill level therefore explored the same 5000-node tree. Skill 1
         // keeps the historical budget exactly, so it remains a valid control.
         maxNodes = MAX_SIMULATED_NODES_PER_CALC * Math.max(1, skill);
+        // THE ERROR GUARD HAS TO TRACK THE BUDGET, or scaling the budget does
+        // nothing. MAX_SIMULATED_NODES_PER_ERROR is 5100 -- a debug tripwire for
+        // runaway trees, per its own comment -- and it is a THROW, not a stop. A
+        // skill-8 seat given 40,000 nodes hits 5,100 first and its search dies with
+        // "AI ERROR: too much nodes"; the exception unwinds to addActionsTimed's
+        // ExecutionException handler and the AI takes no action at all.
+        // Measured over the 500-game corpus: 31 search errors, ALL of them on the
+        // skill-8 seat, 0 on skill-1. That is the scaling defeating itself.
+        // maxNodes + 100 keeps skill 1 at exactly 5100, the historical constant, so
+        // it stays bit-identical and remains a valid control.
+        maxNodesError = maxNodes + 100;
         this.actionCache = new HashSet<>();
     }
 
     public ComputerPlayer6(final ComputerPlayer6 player) {
         super(player);
         this.maxDepth = player.maxDepth;
+        this.maxNodesError = player.maxNodesError;
         this.currentScore = player.currentScore;
         if (player.combat != null) {
             this.combat = player.combat.copy();
@@ -247,7 +260,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             return GameStateEvaluator2.evaluate(playerId, game).getTotalScore();
         }
         // Condition to stop deeper simulation
-        if (SimulationNode2.nodeCount > MAX_SIMULATED_NODES_PER_ERROR) {
+        if (SimulationNode2.nodeCount > maxNodesError) {
             // how-to fix: make sure you are disabled debug mode by COMPUTER_DISABLE_TIMEOUT_IN_GAME_SIMULATIONS = false
             throw new IllegalStateException("AI ERROR: too much nodes (possible actions)");
         }
@@ -370,7 +383,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             if (alpha >= beta) {
                 break;
             }
-            if (SimulationNode2.nodeCount > MAX_SIMULATED_NODES_PER_ERROR) {
+            if (SimulationNode2.nodeCount > maxNodesError) {
                 throw new IllegalStateException("AI ERROR: too much nodes (possible actions)");
             }
             if (SimulationNode2.nodeCount > maxNodes) {
