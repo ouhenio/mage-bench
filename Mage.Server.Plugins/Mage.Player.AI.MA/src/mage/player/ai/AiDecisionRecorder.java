@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,9 +43,26 @@ public final class AiDecisionRecorder {
     private static final String DIR_PROPERTY = "xmage.ai.recordDir";
 
     /**
-     * Cards already written to the sidecar, so each is emitted once per server.
+     * Cards already written to the sidecar, KEYED BY GAME. This was a single
+     * JVM-wide set, which is indistinguishable from per-game right up until a
+     * server hosts more than one game -- then game 2 onward gets a cards.jsonl
+     * missing every card game 1 already saw, and a short file does not look like
+     * an error. Same defect as the game seed, the record directory and
+     * xmage.ai.skills: four instances of "one value per JVM" that were only ever
+     * exercised one game per JVM.
+     * <p>
+     * A map rather than "reset when the game id changes": resetting is correct
+     * only while games are strictly sequential, and would fail silently the first
+     * time two ran in one JVM. Mirrors ServerGameEventLogCollector's
+     * Map&lt;UUID, GameEventLogger&gt;, which is keyed this way for the same reason.
+     * <p>
+     * NOT EVICTED. There is no game-end hook where this sits -- it is driven from
+     * the AI's act() -- so an entry per game leaks for the life of the JVM. That
+     * is a few thousand strings per game against sessions of tens of games, so it
+     * is left deliberately rather than unnoticed.
      */
-    private static final Set<String> SEEN_CARDS = ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, Set<String>> SEEN_CARDS =
+            new ConcurrentHashMap<>();
 
     private AiDecisionRecorder() {
     }
@@ -73,6 +91,34 @@ public final class AiDecisionRecorder {
     public static boolean isEnabled() {
         String dir = System.getProperty(DIR_PROPERTY);
         return dir != null && !dir.isEmpty();
+    }
+
+    /**
+     * WHERE THIS GAME'S RECORDS GO. Prefer the GAME's own log directory over the
+     * JVM property, because the property carries the same defect the game seed
+     * did: it is fine at one game per JVM and wrong the moment a server hosts a
+     * sequence. Under sequential batching every game in a session would append to
+     * ONE ai_decisions.jsonl. The records carry game_id so they are separable
+     * offline, but "separable offline" is exactly the promise the log directory
+     * already makes, and a second thing that only looks per-game is not worth
+     * shipping.
+     * <p>
+     * game.getOptions().gameLogDir is per game, set by TableController from
+     * MatchOptions, and is what ServerGameEventLogCollector writes
+     * server_game_events.jsonl into -- so this lands the decisions NEXT TO the
+     * events they belong with, and the join stops needing a game_id lookup.
+     * <p>
+     * The property stays as the enable switch and as the fallback, so every
+     * existing invocation keeps working unchanged.
+     */
+    private static Path outputDir(Game game) {
+        if (game != null && game.getOptions() != null) {
+            String perGame = game.getOptions().gameLogDir;
+            if (perGame != null && !perGame.isEmpty()) {
+                return Paths.get(perGame);
+            }
+        }
+        return Paths.get(System.getProperty(DIR_PROPERTY));
     }
 
     /**
@@ -313,13 +359,7 @@ public final class AiDecisionRecorder {
             }
             sb.append("}\n");
 
-            Path out = Paths.get(System.getProperty(DIR_PROPERTY), "ai_decisions.jsonl");
-            Files.createDirectories(out.getParent());
-            try (BufferedWriter w = Files.newBufferedWriter(
-                    out, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-                w.write(sb.toString());
-            }
+            flush(game, sb);
         } catch (IOException | RuntimeException e) {
             // Never let data collection break a game.
             logger.warn("AiDecisionRecorder: failed to record decision", e);
@@ -381,14 +421,14 @@ public final class AiDecisionRecorder {
                         .append("\"}");
             }
             sb.append("}\n");
-            flush(sb);
+            flush(game, sb);
         } catch (IOException | RuntimeException e) {
             logger.warn("AiDecisionRecorder: failed to record choice", e);
         }
     }
 
-    private static void flush(StringBuilder sb) throws IOException {
-        Path out = Paths.get(System.getProperty(DIR_PROPERTY), "ai_decisions.jsonl");
+    private static void flush(Game game, StringBuilder sb) throws IOException {
+        Path out = outputDir(game).resolve("ai_decisions.jsonl");
         Files.createDirectories(out.getParent());
         try (BufferedWriter w = Files.newBufferedWriter(
                 out, StandardCharsets.UTF_8,
@@ -410,19 +450,33 @@ public final class AiDecisionRecorder {
      */
     private static void noteCards(Game game, Player player) {
         try {
+            Set<String> seen = SEEN_CARDS.computeIfAbsent(
+                    game.getId(), id -> ConcurrentHashMap.newKeySet());
             StringBuilder sb = new StringBuilder();
+            // CHECK MEMBERSHIP BEFORE BUILDING ANYTHING. getRules(game) constructs
+            // the card's rules text from its ability objects on every call, and this
+            // runs once per DECISION -- several hundred times a game. Building rules
+            // for every card in hand and on the battlefield only to discard them
+            // because the card was already recorded is the bulk of that work, and it
+            // is pure waste after the first sighting of each card.
             for (Card c : player.getHand().getCards(game)) {
-                appendCard(sb, game, c.getName(), c.getRules(game), c.getManaCostSymbols(),
+                if (seen.contains(c.getName())) {
+                    continue;
+                }
+                appendCard(sb, seen, c.getName(), c.getRules(game), c.getManaCostSymbols(),
                         c.getPower().toString(), c.getToughness().toString(), c.isLand(game));
             }
             for (Permanent p : game.getBattlefield().getAllActivePermanents()) {
-                appendCard(sb, game, p.getName(), p.getRules(game), p.getManaCostSymbols(),
+                if (seen.contains(p.getName())) {
+                    continue;
+                }
+                appendCard(sb, seen, p.getName(), p.getRules(game), p.getManaCostSymbols(),
                         p.getPower().toString(), p.getToughness().toString(), p.isLand(game));
             }
             if (sb.length() == 0) {
                 return;
             }
-            Path out = Paths.get(System.getProperty(DIR_PROPERTY), "cards.jsonl");
+            Path out = outputDir(game).resolve("cards.jsonl");
             Files.createDirectories(out.getParent());
             try (BufferedWriter w = Files.newBufferedWriter(
                     out, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
@@ -433,9 +487,9 @@ public final class AiDecisionRecorder {
         }
     }
 
-    private static void appendCard(StringBuilder sb, Game game, String name, List<String> rules,
+    private static void appendCard(StringBuilder sb, Set<String> seen, String name, List<String> rules,
                                    List<String> cost, String power, String toughness, boolean isLand) {
-        if (name == null || name.isEmpty() || !SEEN_CARDS.add(name)) {
+        if (name == null || name.isEmpty() || !seen.add(name)) {
             return;
         }
         sb.append("{\"name\":\"").append(esc(name)).append("\",\"mana_cost\":\"");

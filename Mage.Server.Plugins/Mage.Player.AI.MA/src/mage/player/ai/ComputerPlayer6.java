@@ -41,6 +41,7 @@ import org.apache.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -192,8 +193,10 @@ public class ComputerPlayer6 extends ComputerPlayer {
         // from the previous decision would be attributed to this one -- a stale
         // "timeout" pinned on a deliberate pass is worse than no field. Reading it
         // once and clearing means the absence of a search reads as "none".
-        String searchOutcome = lastSearchOutcome;
-        lastSearchOutcome = "none";
+        String searchOutcome = lastSearchOutcome.remove(game.getId());
+        if (searchOutcome == null) {
+            searchOutcome = "none";
+        }
         if (actions == null
                 || actions.isEmpty()) {
             AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome);
@@ -474,14 +477,27 @@ public class ComputerPlayer6 extends ComputerPlayer {
      * when the teacher merely ran out of clock. Only this method knows which
      * happened, so it records it and act() reads it.
      */
-    private volatile String lastSearchOutcome = "none";
+    /**
+     * KEYED BY GAME, not a bare field. This is per-instance state, and it is only
+     * safe as a bare field if a ComputerPlayer6 is constructed fresh for every
+     * game -- otherwise one game's search verdict is read by the next. The code
+     * reads as fresh construction (each game builds a new table and players join
+     * it), and I tried to settle it by measurement rather than argument: a probe
+     * logging the instance id per game. It emitted NOTHING, because this class's
+     * logger.info does not reach server.log at all -- the pre-existing "SELECTED
+     * ACTION" line in this same method is equally absent. An instrument that
+     * cannot report is worse than none, and I would have read its silence as
+     * "no reuse".
+     * <p>
+     * So the question is made moot instead of answered. A map is correct whether
+     * or not instances are reused, and whether or not games are sequential.
+     */
+    private final Map<UUID, String> lastSearchOutcome = new ConcurrentHashMap<>();
 
-    protected String getLastSearchOutcome() {
-        return lastSearchOutcome;
-    }
+
 
     protected Integer addActionsTimed() {
-        lastSearchOutcome = "complete";
+        lastSearchOutcome.put(root.game.getId(), "complete");
         // TODO: all actions added and calculated one by one,
         //  multithreading do not supported here
         // run new game simulation in parallel thread
@@ -498,7 +514,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 return res;
             }
         } catch (TimeoutException | InterruptedException e) {
-            lastSearchOutcome = "timeout";
+            lastSearchOutcome.put(root.game.getId(), "timeout");
             // AI thinks too long
             // how-to fix: look at stack info - it can contain bad ability with infinite choose dialog
             logger.warn("");
@@ -511,7 +527,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             logger.warn("");
             task.cancel(true);
         } catch (ExecutionException e) {
-            lastSearchOutcome = "error";
+            lastSearchOutcome.put(root.game.getId(), "error");
             // game error
             logger.error("AI player catch game error in simulation - " + getName() + " - " + root.game + ": " + e, e);
             task.cancel(true);
@@ -522,7 +538,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
             }
         } catch (Throwable e) {
             // ?
-            lastSearchOutcome = "error";
+            lastSearchOutcome.put(root.game.getId(), "error");
             logger.error("AI simulation catch unknown error: " + e, e);
             task.cancel(true);
         }

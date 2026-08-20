@@ -391,6 +391,16 @@ public final class AiHintProvider {
 
     // One file per game. A single shared hints.jsonl is overwritten by the next run,
     // which is why "was the old hook closer?" could not be answered without re-running.
+    private static Path perGameDir(Game game, String fallbackDir) {
+        if (game != null && game.getOptions() != null) {
+            String perGame = game.getOptions().gameLogDir;
+            if (perGame != null && !perGame.isEmpty()) {
+                return Paths.get(perGame);
+            }
+        }
+        return Paths.get(fallbackDir);
+    }
+
     /** @return true when the record was durably recorded (written, or logged as fallback). */
     private static synchronized boolean emit(Game game, String basename, String json) {
         String dir = System.getProperty(DIR_PROPERTY);
@@ -399,7 +409,16 @@ public final class AiHintProvider {
             return true;
         }
         try {
-            Path out = Paths.get(dir);
+            // PREFER THE GAME'S OWN DIRECTORY. The property is one value per JVM,
+            // which was indistinguishable from per-game until a server started
+            // hosting a sequence of them. Unlike the decision recorder, this was
+            // never going to MERGE games -- the filename already carries the game
+            // id -- so the defect here is only that a session's hints pile into one
+            // directory instead of sitting beside the events they describe. Fixed
+            // the same way so the two components do not disagree about where a
+            // game's artefacts live, and so the next person does not have to work
+            // out which of them is the odd one.
+            Path out = perGameDir(game, dir);
             Files.createDirectories(out);
             try (BufferedWriter w = Files.newBufferedWriter(out.resolve(basename + game.getId() + ".jsonl"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
