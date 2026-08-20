@@ -165,3 +165,43 @@ def test_subprocess_timeout_on_close_is_survivable(batch_env, tmp_path, monkeypa
     )
 
     assert killed, "a hung observer must be killed, not waited on forever"
+
+
+class TestTwoSessionsNeverShareASessionDirectory:
+    """Sessions launched in the same second must not share their scratch space.
+
+    This is the game-directory defect in the one place the fix was not applied.
+    The session directory holds health_port and observer.log, and health_port is
+    how a session finds ITS observer. Eight sessions sharing one directory means
+    eight observers writing one health_port, so a session reads a port another
+    session just overwrote and drives somebody else's observer -- or a dead one.
+
+    Measured before the fix: 8 sessions, 0 of 40 games completed, failing as
+    "timed out", "Connection reset by peer" and "Connection refused". Nothing
+    crashed, and the server logs inside were claimed and so looked healthy as
+    server-1.log through server-8.log. The directory listing was the only place
+    the collision was visible at all.
+    """
+
+    def test_sessions_with_one_timestamp_get_one_directory_each(self, batch_env, tmp_path):
+        fake_observer, observers, _ = batch_env
+        fake_observer.fail_on = set()
+        log_dir = tmp_path / "logs"
+
+        seen = []
+        for _ in range(3):
+            config = _config()          # same timestamp every time, as in a same-second launch
+            sequential_batch.run_sequential_batch(config, tmp_path, log_dir, [1], pm=_FakePm())
+            seen.append(sorted(p.name for p in log_dir.glob("session_*")))
+
+        sessions = sorted(p.name for p in log_dir.glob("session_*"))
+        assert len(sessions) == 3, f"three sessions produced {len(sessions)} directories: {sessions}"
+
+    def test_the_first_session_keeps_the_plain_name(self, batch_env, tmp_path):
+        fake_observer, observers, _ = batch_env
+        fake_observer.fail_on = set()
+        log_dir = tmp_path / "logs"
+
+        sequential_batch.run_sequential_batch(_config(), tmp_path, log_dir, [1], pm=_FakePm())
+
+        assert [p.name for p in log_dir.glob("session_*")] == ["session_20260819_200000"]

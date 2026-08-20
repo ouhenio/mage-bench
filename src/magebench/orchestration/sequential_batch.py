@@ -58,7 +58,7 @@ from pathlib import Path
 from magebench.common.log import get_logger
 from magebench.common.port import find_available_port, wait_for_port
 from magebench.common.process_manager import ProcessManager, jvm_oom_preexec_fn, kill_tree
-from magebench.orchestration.batch_coordination import claim_game_dir, claim_run_file
+from magebench.orchestration.batch_coordination import _claim, claim_game_dir, claim_run_file
 from magebench.orchestration.config import Config
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
@@ -253,8 +253,19 @@ def run_sequential_batch(
     port = port_reservation.port
     config.port = port
 
-    session_dir = log_dir / f"session_{config.timestamp}"
-    session_dir.mkdir(parents=True, exist_ok=True)
+    # CLAIMED, not derived -- the same defect as the game directory, in the one
+    # place I did not apply the fix. config.timestamp is unique only to the
+    # second, so eight sessions launched together all computed
+    # session_<same-second> and mkdir(exist_ok=True) put them in ONE directory.
+    # The server files inside were claimed and so survived as server-1.log ..
+    # server-8.log, which made it look fine. health_port and observer.log were
+    # not: every observer wrote the same health_port, so each session read a
+    # port another session had just overwritten and drove somebody else's
+    # observer -- or a dead one. Measured: 8 sessions, 0 of 40 games completed,
+    # failing as "timed out", "Connection reset by peer", "Connection refused".
+    #
+    # Nothing crashed and every session reported itself alive throughout.
+    session_dir = _claim(log_dir, f"session_{config.timestamp}", "", directory=True)
     server_config_path = claim_run_file(session_dir, "server_config", ".xml")
     server_log = claim_run_file(session_dir, "server", ".log")
     modify_server_config(
