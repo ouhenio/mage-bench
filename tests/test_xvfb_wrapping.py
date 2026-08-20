@@ -1,19 +1,21 @@
-"""Tests for Linux xvfb wrapping in the golden harness."""
+"""Tests for Linux xvfb wrapping."""
 
 import pytest
 
-from tests import golden_helpers
+# wrap_with_xvfb moved into magebench when production needed it: the
+# keepAlive observer is launched by the orchestrator now, not only by tests.
+from magebench.orchestration import observer_session
 
 
 def test_wrap_with_xvfb_prefixes_linux_commands(monkeypatch):
-    monkeypatch.setattr(golden_helpers.sys, "platform", "linux")
+    monkeypatch.setattr(observer_session.sys, "platform", "linux")
     monkeypatch.setattr(
-        golden_helpers.shutil,
+        observer_session.shutil,
         "which",
         lambda name: "/usr/bin/xvfb-run" if name == "xvfb-run" else None,
     )
 
-    wrapped = golden_helpers.wrap_with_xvfb(["java", "-version"])
+    wrapped = observer_session.wrap_with_xvfb(["java", "-version"])
 
     assert wrapped[:3] == [
         "/usr/bin/xvfb-run",
@@ -24,16 +26,16 @@ def test_wrap_with_xvfb_prefixes_linux_commands(monkeypatch):
 
 
 def test_wrap_with_xvfb_leaves_non_linux_commands_unchanged(monkeypatch):
-    monkeypatch.setattr(golden_helpers.sys, "platform", "darwin")
+    monkeypatch.setattr(observer_session.sys, "platform", "darwin")
 
-    wrapped = golden_helpers.wrap_with_xvfb(["java", "-version"])
+    wrapped = observer_session.wrap_with_xvfb(["java", "-version"])
 
     assert wrapped == ["java", "-version"]
 
 
 def test_wrap_with_xvfb_requires_xvfb_on_linux(monkeypatch):
-    monkeypatch.setattr(golden_helpers.sys, "platform", "linux")
-    monkeypatch.setattr(golden_helpers.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(observer_session.sys, "platform", "linux")
+    monkeypatch.setattr(observer_session.shutil, "which", lambda _name: None)
 
     with pytest.raises(AssertionError, match="xvfb-run"):
-        golden_helpers.wrap_with_xvfb(["java", "-version"])
+        observer_session.wrap_with_xvfb(["java", "-version"])

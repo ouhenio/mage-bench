@@ -3,12 +3,15 @@
 import sys
 from unittest.mock import patch
 
-from tests.golden_helpers import (
-    _build_java_cmd,
+# These moved out of tests/golden_helpers into magebench proper when production
+# needed them: the keepAlive observer they launch is what lets one server JVM
+# host a batch. Same code, same tests, new home.
+from magebench.orchestration.observer_session import (
     _classpath_cache,
     _find_reactor_modules,
     _reactor_module_cache,
     _replace_reactor_jars,
+    build_java_cmd as _build_java_cmd,
     compute_module_classpath,
 )
 
