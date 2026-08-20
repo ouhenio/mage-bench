@@ -75,6 +75,11 @@ logger = get_logger(__name__)
 
 MAIN_CLASS_SERVER = "mage.server.Main"
 
+# Ports start here (Config.start_port), and each session's X display is offset
+# from its own port so that two sessions can never land on one display.
+_PORT_BASE = 17171
+_DISPLAY_BASE = 200
+
 
 @dataclass
 class SequentialBatchResult:
@@ -181,7 +186,14 @@ def _start_observer(
         props["xmage.ai.skills"] = ai_skills
     (observer_log.parent / "prefs").mkdir(parents=True, exist_ok=True)
 
-    cmd = wrap_with_xvfb(build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"))
+    # Display derived from the port, because the port came from a flock-held
+    # reservation and the display allocator has no reservation of its own.
+    # Without this, eight sessions starting together race for one server number
+    # and most of them die before they draw anything.
+    display = _DISPLAY_BASE + (port - _PORT_BASE)
+    cmd = wrap_with_xvfb(
+        build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"), display
+    )
     env = os.environ.copy()
     env.update(
         {

@@ -39,3 +39,33 @@ def test_wrap_with_xvfb_requires_xvfb_on_linux(monkeypatch):
 
     with pytest.raises(AssertionError, match="xvfb-run"):
         observer_session.wrap_with_xvfb(["java", "-version"])
+
+
+def test_wrap_with_xvfb_uses_an_explicit_display_when_given(monkeypatch):
+    monkeypatch.setattr(observer_session.sys, "platform", "linux")
+    monkeypatch.setattr(
+        observer_session.shutil,
+        "which",
+        lambda name: "/usr/bin/xvfb-run" if name == "xvfb-run" else None,
+    )
+
+    wrapped = observer_session.wrap_with_xvfb(["java", "-version"], display=207)
+
+    # -n reserves the number we chose. --auto-servernum picks a free one without
+    # holding it, so eight concurrent launches choose the same one and most die
+    # with "No X11 DISPLAY variable was set" -- measured at 15 of 24.
+    assert "--auto-servernum" not in wrapped
+    assert wrapped[1:3] == ["-n", "207"]
+
+
+def test_wrap_with_xvfb_still_auto_allocates_when_alone(monkeypatch):
+    monkeypatch.setattr(observer_session.sys, "platform", "linux")
+    monkeypatch.setattr(
+        observer_session.shutil,
+        "which",
+        lambda name: "/usr/bin/xvfb-run" if name == "xvfb-run" else None,
+    )
+
+    wrapped = observer_session.wrap_with_xvfb(["java", "-version"])
+
+    assert "--auto-servernum" in wrapped

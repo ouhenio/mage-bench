@@ -171,8 +171,21 @@ def build_java_cmd(
     return cmd
 
 
-def wrap_with_xvfb(cmd: list[str]) -> list[str]:
-    """Run a client JVM on an isolated virtual display on Linux."""
+def wrap_with_xvfb(cmd: list[str], display: int | None = None) -> list[str]:
+    """Run a client JVM on an isolated virtual display on Linux.
+
+    Pass an explicit `display` whenever more than one of these may start at
+    once. --auto-servernum PICKS A FREE SERVER NUMBER WITHOUT HOLDING IT, so
+    concurrent invocations choose the same number and all but one die with
+    "No X11 DISPLAY variable was set". Measured under 8-way launching: 15 of 24
+    games lost, about two in three, and the survivors look like a clean sample
+    rather than the remains of a race.
+
+    The caller is expected to derive the number from something already unique
+    per process. find_available_port holds a flock, so a port-derived display
+    inherits that exclusion for free -- which is the difference between the two
+    allocators: one reserves, the other guesses.
+    """
     if sys.platform != "linux":
         return cmd
     xvfb = shutil.which("xvfb-run")
@@ -180,7 +193,8 @@ def wrap_with_xvfb(cmd: list[str]) -> list[str]:
         "The observer JVM needs xvfb-run on Linux for an isolated display. "
         "Install xvfb (e.g. apt-get install xvfb or dnf install xorg-x11-server-Xvfb)."
     )
-    return [xvfb, "--auto-servernum", "--server-args=-screen 0 1920x1080x24", *cmd]
+    allocation = ["--auto-servernum"] if display is None else ["-n", str(display)]
+    return [xvfb, *allocation, "--server-args=-screen 0 1920x1080x24", *cmd]
 
 
 def read_health_port_file(path: Path, timeout: float = 30.0) -> int:
