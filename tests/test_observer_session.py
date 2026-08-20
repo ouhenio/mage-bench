@@ -84,3 +84,57 @@ class TestTheSeedTravelsWithTheGame:
         sent = [json.loads(line) for line in stdin.lines]
         assert [s["gameDir"] for s in sent] == ["/tmp/g1", "/tmp/g2"]
         assert [s["gameSeed"] for s in sent] == [1, 2]
+
+
+class TestTheSeedListIsExplicit:
+    """MAGEBENCH_GAME_SEEDS must name one seed per game, or none at all.
+
+    A session is the first place in this harness where "which seed did game 4
+    get" has a non-obvious answer. Deriving it from a base plus an index reads
+    fine until a batch is resumed or one bad game is re-run, at which point the
+    derivation quietly re-deals a game the corpus already has -- and a duplicate
+    deal is indistinguishable from a real one downstream.
+    """
+
+    def test_unset_means_every_game_is_unseeded(self, monkeypatch):
+        from magebench.orchestration.orchestrator import _sequential_seeds
+
+        monkeypatch.delenv("MAGEBENCH_GAME_SEEDS", raising=False)
+
+        assert _sequential_seeds(3) == [None, None, None]
+
+    def test_empty_is_treated_as_unset(self, monkeypatch):
+        from magebench.orchestration.orchestrator import _sequential_seeds
+
+        monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "")
+
+        assert _sequential_seeds(2) == [None, None]
+
+    def test_one_seed_per_game(self, monkeypatch):
+        from magebench.orchestration.orchestrator import _sequential_seeds
+
+        monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "901001, 901002 ,901003")
+
+        assert _sequential_seeds(3) == [901001, 901002, 901003]
+
+    def test_a_short_list_is_an_error_not_a_cycle(self, monkeypatch):
+        import pytest
+
+        from magebench.orchestration.orchestrator import _sequential_seeds
+
+        monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "901001,901002")
+
+        # Recycling would deal the same hands twice and still look like a corpus.
+        with pytest.raises(AssertionError, match="one seed per game"):
+            _sequential_seeds(5)
+
+    def test_a_long_list_is_an_error_too(self, monkeypatch):
+        import pytest
+
+        from magebench.orchestration.orchestrator import _sequential_seeds
+
+        monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "1,2,3,4")
+
+        # Silently dropping the tail loses games the caller asked for.
+        with pytest.raises(AssertionError, match="one seed per game"):
+            _sequential_seeds(2)
