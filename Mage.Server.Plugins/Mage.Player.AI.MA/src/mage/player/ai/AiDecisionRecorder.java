@@ -473,6 +473,33 @@ public final class AiDecisionRecorder {
                 appendCard(sb, seen, p.getName(), p.getRules(game), p.getManaCostSymbols(),
                         p.getPower().toString(), p.getToughness().toString(), p.isLand(game));
             }
+            // GRAVEYARDS TOO, because header() serialises them and this must cover
+            // whatever a record can NAME. Walking only hand and battlefield left a
+            // card that reached the graveyard without ever being caught in a
+            // recorded hand or battlefield snapshot with no sidecar entry, while
+            // its name still appeared in the record's zones -- a prompt referring
+            // to a card carrying no oracle text. Sporadic by nature: it depends on
+            // whether the card was alive at some decision, which is a property of
+            // the game rather than of the recorder. Seen on fetchlands and cycling
+            // cards (Scalding Tarn, Street Wraith) and on cheap spells that resolve
+            // into the yard between decisions (Tarfire, Moonshadow), 5 games in 32.
+            //
+            // THE COUPLING IS THE POINT: this walks the same zones header() does.
+            // If a zone is ever added there -- exile, command, sideboard -- add it
+            // here in the same commit, or the sidecar silently under-covers again.
+            for (UUID pid : game.getState().getPlayersInRange(player.getId(), game)) {
+                Player zonePlayer = game.getPlayer(pid);
+                if (zonePlayer == null) {
+                    continue;
+                }
+                for (Card c : zonePlayer.getGraveyard().getCards(game)) {
+                    if (seen.contains(c.getName())) {
+                        continue;
+                    }
+                    appendCard(sb, seen, c.getName(), c.getRules(game), c.getManaCostSymbols(),
+                            c.getPower().toString(), c.getToughness().toString(), c.isLand(game));
+                }
+            }
             if (sb.length() == 0) {
                 return;
             }
