@@ -27,6 +27,8 @@ from magebench.orchestration.batch_coordination import (
     wait_for_all_games,
 )
 from magebench.orchestration.config import Config
+from magebench.orchestration.deck_choice import resolve_choice_decks
+from magebench.orchestration.sequential_batch import run_sequential_batch
 from magebench.orchestration.game_finalization import (
     print_run_cost_summary,
     run_git,
@@ -107,6 +109,16 @@ def parse_args() -> Config:
         help="Number of parallel games on the same server (default: 1)",
     )
     parser.add_argument(
+        "--sequential-games",
+        type=int,
+        default=0,
+        help=(
+            "Number of games to play one after another on ONE server and ONE observer. "
+            "Amortises the ~25s card load and one port across the whole sequence. "
+            "Seeds come from MAGEBENCH_GAME_SEEDS as a comma-separated list."
+        ),
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable DEBUG-level logging (verbose MCP details, process management)",
@@ -119,6 +131,11 @@ def parse_args() -> Config:
     args = parser.parse_args()
     assert not (args.config and args.batch_config_manifest), (
         "--config and --batch-config-manifest are mutually exclusive"
+    )
+    assert not (args.sequential_games and args.games > 1), (
+        "--sequential-games and --games are mutually exclusive: RandomUtil.random is a "
+        "process-global static, so two games running concurrently in one server JVM "
+        "would interleave their draws and neither would be reproducible"
     )
 
     record_output = None
@@ -154,9 +171,33 @@ def parse_args() -> Config:
         record=bool(args.record),
         record_output=record_output,
         num_games=num_games,
+        sequential_games=args.sequential_games,
         debug=args.debug,
         skip_compile=args.skip_compile,
     )
+
+
+def _sequential_seeds(num_games: int) -> list[int | None]:
+    """Seeds for a sequential session, from MAGEBENCH_GAME_SEEDS.
+
+    Explicit and per game rather than a base plus an index. A session is the
+    first thing in this harness where "which seed did game 4 get" is a question
+    with a non-obvious answer, and deriving it silently is how a resumed or
+    re-run batch ends up quietly re-dealing a game it already has.
+
+    Unset means every game is unseeded, which is a legitimate way to generate a
+    corpus. Set means the list must match the game count exactly -- a short list
+    silently recycled would deal the same hands twice.
+    """
+    raw = os.environ.get("MAGEBENCH_GAME_SEEDS")
+    if raw is None or raw == "":
+        return [None] * num_games
+    seeds = [int(part.strip()) for part in raw.split(",") if part.strip()]
+    assert len(seeds) == num_games, (
+        f"MAGEBENCH_GAME_SEEDS has {len(seeds)} seeds but --sequential-games is "
+        f"{num_games}. Give one seed per game, or unset it for an unseeded run."
+    )
+    return list(seeds)
 
 
 def compile_project(
@@ -307,6 +348,25 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
                 if not refresh_observer_resources(project_root):
                     logger.error("Failed to refresh observer resources")
                     return OrchestratorRunResult(exit_code=1)
+
+        if config.sequential_games:
+            # One server, one observer, N games in a row. Everything below this
+            # point exists to stand a server and a spectator up per game, which
+            # is the cost being removed, so the sequential path does not go
+            # through it.
+            seeds = _sequential_seeds(config.sequential_games)
+            resolve_choice_decks(config.pilot_players, project_root, config.deck_type)
+            config.resolve_random_decks(project_root)
+            config.validate_deck_sizes(project_root)
+            result = run_sequential_batch(
+                config, project_root, log_dir, seeds, pm=pm
+            )
+            if result.failed:
+                for game_dir, reason in result.failed:
+                    logger.error("  %s: %s", game_dir.name, reason)
+            return OrchestratorRunResult(
+                exit_code=0 if result.completed and not result.failed else 1
+            )
 
         logger.info("Finding available port starting from %d...", config.start_port)
         port_reservation = find_available_port(config.start_port)

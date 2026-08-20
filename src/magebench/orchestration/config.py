@@ -597,6 +597,13 @@ class Config:
     record: bool = False
     record_output: Path | None = None
     num_games: int = 1  # Number of parallel games on the same server
+    # Number of games played one after another on ONE server and ONE observer.
+    # Distinct from num_games, which is parallel: parallel games each need their
+    # own everything, sequential games share the 25s card load and the port.
+    # Mutually exclusive with num_games, because RandomUtil.random is a
+    # process-global static and concurrent games in one JVM would interleave
+    # their draws.
+    sequential_games: int = 0
     debug: bool = False  # Enable DEBUG-level logging
     skip_compile: bool = False  # Skip compilation (caller already compiled)
 
