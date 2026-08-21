@@ -109,7 +109,14 @@ public class ComputerPlayer6 extends ComputerPlayer {
         // overrun, and the search aborts at maxNodes long before depth 8 matters.
         // Every skill level therefore explored the same 5000-node tree. Skill 1
         // keeps the historical budget exactly, so it remains a valid control.
-        maxNodes = MAX_SIMULATED_NODES_PER_CALC * Math.max(1, skill);
+        // NODE BUDGET, overridable PER SKILL VALUE: -Dxmage.ai.nodes.1=250
+        // Keyed by the skill number rather than by join order, so it cannot be
+        // mis-assigned the way a JVM-wide comma list indexed by seat would be.
+        // Default keeps the scaled budget; a search budget is the only knob that
+        // actually changes how well this AI plays -- measured 45% -> 57% for the
+        // strong seat in mirrors when its budget stopped self-aborting.
+        maxNodes = Integer.getInteger("xmage.ai.nodes." + skill,
+                MAX_SIMULATED_NODES_PER_CALC * Math.max(1, skill));
         // THE ERROR GUARD HAS TO TRACK THE BUDGET, or scaling the budget does
         // nothing. MAX_SIMULATED_NODES_PER_ERROR is 5100 -- a debug tripwire for
         // runaway trees, per its own comment -- and it is a THROW, not a stop. A

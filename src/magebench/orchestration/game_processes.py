@@ -229,6 +229,10 @@ def start_gui_client(
     config_json = config.get_players_config_json()
 
     ai_skills = os.environ.get("MAGEBENCH_AI_SKILLS", "")
+    # Per-skill node budgets, e.g. MAGEBENCH_AI_NODES="1:250,8:5000". The search
+    # budget is the only knob that changes this AI's strength, so it is the knob a
+    # difficulty ladder has to set.
+    ai_nodes = os.environ.get("MAGEBENCH_AI_NODES", "")
 
     jvm_args = " ".join(
         [
@@ -238,6 +242,8 @@ def start_gui_client(
             f"-Dxmage.observer.gameDir={game_dir}",
             *prefs_isolation_args(game_dir),
             *([f"-Dxmage.ai.skills={ai_skills}"] if ai_skills else []),
+            *[f"-Dxmage.ai.nodes.{p.split(":")[0]}={p.split(":")[1]}"
+              for p in ai_nodes.split(",") if ":" in p],
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",
