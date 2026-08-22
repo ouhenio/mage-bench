@@ -242,8 +242,13 @@ def start_gui_client(
             f"-Dxmage.observer.gameDir={game_dir}",
             *prefs_isolation_args(game_dir),
             *([f"-Dxmage.ai.skills={ai_skills}"] if ai_skills else []),
-            *[f"-Dxmage.ai.nodes.{p.split(":")[0]}={p.split(":")[1]}"
-              for p in ai_nodes.split(",") if ":" in p],
+            # Single quotes inside the f-string ON PURPOSE. Nesting the same quote
+            # type is PEP 701 and needs Python 3.12; this project declares
+            # requires-python >=3.11, and uv resolves 3.11 here, so the double-quoted
+            # version made THIS module -- the one that launches games -- unimportable
+            # on a supported interpreter.
+            *[f"-Dxmage.ai.nodes.{pair.split(':')[0]}={pair.split(':')[1]}"
+              for pair in ai_nodes.split(",") if ":" in pair],
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",
