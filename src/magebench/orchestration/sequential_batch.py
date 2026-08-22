@@ -58,7 +58,11 @@ from pathlib import Path
 from magebench.common.log import get_logger
 from magebench.common.port import find_available_port, wait_for_port
 from magebench.common.process_manager import ProcessManager, jvm_oom_preexec_fn, kill_tree
-from magebench.orchestration.batch_coordination import _claim, claim_game_dir, claim_run_file
+from magebench.orchestration.batch_coordination import (
+    claim_game_dir,
+    claim_run_file,
+    claim_session_dir,
+)
 from magebench.orchestration.config import Config
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
@@ -265,7 +269,7 @@ def run_sequential_batch(
     # failing as "timed out", "Connection reset by peer", "Connection refused".
     #
     # Nothing crashed and every session reported itself alive throughout.
-    session_dir = _claim(log_dir, f"session_{config.timestamp}", "", directory=True)
+    session_dir = claim_session_dir(log_dir, config.timestamp)
     server_config_path = claim_run_file(session_dir, "server_config", ".xml")
     server_log = claim_run_file(session_dir, "server", ".log")
     modify_server_config(

@@ -94,6 +94,18 @@ def claim_game_dir(log_dir: Path, timestamp: str, suffix: str = "") -> Path:
     return _claim(log_dir, f"game_{timestamp}{suffix}", "", directory=True)
 
 
+def claim_session_dir(log_dir: Path, timestamp: str) -> Path:
+    """Claim a session's own directory, refusing to share one with another session.
+
+    Same defect as the game directory, one level up, and it survived the first
+    fix because nothing had ever launched two sessions at once. The session
+    directory holds health_port -- which is how a session finds ITS observer --
+    so sharing one means every observer writes the same file and each session
+    drives somebody else's. Measured: 8 sessions, 0 of 40 games completed.
+    """
+    return _claim(log_dir, f"session_{timestamp}", "", directory=True)
+
+
 def claim_run_file(log_dir: Path, stem: str, ext: str) -> Path:
     """Claim a batch-level file (server config, server log) the same way.
 
