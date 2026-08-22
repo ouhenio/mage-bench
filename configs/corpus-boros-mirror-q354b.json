@@ -1,0 +1,21 @@
+{
+  "_comment": "Qwen3.5-4B arm. Mirrors corpus-boros-mirror-q34b.json exactly except for the model: same deck, same seats, same prompt, same toolset, so the two are a clean model comparison. 3.5 was chosen 2026-08-17 for its 262,144-position context against Qwen3-4B's 40,960. NOTE the parser differs -- 3.5 emits qwen3_xml where the 3 family emits hermes; loop.sh:62 sets it and serve_policy.sh takes MTG_TOOL_PARSER. A wrong parser makes every call fail while games complete and look normal. UNMEASURED: 3.5 narrated at median 89 completion tokens vs the 8B's 20 pre-SFT, which made its rollout 1.9x slower. Measure completion tokens per decision before trusting a rollout budget.",
+  "skipPostGamePrompts": true,
+  "gameType": "Two Player Duel",
+  "deckType": "Constructed - Standard",
+  "matchTimeLimit": "MIN__60",
+  "players": [
+    {
+      "type": "pilot",
+      "name": "Q354Boros",
+      "preset": "q35-4b-local-strategy",
+      "provider": "local",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    },
+    {
+      "type": "cpu",
+      "name": "XMage AI",
+      "deck": "tmp/decks/Boros-Aggro.dck"
+    }
+  ]
+}

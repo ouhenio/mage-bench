@@ -385,6 +385,78 @@
       "status": "active",
       "system_prompt": "notalk-deckaware-brvampires",
       "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-azorius": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-azorius",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-brvampires": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-brvampires",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-deathsshadow": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-deathsshadow",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-devotionblack": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-devotionblack",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-gruulaggro": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-gruulaggro",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-kuldothared": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-kuldothared",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-reddeckwins": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-reddeckwins",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-selesnyaaggro": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-selesnyaaggro",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-deckaware-temperedsteel": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-deckaware-temperedsteel",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-strategy-literal": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy-literal",
+      "toolset": "notalk"
+    },
+    "q35-4b-local-strategy-reminders": {
+      "model": "Qwen/Qwen3.5-4B",
+      "status": "active",
+      "system_prompt": "notalk-strategy-reminders",
+      "toolset": "notalk"
     }
   }
 }
