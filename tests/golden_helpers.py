@@ -18,7 +18,6 @@ import io
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -49,7 +48,12 @@ from magebench.game.export_game import build_export
 from magebench.game.game_export_types import Decision, json_default
 from magebench.game.game_log import GameLogWriter
 from magebench.game.harness_epoch import HARNESS_EPOCH
-from magebench.orchestration.game_processes import MVN_REPO_ARGS
+from magebench.orchestration.observer_session import (
+    build_java_cmd,
+    compute_module_classpath,
+    read_health_port_file,  # noqa: F401 -- re-exported for conftest fixtures
+    wrap_with_xvfb,
+)
 from magebench.pilot.pilot import DEFAULT_MODEL, run_pilot_loop
 from magebench.pilot.pilot_bridge import mcp_tools_to_openai
 from magebench.pilot.prompts import load_prompts
@@ -306,143 +310,15 @@ MAIN_CLASS_BRIDGE = "mage.client.bridge.BridgeClient"
 MAIN_CLASS_SERVER = "mage.server.Main"
 
 # ---------------------------------------------------------------------------
-# Classpath computation (cached per module within a pytest session)
+# Classpath computation and JVM launch
+#
+# These now live in magebench.orchestration.observer_session, because production
+# needs them too: the keepAlive observer they launch is what lets one server JVM
+# host a whole batch instead of one game. Imported rather than duplicated so the
+# tests keep exercising the same code the orchestrator runs.
 # ---------------------------------------------------------------------------
 
-_classpath_cache: dict[str, str] = {}
-_reactor_module_cache: dict[Path, dict[str, Path]] = {}
-
-
-def _find_reactor_modules(project_root: Path) -> dict[str, Path]:
-    """Map artifactId -> target/classes Path for all reactor modules.
-
-    Walks the Maven reactor structure by following ``<module>`` declarations
-    in pom.xml files.  Only includes modules that have a compiled
-    ``target/classes`` directory.  Results are cached per *project_root*.
-    """
-    if project_root in _reactor_module_cache:
-        return _reactor_module_cache[project_root]
-
-    modules: dict[str, Path] = {}
-
-    def _scan(parent_dir: Path) -> None:
-        pom = parent_dir / "pom.xml"
-        if not pom.exists():
-            return
-        content = pom.read_text()
-
-        # Extract this module's artifactId (first <artifactId> after </parent>).
-        parent_end = content.find("</parent>")
-        search_text = content[parent_end:] if parent_end >= 0 else content
-        m = re.search(r"<artifactId>([^<]+)</artifactId>", search_text)
-        if m:
-            classes_dir = parent_dir / "target" / "classes"
-            if classes_dir.is_dir():
-                modules[m.group(1)] = classes_dir
-
-        # Recurse into child modules.
-        for child in re.findall(r"<module>([^<]+)</module>", content):
-            _scan(parent_dir / child)
-
-    _scan(project_root)
-    _reactor_module_cache[project_root] = modules
-    return modules
-
-
-def _replace_reactor_jars(dep_classpath: str, project_root: Path) -> str:
-    """Replace ``~/.m2/repository`` JARs for reactor modules with ``target/classes``.
-
-    Scans each colon-separated classpath entry for JARs under
-    ``org/mage/<artifactId>/`` and swaps them for the module's compiled
-    classes directory when available.
-    """
-    reactor = _find_reactor_modules(project_root)
-    if not reactor:
-        return dep_classpath
-
-    entries = dep_classpath.split(":")
-    resolved: list[str] = []
-    for entry in entries:
-        replaced = False
-        for artifact_id, classes_dir in reactor.items():
-            # Match ~/.m2/repository/org/mage/<artifactId>/<version>/<file>.jar
-            if entry.endswith(".jar") and f"/org/mage/{artifact_id}/" in entry:
-                resolved.append(str(classes_dir))
-                replaced = True
-                break
-        if not replaced:
-            resolved.append(entry)
-    return ":".join(resolved)
-
-
-def compute_module_classpath(project_root: Path, module: str) -> str:
-    """Compute the Java classpath for a Maven module, cached per session.
-
-    Runs ``mvn dependency:build-classpath`` on first call per module, then
-    returns the cached result on subsequent calls. The classpath includes
-    the module's own ``target/classes`` directory prepended to the dependency
-    classpath.  Reactor module JARs from ``~/.m2/repository`` are replaced
-    with their ``target/classes`` directories to avoid stale-JAR issues.
-    """
-    if module in _classpath_cache:
-        return _classpath_cache[module]
-    module_dir = project_root / module
-    cp_file = module_dir / "target" / "classpath.txt"
-    # Resolve from the repository the runtime loads from, not whichever one mvn
-    # defaults to. _replace_reactor_jars below already neutralises stale org.mage
-    # jars, but every THIRD-PARTY entry on this classpath would otherwise come from
-    # ~/.m2 while the game JVMs resolve from MAVEN_REPO_LOCAL. Conditional, matching
-    # game_processes.MVN_REPO_ARGS: unset, both sides agree on the default.
-    result = subprocess.run(
-        ["mvn", "-q", *MVN_REPO_ARGS, "dependency:build-classpath", f"-Dmdep.outputFile={cp_file}"],
-        cwd=module_dir,
-        capture_output=True,
-        text=True,
-        preexec_fn=jvm_oom_preexec_fn(),
-    )
-    assert result.returncode == 0, f"Failed to compute classpath for {module}: {result.stderr}"
-    dep_classpath = cp_file.read_text().strip()
-    dep_classpath = _replace_reactor_jars(dep_classpath, project_root)
-    classpath = f"{module_dir / 'target' / 'classes'}:{dep_classpath}"
-    _classpath_cache[module] = classpath
-    return classpath
-
-
-def _build_java_cmd(
-    classpath: str,
-    main_class: str,
-    system_props: dict[str, str],
-    *,
-    max_heap: str | None = None,
-    max_metaspace: str | None = None,
-) -> list[str]:
-    """Build a ``java -cp`` command with JVM flags and system properties."""
-    jvm_flags = ["--add-opens=java.base/java.io=ALL-UNNAMED"]
-    if max_heap is not None:
-        jvm_flags.append(f"-Xmx{max_heap}")
-    if max_metaspace is not None:
-        jvm_flags.append(f"-XX:MaxMetaspaceSize={max_metaspace}")
-    if sys.platform == "darwin":
-        jvm_flags.append("-Dapple.awt.UIElement=true")
-    cmd = ["java", *jvm_flags]
-    for k, v in system_props.items():
-        cmd.append(f"-D{k}={v}")
-    cmd.extend(["-cp", classpath, main_class])
-    return cmd
-
-
-def wrap_with_xvfb(cmd: list[str]) -> list[str]:
-    """Run golden-test JVMs on isolated virtual displays on Linux."""
-    if sys.platform != "linux":
-        return cmd
-
-    xvfb = shutil.which("xvfb-run")
-    assert xvfb is not None, (
-        "Golden tests require xvfb-run on Linux so bridge and observer JVMs can use "
-        "isolated displays. Install xvfb for your distribution "
-        "(e.g. apt-get install xvfb or dnf install xorg-x11-server-Xvfb)."
-    )
-    return [xvfb, "--auto-servernum", "--server-args=-screen 0 1920x1080x24", *cmd]
+_build_java_cmd = build_java_cmd
 
 
 # ---------------------------------------------------------------------------
@@ -1203,23 +1079,6 @@ def _run_opponent_autopass(bridge: BridgeSession) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
-
-def read_health_port_file(path: Path, timeout: float = 30.0) -> int:
-    """Poll for a health port file written by the Java observer and return the port.
-
-    The file is written atomically (rename) by the observer after successfully
-    binding the health HTTP server.
-    """
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        try:
-            text = path.read_text().strip()
-            if text:
-                return int(text)
-        except FileNotFoundError:
-            pass
-        time.sleep(0.1)
-    raise RuntimeError(f"Health port file {path} was not written within {timeout}s")
 
 
 def _wait_for_health(port: int, timeout: int = 120) -> None:

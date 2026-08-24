@@ -11,6 +11,8 @@ import pytest
 
 from magebench.orchestration.batch_coordination import (
     GameSession,
+    claim_game_dir,
+    claim_run_file,
     finalize_game,
     setup_game,
     wait_for_all_games,
@@ -1049,3 +1051,73 @@ def test_observer_requires_a_game_dir():
     hangs on a game_end that never arrives, rather than failing."""
     with pytest.raises(AssertionError, match="game_dir is required"):
         start_observer_client(MagicMock(), Path("/fake/root"), Config(), Path("/tmp/test.log"))
+
+
+class TestTwoRunsNeverShareALogDirectory:
+    """A game directory is claimed, not derived, so a same-second run cannot share it.
+
+    The bug this replaces was silent by construction. `game_<timestamp>` is
+    unique only to the second and was created with mkdir(exist_ok=True), so two
+    orchestrators starting in the same second wrote one directory between them
+    and clobbered each other's server_game_events.jsonl. Three verification runs
+    were lost to it before anyone noticed: 18 parallel runs produced 2
+    directories, so every "the arms are identical" verdict was a file compared
+    against itself.
+
+    These tests pin BOTH halves. Uniqueness alone is satisfiable by slapping a
+    pid or a uuid on every name -- which would also reshape every game_id in the
+    corpus, since game_dir.name is the game_id downstream. So the legacy-name
+    test is not decoration: it is the constraint that rules that fix out.
+    """
+
+    def test_same_timestamp_twice_gives_two_directories(self, tmp_path: Path):
+        first = claim_game_dir(tmp_path, "20260819_162907")
+        second = claim_game_dir(tmp_path, "20260819_162907")
+
+        assert first != second
+        assert first.is_dir() and second.is_dir()
+
+    def test_an_uncontended_name_is_unchanged(self, tmp_path: Path):
+        claimed = claim_game_dir(tmp_path, "20260819_162907")
+
+        # Byte-identical to what the old code produced. game_dir.name is the
+        # game_id in exports, brackets and uploads -- a suffix here would rename
+        # every game ever produced to fix a parallel-only defect.
+        assert claimed.name == "game_20260819_162907"
+
+    def test_batch_suffix_is_preserved(self, tmp_path: Path):
+        claimed = claim_game_dir(tmp_path, "20260819_162907", "_g3")
+
+        assert claimed.name == "game_20260819_162907_g3"
+
+    def test_a_crowd_of_claimants_gets_a_directory_each(self, tmp_path: Path):
+        # 18 is the real number: the run that exposed this launched 18 games and
+        # got 2 directories.
+        claimed = [claim_game_dir(tmp_path, "20260819_162907") for _ in range(18)]
+
+        assert len(set(claimed)) == 18
+        assert all(path.is_dir() for path in claimed)
+
+    def test_concurrent_claimants_get_a_directory_each(self, tmp_path: Path):
+        # The sequential test above cannot fail for a mkdir(exist_ok=True)
+        # implementation that merely appends a counter; only genuine contention
+        # distinguishes an atomic claim from a check-then-create race.
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=18) as pool:
+            claimed = list(
+                pool.map(lambda _: claim_game_dir(tmp_path, "20260819_162907"), range(18))
+            )
+
+        assert len(set(claimed)) == 18
+
+    def test_batch_server_files_do_not_collide_either(self, tmp_path: Path):
+        # Second surface, never hit because nobody had run the batch path in
+        # parallel: two same-second batches would share one server config and
+        # interleave one server log.
+        first = claim_run_file(tmp_path, "server_20260819_162907", ".log")
+        second = claim_run_file(tmp_path, "server_20260819_162907", ".log")
+
+        assert first != second
+        assert first.name == "server_20260819_162907.log"
+        assert second.suffix == ".log", "the extension must survive disambiguation"

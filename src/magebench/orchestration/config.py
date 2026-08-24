@@ -111,6 +111,14 @@ class CpuPlayer:
     deck: str | None = None  # Path to .dck file, relative to project root
     deck_name: str | None = None
     deck_strategy: str | None = None
+    # AI strength, per player. ComputerPlayer6 derives maxDepth from it and
+    # maxThinkTimeSecs = skill * 3, so it is the only knob that makes the bot
+    # search harder. None falls back to -Dxmage.ai.skills, then to 1.
+    #
+    # Per player rather than per JVM because a server that hosts a sequence of
+    # games would otherwise give every game in the sequence the same skills --
+    # the same defect the seed had, in the same place.
+    skill: int | None = None
 
 
 # Union type for all player types
@@ -589,6 +597,13 @@ class Config:
     record: bool = False
     record_output: Path | None = None
     num_games: int = 1  # Number of parallel games on the same server
+    # Number of games played one after another on ONE server and ONE observer.
+    # Distinct from num_games, which is parallel: parallel games each need their
+    # own everything, sequential games share the 25s card load and the port.
+    # Mutually exclusive with num_games, because RandomUtil.random is a
+    # process-global static and concurrent games in one JVM would interleave
+    # their draws.
+    sequential_games: int = 0
     debug: bool = False  # Enable DEBUG-level logging
     skip_compile: bool = False  # Skip compilation (caller already compiled)
 
@@ -717,7 +732,7 @@ class Config:
                 elif player_type == "replay":
                     self.replay_players.append(ReplayPlayer(name=name, deck=deck, script=player.get("script")))
                 elif player_type == "cpu":
-                    self.cpu_players.append(CpuPlayer(name=name, deck=deck))
+                    self.cpu_players.append(CpuPlayer(name=name, deck=deck, skill=player.get("skill")))
                 else:
                     raise AssertionError(f"Unknown player type {player_type!r}")
 
@@ -789,6 +804,8 @@ class Config:
             d = {"type": "cpu", "name": p.name}
             if p.deck:
                 d["deck"] = p.deck
+            if p.skill is not None:
+                d["skill"] = p.skill
             players.append(d)
         if not players:
             return ""
