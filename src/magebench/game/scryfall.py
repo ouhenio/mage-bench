@@ -327,8 +327,23 @@ def resolve_cards(
     for i in range(0, len(name_list), 75):
         batch = name_list[i : i + 75]
         found, not_found = collection(batch)
+        # Key results by the QUERY name, not the card's full name. Scryfall
+        # resolves a front-face query ("Malakir Rebirth") to the full card
+        # ("Malakir Rebirth // Malakir Mire"); filing the result under the full
+        # name meant the caller's join-by-query-name reported it missing and
+        # dropped it. Measured 2026-08-24: every multi-face card in all 81
+        # imported decks (and therefore the whole training corpus) was lost this
+        # way -- found, filed under a name nobody asked for, deleted.
+        batch_set = set(batch)
         for card in found:
-            resolved[card["name"]] = (card["set"].upper(), card["collector_number"])
+            full = card["name"]
+            query = full if full in batch_set else full.split(" // ")[0]
+            if query not in batch_set:
+                # Neither the full name nor the front face was asked for --
+                # refuse to guess; the fallback pass below still sees the name.
+                print(f"  WARNING: collection returned unrequested card: {full}")
+                continue
+            resolved[query] = (card["set"].upper(), card["collector_number"])
         for nf in not_found:
             print(f"  WARNING: not found in collection: {nf['name']}")
 
