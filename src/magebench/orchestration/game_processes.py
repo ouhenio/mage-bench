@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from magebench.common.llm_cost import DEFAULT_LLM_PROVIDER, required_api_key_env
+from magebench.common.env import env_flag_dir, env_or_none
 from magebench.common.log import get_logger
 from magebench.common.process_manager import ProcessManager
 from magebench.orchestration.config import Config, PilotPlayer
@@ -134,15 +135,17 @@ def start_server(
     # JVM -- not in the Swing client. System properties do not travel over the
     # wire, so this has to be set on the server process. (AI skill is different:
     # the client reads it and passes it through joinTable as a parameter.)
-    ai_record_dir = os.environ.get("MAGEBENCH_AI_RECORD_DIR", "")
+    ai_record_dir = env_flag_dir(
+        "MAGEBENCH_AI_RECORD_DIR", needed_by="AiDecisionRecorder"
+    )
     # AiHintProvider runs in the same place and for the same reason: it hooks
     # HumanPlayer, which lives in the server JVM. Naming the seats rather than a
     # boolean keeps the cost on the one seat being labelled -- each hint is a full
     # AI search, so hinting every seat would double the engine work per game.
-    hint_seats = os.environ.get("MAGEBENCH_HINT_SEATS", "")
-    hint_dir = os.environ.get("MAGEBENCH_HINT_DIR", "")
-    hint_skill = os.environ.get("MAGEBENCH_HINT_SKILL", "")
-    game_seed = os.environ.get("MAGEBENCH_GAME_SEED", "")
+    hint_seats = env_or_none("MAGEBENCH_HINT_SEATS")
+    hint_dir = env_flag_dir("MAGEBENCH_HINT_DIR", needed_by="AiHintProvider")
+    hint_skill = env_or_none("MAGEBENCH_HINT_SKILL")
+    game_seed = env_or_none("MAGEBENCH_GAME_SEED")
     assert not hint_seats or hint_dir, (
         "MAGEBENCH_HINT_SEATS is set but MAGEBENCH_HINT_DIR is not -- hints would go to "
         "the server log instead of a file, which no consumer reads"
@@ -228,11 +231,11 @@ def start_gui_client(
     assert game_dir is not None, "game_dir is required to record server game events"
     config_json = config.get_players_config_json()
 
-    ai_skills = os.environ.get("MAGEBENCH_AI_SKILLS", "")
+    ai_skills = env_or_none("MAGEBENCH_AI_SKILLS")
     # Per-skill node budgets, e.g. MAGEBENCH_AI_NODES="1:250,8:5000". The search
     # budget is the only knob that changes this AI's strength, so it is the knob a
     # difficulty ladder has to set.
-    ai_nodes = os.environ.get("MAGEBENCH_AI_NODES", "")
+    ai_nodes = env_or_none("MAGEBENCH_AI_NODES")
 
     jvm_args = " ".join(
         [
@@ -248,7 +251,7 @@ def start_gui_client(
             # version made THIS module -- the one that launches games -- unimportable
             # on a supported interpreter.
             *[f"-Dxmage.ai.nodes.{pair.split(':')[0]}={pair.split(':')[1]}"
-              for pair in ai_nodes.split(",") if ":" in pair],
+              for pair in (ai_nodes.split(",") if ai_nodes else []) if ":" in pair],
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",

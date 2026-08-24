@@ -52,6 +52,7 @@ from magebench.pilot.pilot_rendering import (
     CONTEXT_RECENT_COUNT,
     MAX_TOKENS,
     RENDER_INTERVAL,
+    prompt_char_count,
     _fetch_state_summary,
     _find_cache_breakpoint_idx,
     _with_cache_control,
@@ -805,7 +806,7 @@ async def run_pilot_loop(
             # characters, which is deck-dependent and was wrong by 18% on Azorius.
             if response.usage and response.usage.prompt_tokens:
                 state.last_prompt_tokens = response.usage.prompt_tokens
-                state.last_prompt_chars = sum(len(str(m.get("content") or "")) for m in messages)
+                state.last_prompt_chars = prompt_char_count(messages)
 
             call_cost = 0.0
             if response.usage and model_price is not None:

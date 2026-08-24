@@ -119,6 +119,30 @@ def land_drop_reminder(choices: list, phase: str | None = None) -> list[str]:
     return []
 
 
+
+def prompt_char_count(messages: list[dict]) -> int:
+    """Characters of message CONTENT, counting only messages that have content.
+
+    A message with no content is not a blank message: an assistant turn that is
+    purely a tool call legitimately carries content=None, and 13 of 15 such turns
+    in the measured traces do. `str(m.get("content") or "")` folded that into "",
+    which is the same silent default the no-fallback rule exists to prevent -- it
+    reads as "this message contributed nothing" when the truth is "this message
+    has no content field at all", and the two want different handling the day
+    someone counts messages rather than characters.
+
+    Absent content contributes zero characters, which happens to be the same
+    number. Stating it explicitly is the difference between a decision and a
+    coincidence.
+    """
+    total = 0
+    for message in messages:
+        content = message.get("content")
+        if content is None:
+            continue
+        total += len(str(content))
+    return total
+
 def render_for_pilot(
     result_text: str,
     last_board: list[dict] | None,
@@ -433,7 +457,7 @@ def render_context(
             "the serving engine's max_model_len -- `curl -s $BASE_URL/models` reports it as "
             "max_model_len. Do not guess: a guard above the real ceiling never fires."
         )
-        chars = sum(len(str(m.get("content") or "")) for m in messages)
+        chars = prompt_char_count(messages)
 
         # MEASURE THE DELTA, DO NOT ESTIMATE THE WHOLE PROMPT.
         #

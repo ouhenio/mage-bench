@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shlex
 import subprocess
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+from magebench.common.env import env_or_none
 from magebench.common.log import get_logger
 from magebench.game.game_log import read_decklist
 from magebench.game.harness_epoch import HARNESS_EPOCH
@@ -170,8 +170,8 @@ def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
     # artefacts, not trusted because an env var was set once.
     for key, env in (("seed", "MAGEBENCH_GAME_SEED"), ("temperature", "MAGEBENCH_TEMPERATURE"),
                      ("arm", "MAGEBENCH_ARM")):
-        raw = os.environ.get(env, "")
-        if raw:
+        raw = env_or_none(env)
+        if raw is not None:
             meta[key] = int(raw) if key == "seed" else float(raw) if key == "temperature" else raw
 
     (game_dir / "game_meta.json").write_text(json.dumps(meta, indent=2) + "\n")

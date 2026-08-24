@@ -12,7 +12,6 @@ each needs an A/B against the screen seeds first. A test that only checked the c
 output would let a flipped default ship silently.
 """
 
-import os
 
 import pytest
 
