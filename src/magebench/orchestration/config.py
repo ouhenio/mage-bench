@@ -1,6 +1,7 @@
 """Configuration for the puppeteer."""
 
 import json
+import os
 import random
 import re
 import sys
@@ -532,7 +533,17 @@ class Config:
     password: str = ""
     server_wait: int = 240
     bridge_delay: int = 5
-    log_dir: Path = field(default_factory=lambda: Path.home() / ".mage-bench" / "logs")
+    # MAGEBENCH_LOG_DIR redirects the whole log namespace for one invocation.
+    # The default is SHARED across every process on the box, and game dirs are
+    # named game_<second-resolution timestamp>: concurrent single-game launches
+    # that start the same second collide into one dir, silently (mkdir
+    # exist_ok=True). Measured 2026-08-23: 429 launches -> 97 dirs. A driver
+    # running parallel games must point each launch at its own directory.
+    log_dir: Path = field(
+        default_factory=lambda: Path(
+            os.environ.get("MAGEBENCH_LOG_DIR", str(Path.home() / ".mage-bench" / "logs"))
+        )
+    )
     jvm_opens: str = "--add-opens=java.base/java.io=ALL-UNNAMED"
     # Enable XRender pipeline for Java 2D — GPU-accelerated rendering on Linux
     jvm_rendering: str = "-Dsun.java2d.xrender=true"
