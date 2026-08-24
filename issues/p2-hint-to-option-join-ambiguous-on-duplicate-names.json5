@@ -1,0 +1,41 @@
+{
+  "title": "Hint-to-option join is ambiguous on 15% of decisions when two options share a name",
+  "description": "A teacher hint names engine objects by uuid; the pilot prompt \
+offers options by short id and card NAME. AiHintProvider.source_aliases closes most of \
+that gap by emitting the short id on the hint side, and the shim's identity mapper \
+resolves alias->option exactly. But when two OFFERED options share a display name the \
+alias cannot pick between them, and the mapper deliberately REFUSES rather than guess -- \
+it returns refused:alias_ambiguous, because guessing selects the wrong game object and a \
+wrong object is worse than a missing label. Measured 2026-08-24 over 120 games of the \
+4,624-game AI-vs-AI corpus, 11,093 decisions offering two or more named options: 1,666 \
+(15.0%) offer two options sharing a name. The commonest are ordinary Magic rather than \
+edge cases -- 'Mountain: Play Mountain' 185, 'Mountain' 98, 'Swamp: Play Swamp' 79, \
+duplicate copies of a spell such as Thoughtseize 64. So on the pilot/GRPO hint path \
+roughly one decision in seven cannot be joined exactly, and the shortfall in the measured \
+88.4% hint resolve rate lives in that population. AN OPTION-SIDE FIX EXISTS AND IS NOT \
+LANDED: branch parked/uuid-in-option-entries (b7a1a0d6), 7 lines, additive, two call sites \
+in Mage.Client.Bridge/.../processor/BridgePublishedQueryBuilder.java putting the engine \
+uuid on choice and attacker entries. Diff it as 'git diff b7a1a0d6^ b7a1a0d6' -- a \
+three-dot diff against master shows 452 insertions across 5 files because the branch sits \
+on an old teacher-skill commit, which is misleading. It is unlanded because it touches the \
+pilot prompt builder. VERIFIED: golden exports contain choice entries carrying id (318 \
+occurrences in tests/golden/exports/ancient_stirrings_short_id.json5, 0 uuid), so adding \
+the field regenerates the export goldens. NOT VERIFIED: whether the rendered prompt itself \
+changes -- the branch comment says the field is stripped before rendering, and nothing in \
+pilot_rendering.py references uuid by name, so that claim is untested. Check prompt \
+goldens separately from export goldens, because only one of the two is established. The \
+branch was recovered from a stash in the wt-engine worktree whose owning session no longer \
+exists; it is one cherry-pick away and easy to sweep by branch name without reading the \
+diff.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "teacher-hints",
+    "pilot-prompt",
+    "silent-failure",
+    "measured",
+  ],
+  "created_at": "2026-08-24T22:05:00.000-04:00",
+  "updated_at": "2026-08-24T22:05:00.000-04:00",
+}

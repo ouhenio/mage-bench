@@ -20,7 +20,22 @@ collision fails loudly instead of interleaving. Related: the timestamp is \
 rendered in ZoneInfo(America/Los_Angeles) regardless of host timezone, so on \
 this UTC-4 host every dir name is 3h behind wall clock -- any provenance \
 reasoning from the name is wrong by 3h, which misdirected one debugging \
-session already.",
+session already. UPDATE 2026-08-24: the COLLISION half is fixed and in master \
+(54cd92c3). Game directories are now claimed atomically -- mkdir WITHOUT exist_ok, \
+which is atomic on POSIX, so exactly one process can win a name and a loser takes \
+game_<ts>-1, -2 rather than sharing. The name is byte-identical when uncontended, \
+deliberately: game_dir.name IS the game_id in exports, tournament brackets and uploads, \
+so a pid or uuid suffix would reshape every id ever produced to fix a parallel-only \
+case. The session directory and the batch-level server_config/server.log were claimed \
+the same way. Observed working under real contention: 8 concurrent sessions launched in \
+one second produced _s1, _s1-1 .. _s1-8, and an earlier 8-way run showed 11 of 17 games \
+colliding on the second-granularity name and each getting its own directory. Negative \
+control: reverting to exist_ok=True fails 4 of the 6 tests in \
+TestTwoRunsNeverShareALogDirectory. NOT fixed by that work: the ZoneInfo timezone skew \
+described above, which is why this issue stays open. A launch stagger is also still \
+load-bearing for anyone on the old path -- rollout_games.sh:185 sleep 3 is commented as \
+a port-scan stagger and was, silently, the only thing preventing this collision for that \
+driver.",
   "status": "open",
   "priority": 1,
   "type": "bug",
@@ -30,5 +45,5 @@ session already.",
     "silent-failure",
   ],
   "created_at": "2026-08-23T23:10:00.000-04:00",
-  "updated_at": "2026-08-23T23:10:00.000-04:00",
+  "updated_at": "2026-08-24T22:05:00.000-04:00",
 }
