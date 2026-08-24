@@ -10,6 +10,7 @@ their API guidelines (https://scryfall.com/docs/api):
 import json
 import os
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 from pathlib import Path
@@ -293,6 +294,22 @@ def get_oracle_texts(names: list[str]) -> dict[str, dict]:
     return result
 
 
+def _fold(name: str) -> str:
+    """Accent- and case-insensitive key for joining card names.
+
+    Deck files and registries carry ASCII spellings ("Seance", "Jotun Grunt")
+    where Scryfall's canonical name is accented ("Séance", "Jötun Grunt"). NFKD
+    splits each accented character into base + combining mark; dropping the
+    marks (category Mn) leaves the base letters. Casefold on top, because the
+    same sources disagree about capitalisation after an apostrophe.
+
+    Used ONLY to recover a query name we already sent -- never to accept a card
+    nobody asked for. The unrequested-card refusal above still stands.
+    """
+    stripped = "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+    return stripped.casefold()
+
+
 def resolve_cards(
     names: list[str],
     pre_resolved: dict[str, tuple[str, str]] | None = None,
@@ -335,9 +352,18 @@ def resolve_cards(
         # imported decks (and therefore the whole training corpus) was lost this
         # way -- found, filed under a name nobody asked for, deleted.
         batch_set = set(batch)
+        # Accent-folded index onto the QUERY names. Deck files carry unaccented
+        # names ("Seance") where Scryfall's canonical name is accented
+        # ("Séance"), so an exact join drops the card even though Scryfall found
+        # it. Same class as the multi-face mismatch above -- found, unmatchable,
+        # deleted -- and it costs an extra round trip through step 3 at best.
+        folded = {_fold(n): n for n in batch}
         for card in found:
             full = card["name"]
             query = full if full in batch_set else full.split(" // ")[0]
+            if query not in batch_set:
+                # Fold before giving up: try the full name, then the front face.
+                query = folded.get(_fold(full)) or folded.get(_fold(full.split(" // ")[0]), query)
             if query not in batch_set:
                 # Neither the full name nor the front face was asked for --
                 # refuse to guess; the fallback pass below still sees the name.
