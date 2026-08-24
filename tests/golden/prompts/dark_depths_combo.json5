@@ -122,7 +122,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
@@ -149,7 +149,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -176,7 +176,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -205,7 +205,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 bf=[Dark Depths (ice=10)] | Opponent: 20hp hand=7 lib=53\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -232,7 +232,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=52 bf=[Dark Depths (ice=10)] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -263,7 +263,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -292,7 +292,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -323,7 +323,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 8, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
@@ -351,7 +351,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
@@ -381,7 +381,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Black Lotus]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
@@ -410,7 +410,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -440,7 +440,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 12, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Thespian's Stage\n\
@@ -468,7 +468,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Thespian's Stage\n\
@@ -498,7 +498,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 14, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
@@ -527,7 +527,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 15, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
@@ -558,7 +558,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 16, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability. -> Dark Depths (yours)]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
@@ -587,7 +587,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 17, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Dark Depths (tapped, copy of Thespian's Stage)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Select a Dark Depths to keep (Legendary Rule)?\n\
@@ -617,7 +617,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 18, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (tapped, copy of Thespian's Stage)] gy=[Black Lotus, Dark Depths] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Dark Depths - When Dark Depths has no ice counters on it, sacrifice it. If you do, create Marit Lage, a legendary 20/20 black Avatar creature token with flying and indestructible.]\n\
   Land drops remaining: 0\n\
@@ -651,7 +651,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
 \n\
 ## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 19, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -682,7 +682,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+[Decision 20, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
   Combat Phase: attackers\n\
   Message: Select attackers\n\
@@ -712,7 +712,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+[Decision 21, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (tapped, token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
   Combat: Marit Lage -> Opponent\n\
   Message: Play instants and activated abilities\n\

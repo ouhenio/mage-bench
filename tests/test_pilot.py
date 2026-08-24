@@ -1671,3 +1671,70 @@ class TestHarnessPassAdvancesTheDecisionSeq:
             st, None, set(), logger=logging.getLogger("t"),
         )
         assert st.last_decision_seq == 23, "a seq-less result must not overwrite or zero the stamp"
+
+
+class TestTheDecisionHeaderCountsDecisions:
+    """`[Decision N]` must move. It was a literal 0 on every decision of every game.
+
+    Measured before the fix: 29,906 of 29,906 decisions across 400 rollouts rendered
+    as "[Decision 0, snapshot=0]". The header exists to tell the model where it is in
+    the game, and any analysis asking "how far back was this card revealed" was
+    reading a position field with no position in it.
+    """
+
+    def test_the_index_reaches_the_header(self):
+        from magebench.pilot.pilot_rendering import render_for_pilot
+
+        result = json.dumps({
+            "action_pending": True,
+            "context": "T4 Combat Damage (Alice)",
+            "choices": [{"id": "p1", "text": "Mountain"}],
+            "message": "Choose",
+        })
+
+        first, _ = render_for_pilot(result, None, set(), 0)
+        fortieth, _ = render_for_pilot(result, None, set(), 39)
+
+        assert "[Decision 0," in first
+        assert "[Decision 39," in fortieth
+
+    def test_a_non_decision_result_is_returned_untouched(self):
+        from magebench.pilot.pilot_rendering import render_for_pilot
+
+        # No action_pending: a state query between two decisions. It must not render
+        # a header, which is also why it must not consume an index.
+        result = json.dumps({"board": []})
+
+        text, _ = render_for_pilot(result, None, set(), 7)
+
+        assert text == result
+
+    def test_only_decisions_advance_the_counter(self):
+        from magebench.pilot.pilot import _carries_a_decision
+
+        assert _carries_a_decision(json.dumps({"action_pending": True})) is True
+        assert _carries_a_decision(json.dumps({"board": []})) is False
+        assert _carries_a_decision(json.dumps({"action_pending": False})) is False
+        assert _carries_a_decision("not json at all") is False
+
+
+class TestPromptsLoadFromTheModuleNotTheWorkingDirectory:
+    """load_prompts must not depend on where the process happens to be running.
+
+    `Path("puppeteer") / "prompts"` is relative to the CWD, so the defaults were
+    found only when something ran from inside the harness checkout. From the mtg
+    trunk, a pipeline, or a notebook the directory silently did not exist,
+    load_prompts returned {} for the defaults, and the caller died later on a bare
+    KeyError: 'default' with nothing in the traceback naming a path.
+    """
+
+    def test_defaults_load_from_an_unrelated_working_directory(self, tmp_path, monkeypatch):
+        from magebench.pilot.prompts import load_prompts
+
+        monkeypatch.chdir(tmp_path)
+
+        prompts = load_prompts(None)
+
+        assert "default" in prompts, (
+            "the repo's own puppeteer/prompts must be found regardless of CWD"
+        )

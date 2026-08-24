@@ -1,0 +1,29 @@
+{
+  "title": "load_prompts resolves puppeteer/prompts against the CWD, so it only works inside the harness dir",
+  "description": "prompts.py built its default search paths as `Path(\"puppeteer\") / \
+\"prompts\"` and `Path(\"puppeteer\") / name`, both relative to the process's working \
+directory rather than to the module. Running from inside the harness checkout found \
+them; running from anywhere else -- the mtg trunk, a pipeline, a notebook -- found \
+nothing. The failure is silent at the point of the mistake: the directory simply does \
+not exist, is_dir() is False, load_prompts returns {} for the defaults, and the caller \
+dies later on a bare `KeyError: 'default'` with nothing in the traceback naming a path \
+or a working directory. Reported by karn-research hitting it from the mtg trunk via \
+pipelines/synth/render_conversations.py, which carries a comment and an assert about \
+the behaviour rather than a fix -- so the workaround was already documented in a \
+caller, which is where a workaround goes to be copied rather than removed. FIXED on \
+branch fix/decision-index: _REPO_PUPPETEER is derived from __file__ \
+(src/magebench/pilot/prompts.py -> parents[3]), so both default search paths are \
+absolute and CWD-independent. Verified by loading from /tmp: 15 prompts, 'default' \
+present, where before the fix the same call returned {}. Negative control: restoring \
+the relative path fails the new test, which chdirs to a tmp dir before calling.",
+  "status": "closed",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "pilot-prompt",
+    "silent-failure",
+    "portability",
+  ],
+  "created_at": "2026-08-24T23:30:00.000-04:00",
+  "updated_at": "2026-08-24T23:30:00.000-04:00",
+}

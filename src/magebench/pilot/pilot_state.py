@@ -64,6 +64,16 @@ class PilotLoopState:
     # one decision can take several LLM turns (measured: 153 rows over 115 distinct
     # seqs in one game, seq=19 repeated 20 times).
     last_decision_seq: int | None = None
+
+    # How many DECISIONS this pilot has been shown, which is what the rendered
+    # header's "[Decision N]" is supposed to say. Counted here rather than derived
+    # in the renderer because the renderer sees one tool result at a time and has
+    # no memory; it was passing a literal 0 for want of anywhere to keep this.
+    #
+    # Incremented only for results that actually carry a decision (action_pending),
+    # so N indexes decisions rather than tool calls -- a state query between two
+    # decisions must not advance it, or the number stops meaning position.
+    decisions_seen: int = 0
     board_tracker: BoardCursorTracker = field(default_factory=BoardCursorTracker)
     last_board: list[dict] | None = None
     current_game_turn: int = 0

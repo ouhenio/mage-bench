@@ -331,6 +331,19 @@ def _maybe_extract_result_dict(result_text: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _carries_a_decision(result_text: str) -> bool:
+    """True if this tool result is a decision put to the policy.
+
+    `action_pending` is the same field render_for_pilot gates its header on, so
+    the counter advances exactly when a "[Decision N]" line is emitted.
+    """
+    try:
+        data = json.loads(result_text)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return isinstance(data, dict) and bool(data.get("action_pending"))
+
+
 def _chat_prompts_enabled() -> bool:
     """Whether to nag the pilot to chat with its opponent.
 
@@ -545,7 +558,16 @@ async def _process_tool_calls(
             # the zero is a real negative, not a broken check. Closing it by construction
             # costs nothing.)
             record_decision_seq(state, result_text)
-            display_text, state.last_board = render_for_pilot(result_text, state.last_board, state.seen_oracle_cards)
+            display_text, state.last_board = render_for_pilot(
+                result_text, state.last_board, state.seen_oracle_cards, state.decisions_seen
+            )
+            # Advance only when this result WAS a decision. Asked of the DATA, not
+            # inferred from "the rendered text differs from the input" -- that proxy
+            # is true today only because the renderer happens to return its input
+            # unchanged in exactly the two non-decision cases, and it would go quietly
+            # wrong the day the renderer decorates anything else.
+            if _carries_a_decision(result_text):
+                state.decisions_seen += 1
             turns_since_chat = state.current_game_turn - state.last_chat_turn
             chat_budget_left = turn_state.chat_messages_this_turn < MAX_CHAT_MESSAGES_PER_TURN
             if _chat_prompts_enabled() and turns_since_chat >= 2 and display_text != result_text and chat_budget_left:

@@ -117,7 +117,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
@@ -144,7 +144,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
@@ -169,7 +169,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=52 | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -198,7 +198,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 4, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=52 bf=[Plains] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -227,7 +227,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 5, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped)] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
   Stack: [Savannah Lions]\n\
   Land drops remaining: 0\n\
@@ -254,7 +254,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
   Combat: Savannah Lions -> TestPlayer\n\
   Combat Phase: blockers\n\
@@ -286,7 +286,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
   Combat: Savannah Lions blocked by Savannah Lions -> TestPlayer\n\
   Message: Select blockers\n\
@@ -316,7 +316,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+[Decision 8, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
   Combat: Savannah Lions blocked by Savannah Lions -> TestPlayer\n\
   Message: Play instants and activated abilities\n\
@@ -346,7 +346,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped)] gy=[Savannah Lions] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains] gy=[Savannah Lions]\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
