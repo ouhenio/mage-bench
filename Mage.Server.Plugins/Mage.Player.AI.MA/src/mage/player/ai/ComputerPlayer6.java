@@ -20,6 +20,7 @@ import mage.counters.CounterType;
 import mage.filter.StaticFilters;
 import mage.game.Game;
 import mage.game.combat.Combat;
+import mage.game.combat.CombatGroup;
 import mage.game.events.GameEvent;
 import mage.game.permanent.Permanent;
 import mage.game.stack.StackAbility;
@@ -1029,6 +1030,33 @@ public class ComputerPlayer6 extends ComputerPlayer {
 
             CombatUtil.sortByPower(attackers, false); // most powerfull go to first
 
+            // Legal blockers BEFORE the assignment; afterwards the combat is built and
+            // the untaken alternatives are gone -- the reason the comment at
+            // selectAttackers gives, and it applies here identically.
+            //
+            // This deliberately does NOT go through getPlayable(): declaring blockers is
+            // not an activated ability, so getPlayable() does not enumerate it and a
+            // producer built on it records an EMPTY option list. SCHEMA.md predicts 38%
+            // of Declare Blockers steps; that figure was never measurable here because
+            // no blocking row existed, but the same reasoning applied to attackers is
+            // why THAT hook enumerates canAttack instead -- 0 empty over 32,132 rows,
+            // against SCHEMA's 36% prediction for a getPlayable() producer. Combat
+            // records with no options are invalid and teach that combat has one
+            // choice. `possibleBlockers` is already
+            // filtered to creatures that can block something (filterOutNonblocking) and
+            // `attackers` to ones that can be blocked (filterOutUnblockable), so it is
+            // the real option set.
+            boolean recBlk = AiDecisionRecorder.isEnabled()
+                    && AiDecisionRecorder.hookEnabled("declare_blockers");
+            List<String> blkIds = new ArrayList<>();
+            List<String> blkTexts = new ArrayList<>();
+            if (recBlk) {
+                for (Permanent b : possibleBlockers) {
+                    blkIds.add(b.getId().toString());
+                    blkTexts.add(b.getName());
+                }
+            }
+
             CombatInfo combatInfo = CombatUtil.blockWithGoodTrade2(game, attackers, possibleBlockers);
             Player player = game.getPlayer(playerId);
 
@@ -1046,6 +1074,63 @@ public class ComputerPlayer6 extends ComputerPlayer {
             }
             if (blocked) {
                 game.getPlayers().resetPassed();
+            }
+
+            if (recBlk) {
+                // Read the combat that was actually BUILT, not combatInfo's intent.
+                // declareBlocker can refuse an assignment (see the multi-blocker TODO
+                // above), and a record of a block the engine rejected would be a label
+                // the game never contained. Same rule as selectAttackers, which reads
+                // game.getCombat() rather than its own candidate list.
+                StringBuilder picked = new StringBuilder();
+                StringBuilder pickedIds = new StringBuilder();
+                Combat built = game.getCombat();
+                if (built != null) {
+                    for (CombatGroup g : built.getGroups()) {
+                        for (UUID blockerId : g.getBlockers()) {
+                            Permanent b = game.getPermanent(blockerId);
+                            if (b == null || !b.isControlledBy(playerId)) {
+                                continue; // another defender's block, not ours
+                            }
+                            // Only blockers THIS call offered. declareBlockers is
+                            // re-entered within a combat, and game.getCombat() carries
+                            // the union of every call -- so without this, a later record
+                            // inherits an earlier one's block and its label names a
+                            // creature that record never offered. Measured: 1 of 16
+                            // rows in the first cross-deck run, label "p14:p21,p13:p21"
+                            // against an option set of ["p13"]. A label that picks an
+                            // unoffered option is untrainable whichever validator runs.
+                            if (!blkIds.contains(blockerId.toString())) {
+                                continue;
+                            }
+                            for (UUID attackerId : g.getAttackers()) {
+                                if (picked.length() > 0) {
+                                    picked.append(", ");
+                                    pickedIds.append(",");
+                                }
+                                // ">" is the ENGINE-side pair separator, the same one
+                                // AiHintProvider uses. The model-facing grammar is
+                                // `blockers=p5:p1`; records_to_sft maps uuids to aliases
+                                // and joins with ":" there. Two layers, not two grammars
+                                // -- the recorder is raw material for the schema, not an
+                                // instance of it (SCHEMA.md).
+                                picked.append(describeObject(game, blockerId)).append('>')
+                                        .append(describeObject(game, attackerId));
+                                pickedIds.append(blockerId).append('>').append(attackerId);
+                            }
+                        }
+                    }
+                }
+                // An empty combat HERE is the AI declining to block with blockers
+                // available -- a decision, and the common one. Gating this call on
+                // `blocked` would record only the block-something branch, making 100%
+                // of blocking rows in the corpus a block and teaching a policy that
+                // always blocks. The three returns above are the real non-decisions
+                // (no attackers / nothing that can block / nothing blockable) and they
+                // record nothing, which is why this one must record.
+                AiDecisionRecorder.recordChoice(game, this, "declare_blockers",
+                        "Declare blockers", blkIds, blkTexts, pickedIds.toString(),
+                        picked.length() == 0 ? "none" : picked.toString());
             }
         }
     }
