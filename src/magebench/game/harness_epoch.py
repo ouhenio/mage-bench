@@ -94,8 +94,18 @@ from magebench.game.season import SEASON_1_START_EPOCH as GAME_EXPORT_SEASON_1_S
 #       distinct seeds: aborts 14% -> 61%, stall-wipes 81% -> 22%. Every abort rate
 #       recorded at epoch 61 or earlier is therefore biased OPTIMISTIC and is not
 #       comparable to anything collected here (Aug 17)
+#  63 - The decision header finally says WHERE the decision is (Aug 24). build_pilot_decision
+#       hardcoded index=0, so every rendered decision in every live game read
+#       "[Decision 0, snapshot=0]" -- measured 29,906 of 29,906 across 400 rollouts. The
+#       model could not distinguish its first decision from its fortieth, and anything
+#       asking "how long ago was this card revealed" was reading a position field with no
+#       position in it. Every prompt now carries a different header text from turn 2
+#       onward, so prompt goldens move and prompts collected before this epoch differ
+#       from prompts collected after it on every decision but the first. snapshot_index
+#       stays 0: the pilot renders one snapshot per decision, so there 0 is the true
+#       value rather than a missing one.
 
-HARNESS_EPOCH = 62
+HARNESS_EPOCH = 63
 
 # Re-exported here so existing callers keep a stable import path while the
 # canonical season boundary now lives with the export pipeline.

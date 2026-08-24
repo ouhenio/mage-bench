@@ -147,6 +147,7 @@ def render_for_pilot(
     result_text: str,
     last_board: list[dict] | None,
     seen_oracle_cards: set[str] | None = None,
+    decision_index: int = 0,
 ) -> tuple[str, list[dict] | None]:
     """Render an action result for LLM consumption."""
     try:
@@ -168,7 +169,7 @@ def render_for_pilot(
     # `board` is already resolved above (this result's, or the last one carried
     # forward). The decision must see the same board the snapshot does, or it
     # cannot identify which player is the pilot.
-    decision = build_pilot_decision(data, board)
+    decision = build_pilot_decision(data, board, decision_index=decision_index)
     snapshot = build_pilot_snapshot(data, board, decision)
 
     oracle_texts = extract_oracle_texts_from_board(board) if board else {}

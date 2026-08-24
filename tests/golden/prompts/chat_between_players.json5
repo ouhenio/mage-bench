@@ -117,7 +117,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
@@ -144,7 +144,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -171,7 +171,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -200,7 +200,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 bf=[Mountain] | Opponent: 20hp hand=7 lib=53\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -279,7 +279,7 @@ TestPlayer played Mountain\n\
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 bf=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -309,7 +309,7 @@ TestPlayer played Mountain\n\
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=52 bf=[Mountain, Mountain] | Opponent: 20hp hand=7 lib=52 bf=[Mountain]\n\
   Untapped lands: 2, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
