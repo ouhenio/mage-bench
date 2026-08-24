@@ -1570,3 +1570,17 @@ def test_validate_deck_sizes_rejects_missing_deck_file():
         config.cpu_players = [CpuPlayer(name="Weak", deck="tmp/decks/nope.dck")]
         with pytest.raises(AssertionError, match="not found"):
             config.validate_deck_sizes(root)
+
+
+def test_log_dir_defaults_to_shared_namespace(monkeypatch):
+    monkeypatch.delenv("MAGEBENCH_LOG_DIR", raising=False)
+    assert Config().log_dir == Path.home() / ".mage-bench" / "logs"
+
+
+def test_log_dir_honours_magebench_log_dir(monkeypatch):
+    # Parallel single-game launches collide in the shared namespace: game dirs
+    # are named by a second-resolution timestamp minted after JVM startup, and
+    # mkdir(exist_ok=True) makes the collision silent. A driver must be able to
+    # give each launch a private namespace.
+    monkeypatch.setenv("MAGEBENCH_LOG_DIR", "/tmp/private-run")
+    assert Config().log_dir == Path("/tmp/private-run")
