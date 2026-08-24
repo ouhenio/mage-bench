@@ -122,7 +122,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Message: Mulligan down to 6 cards?\n\
   Choices (0): \n\
@@ -149,7 +149,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -176,7 +176,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -205,7 +205,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=53 bf=[Island] | Opponent: 20hp hand=7 lib=53\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
@@ -236,7 +236,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
 \n\
 ## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -267,7 +267,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Choose spell or ability to play: Black Lotus\n\
@@ -295,7 +295,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Choose spell or ability to play: Black Lotus\n\
@@ -325,7 +325,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 8, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Black Lotus]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
@@ -354,7 +354,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 9, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -385,7 +385,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+[Decision 10, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
@@ -413,7 +413,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
@@ -444,7 +444,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 12, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
   Land drops remaining: 1\n\
@@ -475,7 +475,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
   Land drops remaining: 1\n\
@@ -506,7 +506,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 14, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
   Land drops remaining: 1\n\
@@ -563,7 +563,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 15, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
   Land drops remaining: 1\n\
@@ -600,7 +600,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
 \n\
 ## Decision\n\
 \n\
-[Decision 0, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 16, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Djinn of Wishes, Island, Island, Island, Island, Mana Drain] lib=47 bf=[Island (tapped)] gy=[Black Lotus, Fact or Fiction, Mind Control, Serra Angel, Shivan Dragon] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\

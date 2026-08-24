@@ -75,7 +75,9 @@ def build_pilot_snapshot(data: dict, board: list[dict] | None, decision: Decisio
     return require_snapshot(snapshot_payload, source="pilot snapshot")
 
 
-def build_pilot_decision(data: dict, fallback_board: list[dict] | None = None) -> Decision:
+def build_pilot_decision(
+    data: dict, fallback_board: list[dict] | None = None, decision_index: int = 0
+) -> Decision:
     """Build a decision-like dict from a pass_priority/get_action_choices result.
 
     `fallback_board` is the last known board, used when this result carries none
@@ -99,7 +101,16 @@ def build_pilot_decision(data: dict, fallback_board: list[dict] | None = None) -
     )
     assert message is None or isinstance(message, str), f"message must be a string when present, got {message!r}"
     decision = Decision(
-        index=0,
+        # WAS HARDCODED 0, on every decision of every live game. The header this
+        # feeds reads "[Decision N, snapshot=M] Turn T ...", and N never moved --
+        # 29,906 of 29,906 decisions across 400 rollouts rendered as Decision 0.
+        # The model could not tell its first decision from its fortieth, and any
+        # analysis asking "how long ago was this card revealed" was reading a
+        # position field that had no position in it.
+        #
+        # snapshot_index stays 0 deliberately: the pilot renders one snapshot per
+        # decision, so 0 is the true value here rather than a missing one.
+        index=decision_index,
         snapshot_index=0,
         player="You",
         turn=0,

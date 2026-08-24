@@ -1,0 +1,36 @@
+{
+  "title": "Rendered decision header says [Decision 0] on every decision of every game",
+  "description": "build_pilot_decision hardcoded index=0 (pilot_bridge.py, the \
+`decision = Decision(index=0, snapshot_index=0, ...)` literal), and that field is what \
+decision_renderer.py renders as the leading `[Decision N, snapshot=M] Turn T PHASE - \
+player`. So N never moved. Measured by karn-ranokau-stable across 400 run-2 rollouts: \
+29,906 of 29,906 decisions rendered as Decision 0. CONFIRMED on lascar against the \
+pinned master (e4f9d1a4) rather than assumed -- it is not a v2-agent-loop-only path, \
+the literal is in the shared pilot bridge, so every pilot path is affected. Committed \
+test fixtures show it too: pipelines/synth/test_engine_shim.py has [Decision 0, \
+snapshot=0] on turns 1, 2 and 3 in four separate fixtures, which is the defect baked \
+into expected output. CONSEQUENCE: the header exists to tell the model where it is in \
+the game and it told it nothing, so the model could not distinguish its first decision \
+from its fortieth; and the card-text work about to measure 'how far back was this card \
+revealed' would have been reading a position field with no position in it. FIXED on \
+branch fix/decision-index: the index is threaded from a counter on PilotLoopState \
+(decisions_seen), advanced only for results carrying action_pending -- asked of the \
+DATA rather than inferred from 'the rendered text differs from the input', which is \
+true today only by coincidence of how the renderer early-returns. snapshot_index stays \
+0 deliberately: the pilot renders one snapshot per decision, so there 0 is the true \
+value rather than a missing one. HARNESS_EPOCH 62 -> 63, because every prompt from the \
+second decision onward now differs in header text; prompts collected before and after \
+are not comparable. Prompt goldens regenerated. Negative control: restoring index=0 \
+fails the new header test and leaves the non-decision test passing.",
+  "status": "closed",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "pilot-prompt",
+    "silent-failure",
+    "measured",
+    "epoch-bump",
+  ],
+  "created_at": "2026-08-24T23:30:00.000-04:00",
+  "updated_at": "2026-08-24T23:30:00.000-04:00",
+}
