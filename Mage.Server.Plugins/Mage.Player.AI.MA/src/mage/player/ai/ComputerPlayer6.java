@@ -1118,7 +1118,21 @@ public class ComputerPlayer6 extends ComputerPlayer {
                                 continue;
                             }
                             for (UUID attackerId : g.getAttackers()) {
-                                if (picked.length() > 0) {
+                                // SEPARATOR GUARD READS THE ID BUILDER, NOT THE TEXT
+                                // ONE. describeObject returns "" for an object it
+                                // cannot resolve -- a permanent that has left the
+                                // battlefield by the time the record is written -- so
+                                // guarding on picked.length() means an empty first
+                                // name leaves the guard false on the next iteration
+                                // and the two UUIDs CONCATENATE with no comma.
+                                // Measured in the live corpus: 2 of 33,998 attacker
+                                // labels, e.g. "...31531c774eaa15bee822-d8f8-..." and
+                                // one with three ids fused. The text showed it too --
+                                // "Courser of Kruphix, , , , , Voyaging Satyr" -- but
+                                // an unparseable id is the part that breaks training.
+                                // A UUID is never empty, so pickedIds always grows and
+                                // is the only reliable guard for both.
+                                if (pickedIds.length() > 0) {
                                     picked.append(", ");
                                     pickedIds.append(",");
                                 }
@@ -1388,7 +1402,9 @@ public class ComputerPlayer6 extends ComputerPlayer {
             StringBuilder pickedIds = new StringBuilder();
             if (game.getCombat() != null) {
                 for (UUID aid : game.getCombat().getAttackers()) {
-                    if (picked.length() > 0) {
+                    // See the note at declareBlockers: guard on the ID builder. This
+                    // is the site the corpus caught it at.
+                    if (pickedIds.length() > 0) {
                         picked.append(", ");
                         pickedIds.append(",");
                     }
@@ -1496,7 +1512,8 @@ public class ComputerPlayer6 extends ComputerPlayer {
             StringBuilder picked = new StringBuilder();
             StringBuilder pickedIds = new StringBuilder();
             for (UUID id : target.getTargets()) {
-                if (picked.length() > 0) {
+                // Same guard, same reason: a target can be unresolvable too.
+                if (pickedIds.length() > 0) {
                     picked.append(", ");
                     pickedIds.append(",");
                 }
