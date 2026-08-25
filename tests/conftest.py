@@ -101,6 +101,52 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
     return hasattr(config, "workerinput")
 
 
+# X DISPLAY BAND FOR GOLDEN SPECTATORS.
+#
+# Corpus generation pins its displays by deriving them from each worker's port,
+# which lands them in 90-160 on both nodes. The golden suite used to take
+# --auto-servernum, which PICKS A FREE NUMBER WITHOUT HOLDING IT -- so a golden
+# run and a generation run could choose the same number in the gap between the
+# pick and the bind, and one of them dies with "No X11 DISPLAY variable was set".
+# Measured under 8-way launching: 15 of 24 games lost.
+#
+# 200 and up is outside that band by construction rather than by hoping the
+# generation run has finished.
+GOLDEN_DISPLAY_BASE = 200
+GOLDEN_DISPLAY_LIMIT = 260
+
+
+def _golden_display() -> int:
+    """The X display for this process's golden spectators.
+
+    KEYED ON THE XDIST WORKER, not on the test.
+
+    The worker is the unit of concurrency: within one worker the tests are
+    sequential and can share a display, and two workers never share a number.
+    Keying on the test case instead -- hashing its id into a band -- was the
+    obvious alternative and is wrong: 15 cases into 60 slots collide with
+    probability ~0.84 by the birthday bound, and a collision is two Xvfb servers
+    racing for one number, which is the failure this exists to remove.
+    """
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    index = 0
+    if worker:
+        assert worker.startswith("gw"), (
+            f"PYTEST_XDIST_WORKER={worker!r} is not the gwN form this derives a "
+            f"display from. Refusing to guess: a wrong number lands in the "
+            f"generation band and kills someone else's game rather than this test."
+        )
+        index = int(worker[2:])
+    display = GOLDEN_DISPLAY_BASE + index
+    assert display < GOLDEN_DISPLAY_LIMIT, (
+        f"xdist worker {index} would need display {display}, past the "
+        f"{GOLDEN_DISPLAY_LIMIT} ceiling of the golden band. Raise the ceiling "
+        f"deliberately -- do not let it run on into 90-160, which is where "
+        f"corpus generation lives."
+    )
+    return display
+
+
 def _xdist_worker_count(config: pytest.Config) -> int:
     numprocesses = getattr(config.option, "numprocesses", None)
     if numprocesses in (None, 0):
@@ -355,7 +401,7 @@ def spectator_process(xmage_server, project_root, golden_identity: GoldenTestIde
         },
         max_heap="512m",
     )
-    spectator_cmd = wrap_with_xvfb(spectator_cmd)
+    spectator_cmd = wrap_with_xvfb(spectator_cmd, display=_golden_display())
 
     spectator_log = tmp_dir / "spectator.log"
     spectator_log_fh = open(spectator_log, "w")
