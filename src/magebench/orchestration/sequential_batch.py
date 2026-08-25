@@ -250,7 +250,7 @@ def dirs_holding_more_than_one_game(game_dirs: list[Path]) -> list[Path]:
 
     It happens when a match does not end with its game. MatchImpl.endGame credits a
     win only `if (player.hasWon())`, and a game that finishes without anyone winning
-    -- a draw, or any ending where neither seat is marked a winner -- credits
+    -- a deck-out, an effect, a concession, or a genuine draw -- credits
     nobody, so checkIfMatchEnds is false and TableController starts the next game of
     the same match into the same gameLogDir. Measured on the step-1 corpus at 10 of
     3,907 directories, nine of which ended with no player at or below 0 life.
