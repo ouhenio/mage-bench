@@ -272,7 +272,7 @@ class TestAManifestIsConsumedPerGame:
 
         # Truncating would run 2 games and look successful. Recycling would run 3 with
         # a repeat. Both produce a corpus that disagrees with its own manifest.
-        with pytest.raises(AssertionError, match="One config per game"):
+        with pytest.raises(ValueError, match="One config per game"):
             sequential_batch.run_sequential_batch(
                 config, tmp_path, tmp_path / "logs", [11, 22], pm=_FakePm()
             )

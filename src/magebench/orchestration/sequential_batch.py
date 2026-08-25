@@ -292,10 +292,11 @@ def run_sequential_batch(
     bad game -- visible here instead of reconstructed.
     """
     result = SequentialBatchResult()
-    assert config.timestamp, (
-        "config.timestamp must be set before a sequential batch: it keys the "
-        "session directory and every game directory in it"
-    )
+    if not config.timestamp:
+        raise ValueError(
+            "config.timestamp must be set before a sequential batch: it keys the "
+            "session directory and every game directory in it"
+        )
     # ONE CONFIG PER GAME WHEN A MANIFEST IS GIVEN. This used to resolve the players
     # once and reuse it for every game in the session, so a worker handed a manifest
     # of five deck pairs played the FIRST one five times -- measured by ranokau at
@@ -305,11 +306,12 @@ def run_sequential_batch(
     # the session -- but say it rather than leaning on falsiness.
     manifest = list(config.batch_config_files) if config.batch_config_files else []
     if manifest:
-        assert len(manifest) == len(seeds), (
-            f"--batch-config-manifest has {len(manifest)} configs but "
-            f"--sequential-games is {len(seeds)}. One config per game, or the run "
-            f"silently repeats configs and the corpus is not what the manifest says."
-        )
+        if len(manifest) != len(seeds):
+            raise ValueError(
+                f"--batch-config-manifest has {len(manifest)} configs but "
+                f"--sequential-games is {len(seeds)}. One config per game, or the run "
+                f"silently repeats configs and the corpus is not what the manifest says."
+            )
         game_configs = []
         for config_file in manifest:
             per_game = config.new_game_config(config_file=config_file, port=config.port)
@@ -322,7 +324,12 @@ def run_sequential_batch(
     players_configs = []
     for game_config in game_configs:
         raw = game_config.get_players_config_json()
-        assert raw, "Sequential batch needs a resolved players config"
+        if not raw:
+            raise ValueError(
+                f"{game_config.config_file}: no players resolved, so this game has "
+                f"nothing to seat. A session that starts anyway produces a directory "
+                f"with metadata and no game."
+            )
         players_configs.append(json.loads(raw))
 
     port_reservation = find_available_port(config.start_port)
@@ -380,10 +387,11 @@ def run_sequential_batch(
             # The seed is this GAME's, and the config is the one the manifest named
             # for it -- both used to be the session's, so every game in a worker
             # recorded the same config name and no seed at all.
-            assert seed is not None or not manifest, (
-                f"game {index + 1} has no seed. A manifest run must be reproducible "
-                f"per game; refusing to start a game whose deal cannot be recorded."
-            )
+            if seed is None and manifest:
+                raise ValueError(
+                    f"game {index + 1} has no seed. A manifest run must be reproducible "
+                    f"per game; refusing to start a game whose deal cannot be recorded."
+                )
             write_game_meta(game_dir, game_config, project_root, game_seed=seed)
             (game_dir / "session.json").write_text(
                 json.dumps(
@@ -427,10 +435,12 @@ def run_sequential_batch(
 
     # Same witness as the parallel path, for the same reason: two games sharing
     # one directory do not fail, they agree.
-    assert len(set(result.completed)) == len(result.completed), (
-        f"{len(result.completed)} games completed into "
-        f"{len(set(result.completed))} distinct directories"
-    )
+    if len(set(result.completed)) != len(result.completed):
+        raise RuntimeError(
+            f"{len(result.completed)} games completed into "
+            f"{len(set(result.completed))} distinct directories -- two games have "
+            f"written into one, and their provenance describes only one of them"
+        )
     doubled = dirs_holding_more_than_one_game(result.completed)
     if doubled:
         # Loud, and not fatal: the games are already on disk, and failing the session

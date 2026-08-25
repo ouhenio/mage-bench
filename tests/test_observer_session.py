@@ -125,7 +125,7 @@ class TestTheSeedListIsExplicit:
         monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "901001,901002")
 
         # Recycling would deal the same hands twice and still look like a corpus.
-        with pytest.raises(AssertionError, match="one seed per game"):
+        with pytest.raises(ValueError, match="one seed per game"):
             _sequential_seeds(5)
 
     def test_a_long_list_is_an_error_too(self, monkeypatch):
@@ -136,5 +136,5 @@ class TestTheSeedListIsExplicit:
         monkeypatch.setenv("MAGEBENCH_GAME_SEEDS", "1,2,3,4")
 
         # Silently dropping the tail loses games the caller asked for.
-        with pytest.raises(AssertionError, match="one seed per game"):
+        with pytest.raises(ValueError, match="one seed per game"):
             _sequential_seeds(2)

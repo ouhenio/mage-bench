@@ -193,10 +193,11 @@ def _sequential_seeds(num_games: int) -> list[int | None]:
     if raw is None or raw == "":
         return [None] * num_games
     seeds = [int(part.strip()) for part in raw.split(",") if part.strip()]
-    assert len(seeds) == num_games, (
-        f"MAGEBENCH_GAME_SEEDS has {len(seeds)} seeds but --sequential-games is "
-        f"{num_games}. Give one seed per game, or unset it for an unseeded run."
-    )
+    if len(seeds) != num_games:
+        raise ValueError(
+            f"MAGEBENCH_GAME_SEEDS has {len(seeds)} seeds but --sequential-games is "
+            f"{num_games}. Give one seed per game, or unset it for an unseeded run."
+        )
     return list(seeds)
 
 
