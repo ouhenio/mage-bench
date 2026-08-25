@@ -41,6 +41,14 @@ import java.util.concurrent.TimeUnit;
 public class ObserverMageFrame extends MageFrame {
 
     private static final Logger LOGGER = Logger.getLogger(ObserverMageFrame.class);
+
+    /**
+     * The game this observer is currently watching, so its MATCH can be ended before
+     * the next one starts. A game ending is not a match ending -- see
+     * quitPreviousMatch -- and without this the server keeps playing the old match
+     * into the old game's directory.
+     */
+    private volatile UUID watchedGameId;
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
     private static final int[] RECONNECT_BACKOFF_MS = {2000, 4000, 8000, 16000, 30000};
     private static final boolean NO_WINDOW = Boolean.getBoolean("xmage.observer.noWindow");
@@ -280,6 +288,8 @@ public class ObserverMageFrame extends MageFrame {
         gamePane.setVisible(true);
         gamePane.watchGame(currentTableId, parentTableId, gameId);
         setActive(gamePane);
+        // Remember it so the match can be quit before the next command's table.
+        watchedGameId = gameId;
 
         // Start recording if configured via system property
         String recordPath = System.getProperty("xmage.observer.record");
@@ -402,6 +412,29 @@ public class ObserverMageFrame extends MageFrame {
         // Update game directory for the new game
         System.setProperty("xmage.observer.gameDir", gameDir);
 
+        // END THE PREVIOUS MATCH BEFORE STARTING THE NEXT, or it keeps playing.
+        //
+        // A game ending is not a match ending. MatchImpl.endGame credits a win only
+        // `if (player.hasWon())`, and checkIfMatchEnds only ends the match when some
+        // player's wins reach winsNeeded. A game that ends WITHOUT a win -- a draw,
+        // or any finish where neither seat is marked as having won -- credits
+        // nobody, so the match is not over and TableController:855 immediately calls
+        // startGame again. That next game inherits the match's gameLogDir, which is
+        // the directory of the game we just finished, and the server appends a
+        // second game's events into it while this observer has already moved on.
+        //
+        // Measured on the step-1 corpus: 10 of 3,907 directories hold two games.
+        // Nine of the ten first games ended with NO player at or below 0 life,
+        // against 583 of 600 sampled normal games ending on a kill -- so the
+        // signature is a game that finished without anybody winning. The second
+        // game always begins about 1.1 s after the first ends, never overlapping,
+        // which is what ruled out a directory race between workers.
+        //
+        // Quitting the match here is the fix rather than anything about winsNeeded:
+        // the engine's behaviour is correct for a best-of-N match, and what is wrong
+        // is that this harness plays one game per table and never tells the server so.
+        quitPreviousMatch();
+
         // Clean up any previous game pane
         SwingUtilities.invokeAndWait(this::cleanUpCurrentGame);
 
@@ -422,6 +455,28 @@ public class ObserverMageFrame extends MageFrame {
      * Remove any existing ObserverGamePane from the desktop.
      * Must be called on the EDT.
      */
+    /**
+     * Tell the server the previous match is finished, so it does not start another game.
+     *
+     * Best-effort by design: if there is no previous game this is a no-op, and a
+     * failure here must not stop the next game being created. Silence would be
+     * wrong though -- a match left running writes into a directory that is no
+     * longer being watched -- so it logs.
+     */
+    private void quitPreviousMatch() {
+        UUID previous = watchedGameId;
+        watchedGameId = null;
+        if (previous == null) {
+            return;
+        }
+        try {
+            SessionHandler.quitMatch(previous);
+            LOGGER.info("keepAlive: quit previous match for game " + previous);
+        } catch (RuntimeException e) {
+            LOGGER.warn("keepAlive: could not quit previous match " + previous, e);
+        }
+    }
+
     private void cleanUpCurrentGame() {
         for (Component component : getDesktop().getComponents()) {
             if (component instanceof ObserverGamePane ogp) {

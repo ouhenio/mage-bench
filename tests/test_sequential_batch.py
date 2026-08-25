@@ -276,3 +276,50 @@ class TestAManifestIsConsumedPerGame:
             sequential_batch.run_sequential_batch(
                 config, tmp_path, tmp_path / "logs", [11, 22], pm=_FakePm()
             )
+
+
+class TestASessionsDirectoriesHoldOneGameEach:
+    """Two games in one directory means every provenance field is right for one and wrong for the other.
+
+    game_meta.json, the seed and the deck pair describe ONE game. A directory with
+    two has nothing in it saying which, so a row built from it can carry the wrong
+    deck pair -- worse than a missing row, because it lands in the archetype
+    attribution looking valid.
+
+    Cause: a game ending is not a match ending. MatchImpl.endGame credits a win only
+    if a player hasWon, so a game that finishes with nobody winning leaves the match
+    live and TableController starts its next game into the same gameLogDir. Measured
+    at 10 of 3,907 directories on the step-1 corpus, nine of them games that ended
+    with no player at or below 0 life.
+    """
+
+    def _dir(self, tmp_path, name, starts):
+        d = tmp_path / name
+        d.mkdir(parents=True)
+        lines = []
+        for i in range(starts):
+            lines.append(json.dumps({"seq": 0, "type": "game_start", "players": []}))
+            lines.append(json.dumps({"seq": 9, "type": "game_end", "winner": "Skill1"}))
+        (d / "server_game_events.jsonl").write_text("\n".join(lines) + "\n")
+        return d
+
+    def test_a_clean_session_reports_nothing(self, tmp_path):
+        dirs = [self._dir(tmp_path, f"game_T_s{i}", 1) for i in range(1, 6)]
+
+        assert sequential_batch.dirs_holding_more_than_one_game(dirs) == []
+
+    def test_a_directory_with_two_games_is_named(self, tmp_path):
+        clean = [self._dir(tmp_path, f"game_T_s{i}", 1) for i in (1, 2)]
+        doubled = self._dir(tmp_path, "game_T_s3", 2)
+
+        found = sequential_batch.dirs_holding_more_than_one_game(clean + [doubled])
+
+        assert found == [doubled]
+
+    def test_a_directory_with_no_events_is_not_reported(self, tmp_path):
+        # A game that never wrote events is a different failure and has its own path;
+        # reporting it here would make this check fire for the wrong reason.
+        empty = tmp_path / "game_T_s9"
+        empty.mkdir(parents=True)
+
+        assert sequential_batch.dirs_holding_more_than_one_game([empty]) == []

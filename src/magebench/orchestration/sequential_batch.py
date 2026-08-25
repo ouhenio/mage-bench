@@ -238,6 +238,42 @@ def _start_observer(
     return session
 
 
+
+def dirs_holding_more_than_one_game(game_dirs: list[Path]) -> list[Path]:
+    """Game directories that received events from more than one game.
+
+    A game directory must hold exactly one game, because game_meta.json, the seed
+    and the deck pair describe ONE of them -- so a directory with two games has
+    every provenance field right for one and wrong for the other, with nothing in
+    the artefact saying which. A row labelled with the wrong deck pair is worse
+    than a missing row.
+
+    It happens when a match does not end with its game. MatchImpl.endGame credits a
+    win only `if (player.hasWon())`, and a game that finishes without anyone winning
+    -- a draw, or any ending where neither seat is marked a winner -- credits
+    nobody, so checkIfMatchEnds is false and TableController starts the next game of
+    the same match into the same gameLogDir. Measured on the step-1 corpus at 10 of
+    3,907 directories, nine of which ended with no player at or below 0 life.
+
+    The observer now quits the previous match before creating the next table, which
+    should make this list empty. It is checked rather than assumed, at the end of
+    the session where the second game has had time to appear -- checking right after
+    game_end would pass, because the second game starts about 1.1 s later.
+    """
+    doubled = []
+    for game_dir in game_dirs:
+        events = game_dir / "server_game_events.jsonl"
+        if not events.exists():
+            continue
+        try:
+            text = events.read_text(errors="replace")
+        except OSError:
+            continue
+        if text.count('"game_start"') > 1:
+            doubled.append(game_dir)
+    return doubled
+
+
 def run_sequential_batch(
     config: Config,
     project_root: Path,
@@ -395,8 +431,20 @@ def run_sequential_batch(
         f"{len(result.completed)} games completed into "
         f"{len(set(result.completed))} distinct directories"
     )
+    doubled = dirs_holding_more_than_one_game(result.completed)
+    if doubled:
+        # Loud, and not fatal: the games are already on disk, and failing the session
+        # would not unwrite them. What matters is that this is seen at GENERATION
+        # rather than inferred at assembly from a provenance field that is right for
+        # one of the two games.
+        logger.error(
+            "%d game director%s received a SECOND game -- their provenance describes "
+            "only one of the two and they must not be ingested: %s",
+            len(doubled), "y" if len(doubled) == 1 else "ies",
+            ", ".join(d.name for d in doubled),
+        )
     logger.info(
-        "Session done: %d/%d games completed, %d failed",
-        len(result.completed), len(seeds), len(result.failed),
+        "Session done: %d/%d games completed, %d failed, %d with a second game",
+        len(result.completed), len(seeds), len(result.failed), len(doubled),
     )
     return result

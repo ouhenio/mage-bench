@@ -1,0 +1,48 @@
+{
+  "title": "A game that ends without a winner leaves the match live, and its next game lands in the finished game's directory",
+  "description": "MECHANISM, from source and from the corpus on disk. MatchImpl.endGame \
+credits a win only `if (player.hasWon())`, and MatchImpl.checkIfMatchEnds ends the \
+match only when some player's wins reach winsNeeded (or fewer than two players remain). \
+A game that finishes with NOBODY marked as having won -- a draw, or any ending where \
+neither seat is a winner -- therefore credits no win, the match is not over, and \
+TableController:855 immediately calls startGame again. That next game inherits the \
+match's gameLogDir, which is the directory of the game that just finished, so the \
+server appends a second game's events into it while the sequential runner has already \
+moved its observer to the next table. THE ENGINE IS BEHAVING CORRECTLY for a \
+best-of-N match; what is wrong is a harness that plays one game per table and never \
+tells the server the match is done. EVIDENCE. Step-1 corpus, 3,964 game directories, \
+10 hold two games (0.25%). The two games never OVERLAP in time -- the second begins \
+1.1s after the first ends in 8 of 10, 0.1s in one -- which is what ruled out a \
+directory race between workers, since two racing writers overlap by definition. Every \
+affected session produced 5 distinct sibling directories (_s1.._s5), so claim_game_dir \
+worked in every case. The second game carries a THIRD game id, belonging to neither \
+the finished game nor the next table's game, so it is not a misdirected write but a \
+game nobody was watching. Nine of the ten first games ended with NO player at or below \
+0 life, against 583 of 600 sampled normal games ending on a kill; three of the ten \
+record state.step DRAW explicitly. NOT SUFFICIENT, ONLY NECESSARY: 12 of those 600 \
+normal games also ended without a kill and did NOT double, which is consistent with \
+the second game only appearing if it starts before the session tears the server down. \
+So the rate is a function of timing, not of worker count -- it does not fall with \
+--parallel and does not gate raising it. An earlier claim that it scaled with \
+concurrency was mine and is withdrawn. FIX: the keepAlive observer now quits the \
+previous match before creating the next table (quitPreviousMatch, tracking the watched \
+game id), so the match ends with its game. The runner additionally reports any \
+directory that received a second game at session end -- checked at the END because a \
+check straight after game_end would pass, the second game arriving ~1.1s later. Loud \
+rather than fatal: the games are already on disk and failing the session would not \
+unwrite them; what matters is seeing it at generation rather than inferring it at \
+assembly from a provenance field that is right for one of the two games. The detector \
+was validated against the real corpus, not only fixtures: 3,964 directories scanned, \
+exactly the 10 known cases found.",
+  "status": "closed",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "orchestration",
+    "silent-failure",
+    "measured",
+    "provenance",
+  ],
+  "created_at": "2026-08-25T00:30:00.000-04:00",
+  "updated_at": "2026-08-25T00:30:00.000-04:00",
+}
