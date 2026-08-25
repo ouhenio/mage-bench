@@ -27,8 +27,8 @@ game_meta.json for \"seed\". Expected one per game; actual none.\n\n\
 Suggested fix: stamp the seed the game actually used, taken from wherever the \
 batch path consumes the seed list, rather than from an env var read once per \
 process. A per-process env var cannot describe a per-game value — that mismatch \
-is the bug, not the variable name.",
-  "status": "open",
+is the bug, not the variable name. FIXED AT 3d57e1e6 (branch fix/sequential-manifest-and-seed). write_game_meta now takes the seed as an argument when the caller knows it, and the sequential runner passes each game its own. The MAGEBENCH_GAME_SEED env read remains for the one-game-per-JVM path, where a single process-wide seed is the right thing; it was only wrong for a session, where the launcher sets MAGEBENCH_GAME_SEEDS. The game's config name comes from its own manifest entry rather than the session's, which is why every game in a worker previously recorded the same label.",
+  "status": "closed",
   "priority": 1,
   "type": "bug",
   "labels": [

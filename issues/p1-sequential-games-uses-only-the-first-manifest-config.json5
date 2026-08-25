@@ -24,8 +24,8 @@ game_meta.json files. Expected N distinct pairs; actual 1.\n\n\
 Suggested shape of a fix: consume the manifest entry per sequential game, and \
 fail loudly if the manifest length and --sequential-games disagree — a manifest \
 that is silently truncated to its first element is worse than an error, because \
-the run succeeds.",
-  "status": "open",
+the run succeeds. FIXED AT 3d57e1e6 (branch fix/sequential-manifest-and-seed). Each game now resolves its own config from manifest[i], decks resolved per config, consumed per game rather than indexed by something that happens to be zero. A manifest whose length differs from --sequential-games is an ERROR at startup, not a truncation and not a recycle: truncating runs fewer games and looks successful, recycling runs the right number with a silent repeat, and both leave a corpus that disagrees with its own manifest. Negative control: restoring the single shared players_config fails the deck-pair test and leaves the other nine passing. Suite 1458 passed.",
+  "status": "closed",
   "priority": 1,
   "type": "bug",
   "labels": [
