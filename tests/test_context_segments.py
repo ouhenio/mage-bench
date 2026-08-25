@@ -163,6 +163,18 @@ def test_the_serving_floor_covers_the_budget_at_the_worst_measured_ratio():
 # --------------------------------------------------------------- the pilot cut
 
 
+# The fixture history below is 5,000 chars of prior context plus a 400-char
+# pending decision, so the cut fires exactly when the budget drops to that plus
+# the reserve.
+_FIXTURE_USED_BEFORE = 5000
+_FIXTURE_PENDING = 400
+
+
+def _cut_threshold() -> float:
+    """The largest budget at which this fixture still does NOT cut."""
+    return float(_FIXTURE_USED_BEFORE + _FIXTURE_PENDING + PENDING_ANSWER_RESERVE_CHARS)
+
+
 def _state_with_one_decision(monkeypatch, blob: str) -> PilotLoopState:
     monkeypatch.delenv("MAGEBENCH_CONTEXT_WINDOW", raising=False)
     monkeypatch.delenv("MAGEBENCH_APPEND_ONLY", raising=False)
@@ -200,8 +212,11 @@ def test_below_the_budget_nothing_is_cut(monkeypatch):
 
 def test_over_the_budget_the_crossing_decision_opens_a_new_segment(monkeypatch):
     state = _state_with_one_decision(monkeypatch, _decision_blob())
-    # One character over: used_before(5000) + pending(400+256) must exceed it.
-    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: 5655.0)
+    # DERIVED, NOT WRITTEN DOWN. The exact threshold moves whenever the reserve
+    # moves -- it did, from 256 to 4096 -- and a hardcoded 5655 turns a
+    # deliberate change to the constant into two red tests that say nothing
+    # about the property under test.
+    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: _cut_threshold() - 1)
 
     cut = pilot.close_segment_if_needed(state, "")
 
@@ -234,7 +249,7 @@ def test_one_character_under_the_budget_does_not_cut(monkeypatch):
     # The control for the test above. Without it, a cut function that fired
     # unconditionally would pass every assertion there.
     state = _state_with_one_decision(monkeypatch, _decision_blob())
-    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: 5656.0)
+    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: _cut_threshold())
     assert pilot.close_segment_if_needed(state, "") is False
     assert len(state.history) == 3
 
@@ -244,11 +259,11 @@ def test_the_system_prompt_counts_toward_the_budget(monkeypatch):
     # repeats it. A budget that ignored it would overshoot by the size of the
     # block on every segment.
     state = _state_with_one_decision(monkeypatch, _decision_blob())
-    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: 5656.0)
+    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: _cut_threshold())
     assert pilot.close_segment_if_needed(state, "") is False
 
     state = _state_with_one_decision(monkeypatch, _decision_blob())
-    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: 5656.0)
+    monkeypatch.setattr(pilot, "segment_budget_chars", lambda *a: _cut_threshold())
     assert pilot.close_segment_if_needed(state, "z") is True
 
 
@@ -286,8 +301,14 @@ def test_a_cut_is_recorded_in_the_game_log(monkeypatch):
     assert events[0][1]["reset_index"] == 1
 
 
-def test_the_reserve_is_at_least_the_largest_measured_label():
-    # Measured: training labels max 161 chars over 300,000 decisions, inference
-    # assistant messages max 222 over 1,770. The reserve stands in for whichever
-    # of those is about to be generated, so it has to cover the larger.
-    assert PENDING_ANSWER_RESERVE_CHARS >= 222
+def test_the_reserve_covers_the_measured_label_census_with_headroom():
+    # Census of the SERIALISED label, two sessions independently: 2,875,957
+    # decisions max 1436 (karn-research, both blocks) and 956,320 max 1034
+    # (karn-engine, block 1). The previous value was 256, set from a max of 161
+    # over 300,000 decisions -- a sample that expected 0.63 outliers at the
+    # measured 2.09-per-million rate, so P(it saw none) was 0.53.
+    #
+    # ASSERTED WITH HEADROOM, not at the maximum. Nothing bounds an `attackers`
+    # list except board width, so the observed max is not a bound and setting
+    # the reserve to it would repeat the original error with a bigger number.
+    assert PENDING_ANSWER_RESERVE_CHARS >= 2 * 1436

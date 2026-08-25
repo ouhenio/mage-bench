@@ -28,18 +28,47 @@ SEGMENT_MAX_DECISIONS = 2000
 # The answer that is about to be generated, which training counts and inference
 # cannot yet know.
 #
-# Training evaluates its cut with cost = len(text) + len(label), where `label`
-# is the tool call the teacher made. At inference the pending decision's answer
-# does not exist yet -- that is the whole point of the call about to be made --
-# so the pending cost is reserved instead of measured.
+# Training evaluates its cut with cost = len(text) + len(label), where `label` is
+# json.dumps({"name": tool, "arguments": response}) -- THE SERIALISED TOOL CALL,
+# which is also verbatim the assistant message's content. At inference the
+# pending decision's answer does not exist yet -- that is the whole point of the
+# call about to be made -- so BOTH SIDES price it at this reserve instead. They
+# have to use the same number or the boundaries drift; see the cut in
+# render_conversations.
 #
-# MEASURED, both sides, so the reserve covers whichever is larger:
-#   training labels     n=300,000 decisions   p50 56    p99 64    max 161 chars
-#   inference assistant n=1,770 messages      p50 192   p99 201   max 222 chars
-# 256 rounds the larger one up. Against a 316,539-character budget the reserve
-# is 0.08%, so it moves the boundary by at most one decision, and it moves it
-# EARLY: inference closes a segment no later than training would.
-PENDING_ANSWER_RESERVE_CHARS = 256
+# CENSUS OF THE SERIALISED LABEL, two sessions measuring independently:
+#
+#   karn-research  2,875,957 decisions, both blocks
+#                  p50 56  p90 57  p99 64  p99.9 79  p99.99 96  max 1436
+#   karn-engine      956,320 decisions, block 1 only
+#                  p50 56  p90 57  p99 64  p99.9 79  p99.99 96  max 1034
+#
+# The bulk agrees to the character across both counts, and block 1's max is one
+# of the six outliers in the full set (1436, 1307, 1231, 1034, 982, 931). All six
+# are `choose_action` with an `attackers` argument: a comma-separated list of
+# permanent short ids, so a mass attack makes it long -- the 1436 lists about 300
+# attackers. Rate: 2.09 per million.
+#
+# 4096 IS HEADROOM, NOT A BOUND, and saying so is the point. The previous value
+# was 256, set from a maximum of 161 over a 300,000-decision sample -- and at
+# 2.09 per million that sample expected 0.63 outliers, so P(it contained none)
+# was 0.53. The bulk statistics were right; the extreme condition simply had no
+# room to occur. A maximum is a bound only when the sample gave the extreme a
+# chance to appear, and nothing here bounds `attackers` except board width, so a
+# bigger sample's maximum would be the same mistake with a bigger number.
+#
+# What settles the value is that headroom is nearly free:
+#
+#   reserve   256   worst-case segment loss 0.081% of the 316,539-char budget
+#   reserve  2048   0.647%
+#   reserve  4096   1.294%
+#   reserve  8192   2.588%
+#
+# 4096 covers 2.9x the largest label in 2.9M decisions for 1.3% of a segment.
+# The guard in render_conversations is what makes an exceedance loud rather than
+# silent, and it prints the full distribution so the next person sizes this from
+# data instead of from one error message.
+PENDING_ANSWER_RESERVE_CHARS = 4096
 
 # The minimum max_model_len a server must advertise to run the full-context arm.
 #
@@ -77,6 +106,24 @@ def segment_budget_chars(max_tokens: int = SEGMENT_MAX_TOKENS) -> float:
     minimum this budget is 136,938 tokens, 4.5% past the 131,072 it names. The
     guard that actually bounds the server is the token-anchored one in
     render_context, which counts the engine's own reported tokens.
+
+    TWO POPULATIONS, TWO ANSWERS, AND BOTH ARE RIGHT. The 0.771 above is the
+    minimum over 10,875 recorded INFERENCE prompts. karn-research measured 200
+    rendered TRAINING rows through apply_chat_template and got a minimum of
+    0.931 (chars/token 2.794 to 3.600, p50 2.994). Those disagree about whether
+    0.805 is a valid lower bound, and the disagreement is not an error: the
+    serving guard is applied to inference prompts, where 0.771 governs and is
+    why SERVE_MIN_MODEL_LEN sits above SEGMENT_MAX_TOKENS; the character budget
+    is applied to training renders, where 0.931 governs and the constant is
+    conservative by ~24%.
+
+    So the constant is safe in both directions but for different reasons, and
+    the cost on the training side is rows rather than correctness -- segments
+    close earlier than the token cap requires. DO NOT 'CORRECT' IT TOWARD EITHER
+    MEASURED MEDIAN: raising it makes the guard fire later on the inference side,
+    which is the failure this constant exists to prevent. Anything needing a real
+    ratio should measure it, and anything needing a row count should read
+    stats.json, where it is counted rather than derived.
     """
     return max_tokens * 3 * CHARS_PER_TOKEN_WORST
 
