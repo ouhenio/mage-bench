@@ -122,7 +122,7 @@ def _no_prefetch():
     with patch(
         "magebench.pilot.pilot._prefetch_first_action",
         new_callable=AsyncMock,
-        return_value=("Game starting.", None),
+        return_value=("Game starting.", None, "{}"),
     ):
         yield
 
@@ -398,7 +398,7 @@ async def test_prefetch_mulligan():
         raise AssertionError(f"Unexpected tool: {name}")
 
     session.call_tool = AsyncMock(side_effect=fake_call_tool)
-    msg, _seq = await _prefetch_first_action(session)
+    msg, _seq, _blob = await _prefetch_first_action(session)
     assert "Mulligan" in msg
     assert "choose_action" in msg
 
@@ -419,7 +419,7 @@ async def test_prefetch_waits_for_action():
         raise AssertionError(f"Unexpected tool: {name}")
 
     session.call_tool = AsyncMock(side_effect=fake_call_tool)
-    msg, _seq = await _prefetch_first_action(session)
+    msg, _seq, _blob = await _prefetch_first_action(session)
     assert "GAME_ASK" in msg
     # Single blocking call, no separate get_action_choices
     assert calls == ["pass_priority"]
@@ -430,7 +430,7 @@ async def test_prefetch_game_over():
     """If pass_priority returns game_over, return a game-over message."""
     session = MagicMock()
     session.call_tool = AsyncMock(return_value=_mock_tool_result('{"game_over": true}'))
-    msg, _seq = await _prefetch_first_action(session)
+    msg, _seq, _blob = await _prefetch_first_action(session)
     assert "over" in msg.lower()
 
 
@@ -1424,7 +1424,7 @@ _DECISION_RESULTS = [
 ]
 
 
-async def _run_scripted_decisions(*, results, decision_identity=False, trace_log=None, prefetch=("Go.", 6)):
+async def _run_scripted_decisions(*, results, decision_identity=False, trace_log=None, prefetch=("Go.", 6, "{}")):
     """Drive run_pilot_loop over a fixed list of tool results; return the request kwargs."""
     seen = {"i": 0}
 
@@ -1528,7 +1528,7 @@ async def test_trace_seq_is_absent_when_the_result_carries_none():
             '{"game_over": true}',
         ],
         trace_log=trace,
-        prefetch=("Go.", None),
+        prefetch=("Go.", None, "{}"),
     )
 
     stamped = [c.kwargs["game_seq"] for c in trace.emit.call_args_list]
@@ -1569,7 +1569,7 @@ async def test_decision_seq_follows_the_forced_pass_not_the_llm_call():
     client.chat.completions.create = AsyncMock(side_effect=[bad, bad, bad, bad])
 
     with (
-        patch("magebench.pilot.pilot._prefetch_first_action", new_callable=AsyncMock, return_value=("Go.", 1)),
+        patch("magebench.pilot.pilot._prefetch_first_action", new_callable=AsyncMock, return_value=("Go.", 1, "{}")),
         patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock),
     ):
         await run_pilot_loop(

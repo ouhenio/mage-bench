@@ -95,7 +95,7 @@ def _no_prefetch():
     with patch(
         "magebench.pilot.pilot._prefetch_first_action",
         new_callable=AsyncMock,
-        return_value=("Game starting.", None),
+        return_value=("Game starting.", None, "{}"),
     ):
         yield
 

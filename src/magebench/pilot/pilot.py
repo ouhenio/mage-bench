@@ -66,6 +66,12 @@ from magebench.pilot.context_segments import (
     segment_budget_chars,
     should_close_segment,
 )
+from magebench.pilot.mulligan import (
+    count_lands,
+    is_mulligan_decision,
+    mulligan_choice,
+    mulligan_mode,
+)
 from magebench.pilot.pilot_state import (
     record_decision_seq,
     PilotLoopState,
@@ -361,6 +367,74 @@ def close_segment_if_needed(
             harness_action=True,
             reset_index=state.segment_index,
         )
+    return True
+
+
+async def _answer_mulligan_from_the_engine_rule(
+    session: ClientSession,
+    state: PilotLoopState,
+    game_log: GameLogWriter | None,
+) -> bool:
+    """Answer a pending mulligan with the engine's rule, without calling the policy.
+
+    Returns True if it answered, so the caller skips this turn's LLM call.
+
+    WHY THE HARNESS ANSWERS. The corpus records mulligans and excludes them from
+    training (build_dataset.TRAIN_EXCLUDED_KINDS), so a policy asked to answer one
+    at inference is being asked something it was never shown. Answering it here
+    with ComputerPlayer.chooseMulligan's own rule makes inference match training
+    by removing the question rather than by supervising it.
+
+    VALIDATED, not asserted: the rule agrees with the engine on 745 of 745
+    recorded mulligan decisions across 290 games, over all five reachable
+    (hand size, answer) cells. Three deliberately wrong rules were run against
+    the same set as controls; two were caught. The third -- the threshold written
+    as a literal 5 rather than size-2 -- agrees on all 745, because a flooded
+    mulligan never occurred below a seven-card hand, so that distinction is
+    covered by a constructed case in test_mulligan_rule.py instead.
+    """
+    blob = state.pending_decision_blob
+    if blob is None or mulligan_mode() != "engine-rule":
+        return False
+    try:
+        data = json.loads(blob)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    if not is_mulligan_decision(data):
+        return False
+
+    hand = data["your_hand"]
+    choice = mulligan_choice(hand)
+    lands = count_lands(hand)
+    logger.info(
+        "[pilot] mulligan answered from the engine rule: hand=%d lands=%d -> %s",
+        len(hand), lands, "mulligan" if choice == "yes" else "keep",
+    )
+    if game_log:
+        # AUDITABLE, and it has to carry the inputs rather than just the answer:
+        # "keep" alone cannot be checked against the rule afterwards, and this is
+        # a decision no LLM call will appear for in the trace.
+        game_log.emit(
+            "mulligan_auto",
+            harness_action=True,
+            hand=[c.get("name") for c in hand],
+            hand_size=len(hand),
+            lands=lands,
+            choice=choice,
+            decision="mulligan" if choice == "yes" else "keep",
+        )
+
+    result_text = await execute_tool(session, "choose_action", {"choice": choice})
+    record_decision_seq(state, result_text)
+    # A USER message, for the same reason the segment cut writes one: there is no
+    # assistant tool call to answer, because the policy was never asked.
+    display_text, state.last_board = render_for_pilot(
+        result_text, state.last_board, state.seen_oracle_cards, state.decisions_seen
+    )
+    state.decisions_seen += 1
+    state.history.append({"role": "user", "content": display_text})
+    state.pending_decision_blob = result_text if _carries_a_decision(result_text) else None
+    state.pending_decision_chars = len(display_text)
     return True
 
 
@@ -743,21 +817,26 @@ def build_initial_message(pass_priority_result: dict) -> str:
     return "The game is starting. Call pass_priority to get your first decision."
 
 
-async def _prefetch_first_action(session: ClientSession) -> tuple[str, int | None]:
-    """Wait for the first game decision; return its message and the decision's seq.
+async def _prefetch_first_action(session: ClientSession) -> tuple[str, int | None, str]:
+    """Wait for the first game decision; return its message, the decision's seq and its raw blob.
 
     The seq is returned rather than discarded because without it the FIRST trace row of
     every game carries no decision identity -- measured, exactly one unstamped row per
     game in 6 of 6 games. The initial message describes a decision that is already
     pending, and the seq is already in this result, so the gap is pure loss.
+
+    The RAW BLOB is returned for the same reason one layer on: the mulligan is the
+    first decision of every game, and answering it from the engine's rule needs the
+    hand, which only the blob carries. build_initial_message reduces it to prose.
     """
     result_text = await execute_tool(session, "pass_priority", {})
     try:
         result = json.loads(result_text)
     except (json.JSONDecodeError, TypeError):
-        return "The game is starting. Call pass_priority to get your first decision.", None
+        return ("The game is starting. Call pass_priority to get your first decision.",
+                None, result_text)
     seq = result.get("game_seq") if isinstance(result, dict) else None
-    return build_initial_message(result), seq if isinstance(seq, int) else None
+    return build_initial_message(result), seq if isinstance(seq, int) else None, result_text
 
 
 async def run_pilot_loop(
@@ -799,12 +878,17 @@ async def run_pilot_loop(
         if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
     }
     try:
-        initial_message, first_decision_seq = await _prefetch_first_action(session)
+        initial_message, first_decision_seq, first_blob = await _prefetch_first_action(session)
     except ToolExecutionError as exc:
         _record_tool_execution_failure(exc, username, game_dir, game_log)
         raise
     state = PilotLoopState(history=[{"role": "user", "content": initial_message}])
     state.last_decision_seq = first_decision_seq
+    # The first decision is pending before the loop starts, so stash it the way
+    # _process_tool_calls stashes every later one. Safe for the segment check as
+    # well: a cut cannot fire with zero decisions in the segment.
+    state.pending_decision_blob = first_blob
+    state.pending_decision_chars = len(initial_message)
     model_price = get_model_price(model, prices)
     game_start = time.monotonic()
 
@@ -816,6 +900,12 @@ async def run_pilot_loop(
             await auto_pass_loop(session, "pilot")
             return
         try:
+            # Before anything is rendered or sent: a mulligan is answered by the
+            # engine's own rule and never reaches the policy. Costs one tool call
+            # instead of an LLM round trip, and keeps the decision out of a
+            # context the model is not trained to answer.
+            if await _answer_mulligan_from_the_engine_rule(session, state, game_log):
+                continue
             messages = await _build_loop_messages(
                 state, session, system_prompt, cache_control, game_log
             )
