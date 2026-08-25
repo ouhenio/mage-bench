@@ -34,8 +34,25 @@ rather than fatal: the games are already on disk and failing the session would n
 unwrite them; what matters is seeing it at generation rather than inferring it at \
 assembly from a provenance field that is right for one of the two games. The detector \
 was validated against the real corpus, not only fixtures: 3,964 directories scanned, \
-exactly the 10 known cases found.",
-  "status": "closed",
+exactly the 10 known cases found. \
+\
+REOPENED 2026-08-25. THE FIX DID NOT WORK, AND THE MECHANISM ABOVE IS PARTLY WRONG. \
+Block 2 (pin f0008f6d, quitPreviousMatch in place) produced games/step1-b2/lascar/logs/game_20260825_060344_s2, seed 921507, with two game_start and two game_end. Measured over block 2 so far: 3 doubled of 1,680 directories (0.179%) WITH the fix, against 10 of 3,964 (0.252%) without it. Fisher one-sided p=0.428 -- no evidence of any reduction, and rates up to 0.46% are still consistent with 3/1,680. Treat the fix as unproven, not as partial. \
+\
+WHY IT MISSES, from the two logs, and it is a RACE THE FIX ENTERS TOO LATE rather than a quit that fails. Session session_20260825_060344, one keepAlive observer: \
+  09:05:01.536  keepAlive receives ONE command for gameDir _s2, gameSeed 921507 \
+  09:05:01.539  quitPreviousMatch for game 2c4b2edd (the PREVIOUS dir) -- works \
+  09:05:01.696  table 3b8ca52f created; game b707e99b starts, seeded 921507 \
+  09:05:31.700  game 23a28664 GameImpl.init, seeded 921507 AGAIN  <-- game 2 of the same match, started by the server the moment game 1 ended \
+  09:05:31.809  quitPreviousMatch for b707e99b  <-- 109 ms TOO LATE \
+The quit fires when the NEXT command arrives, and the server starts the next game of the live match before that command can get there. Sibling seeds are 921506/921507/ 921508/921509, one per directory, so both games seeded 921507 belong to _s2 and the second is not a misdirected write from a neighbour. \
+\
+THE `hasWon()` STORY IS RIGHT; THE `no winner` STORY IS NOT. This instance\'s FIRST game_end carries winner=Skill8, life {Skill8: 17, Skill1: 7} -- a credited winner in the event, with the loser alive at 7 life. The event\'s winner is DERIVED, not hasWon(): ServerGameEventLogCollector says so in its own comment -- \"hasWon() is only set for explicit win the game effects... fall back to: if exactly one player hasn\'t lost, they won\". So the title\'s \"without a winner\" describes the event field, which is the wrong field, and \"nine of ten ended with no player at or below 0 life\" is a correlate rather than the mechanism. WHAT IS STILL UNEXPLAINED, and is the next thing to establish: if hasWon() is false for nearly every normal ending, the match should fail to end nearly every time, yet 3,961 of 3,964 directories hold one game. checkIfMatchEnds has a second exit -- activePlayers < 2 via matchPlayer.hasQuit() -- so the discriminator is most likely whether the LOSER leaves the match, not whether the winner won. Not verified. Do not write a fix against the hasWon() branch until it is. \
+\
+DIRECTION, unimplemented: end the match when its game ends rather than when the next command arrives -- the observer already tracks watchedGameId, so quitting on the game-over callback closes the 109 ms window that this instance lost by. That is a change of WHEN, not of what. \
+\
+COUNT game_start, NOT game_end. Two of block 2\'s three doubled directories record game_start twice and game_end ONCE, so a game_end count finds 1 of 3. The runner\'s own detector (dirs_holding_more_than_one_game) already counts game_start and is correct; the undercount is downstream, in mtg pipelines/synth/audit_step1.py, which takes `next(e for e in ev if type == game_end)` and therefore sees a doubled directory as one complete game.",
+  "status": "open",
   "priority": 1,
   "type": "bug",
   "labels": [
@@ -43,7 +60,9 @@ exactly the 10 known cases found.",
     "silent-failure",
     "measured",
     "provenance",
+    "reopened",
+    "race",
   ],
   "created_at": "2026-08-25T00:30:00.000-04:00",
-  "updated_at": "2026-08-25T00:30:00.000-04:00",
+  "updated_at": "2026-08-25T09:30:00.000-04:00",
 }
