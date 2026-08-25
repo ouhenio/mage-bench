@@ -1,0 +1,41 @@
+{
+  "title": "The card database is 6x larger on lascar than on ranokau, and lascar's is written during runs",
+  "description": "OBSERVATION, NOT A DIAGNOSIS. Same file, same path, same card data, \
+two nodes:\n\n    lascar   wt-teacher/Mage.Server/db/cards.h2.mv.db   260,788,224 bytes\n\
+    ranokau  wt-teacher/Mage.Server/db/cards.h2.mv.db    43,552,768 bytes\n\n\
+Six times larger. lascar's mtime moves DURING runs, so it is not a static artefact \
+that happens to differ -- it is being written while games are played, alongside \
+table_record.db (5,783,552 bytes on lascar). H2's MVStore grows with write churn \
+when nothing compacts it, which is a plausible origin for the asymmetry but has not \
+been checked. WHY IT COULD MATTER: DatabaseUtils.java:43 appends AUTO_SERVER=TRUE, \
+so the first JVM to open the database becomes a server and every other JVM connects \
+to it over TCP. Every card lookup from every worker therefore funnels through one \
+process reading one file, and the size of that file is a per-query cost paid by all \
+of them. A 6x store on the node that is also shared with other tenants is a credible \
+per-query difference that the other node does not pay. NOT TESTED, AND MUST NOT BE \
+CITED AS A CAUSE. Nobody has measured a query cost, a compaction, or a throughput \
+difference attributable to this. It is filed because an unexplained 6x asymmetry \
+that nobody writes down gets rediscovered by a third person who then spends a day on \
+it. Context for anyone picking it up: a shared-lock explanation for lascar's flat \
+games/hour curve was proposed and DISPROVED -- AUTO_SERVER makes a single file \
+holder the designed steady state, and a watcher caught three, four and seven servers \
+running with ZERO processes holding the file, which no lock theory can produce. \
+Separately measured in the same sweep: median cores per game 1.85 at 4 workers and \
+1.49 at 8 against a 96-core cap, with iowait a flat 0% in both arms. So the runs are \
+neither CPU-bound nor I/O-bound, and the leading explanation for the throughput gap \
+is other tenants on the node -- 228 games/h and 71 games/h were measured for the \
+IDENTICAL configuration ninety minutes apart. Anyone testing the database size should \
+do it as a paired arm inside one wall window, not against a number from earlier in \
+the day.",
+  "status": "open",
+  "priority": 3,
+  "type": "investigation",
+  "labels": [
+    "observation",
+    "not-attributed",
+    "cross-node",
+    "engine-db",
+  ],
+  "created_at": "2026-08-24T21:00:00.000-04:00",
+  "updated_at": "2026-08-24T21:00:00.000-04:00",
+}
