@@ -34,7 +34,32 @@ rather than fatal: the games are already on disk and failing the session would n
 unwrite them; what matters is seeing it at generation rather than inferring it at \
 assembly from a provenance field that is right for one of the two games. The detector \
 was validated against the real corpus, not only fixtures: 3,964 directories scanned, \
-exactly the 10 known cases found.",
+exactly the 10 known cases found.\n\n\
+ROOT CAUSE FOUND 2026-08-25 on ranokau, from a filtered DEBUG capture of GameImpl's \
+per-player flag dump over 1,932 games (4 anomalies against ~3.2 expected).\n\n\
+THE GAMES ARE DRAWS. Every anomaly shows BOTH players marked lost -- normal is \
+[Skill1 => L] - [Skill8 => W]; the anomalies are [Skill1 => L] - [Skill8 => L], 4 of 4, \
+with no W and no Q/T/I. With both already lost, neither branch of findWinnersAndLosers \
+fires, winnerId stays null, isADraw() is true, MatchImpl credits no win and plays \
+another game. That is CORRECT best-of-N behaviour for a drawn game; the harness is what \
+assumes one game per match.\n\n\
+PlayerImpl.leave() IS NOT INVOLVED and the concede-queue hypothesis is closed. A widened \
+capture over a 45-game replay containing 14 real draws found ZERO DRAW-for-gameId lines \
+and ZERO per-player left/lost lines. Both are logged only when remainingPlayers == 0, \
+which counts !hasLeft(); zero across 14 draws means neither player LEFT. The draw comes \
+from both being marked lost without leaving.\n\n\
+THE RECORDED WINNER IS NOT THE ENGINE VERDICT. winnerId is assigned once, after the play \
+loop; the event collector runs from checkIfGameIsOver DURING the loop and reconstructs a \
+winner from player flags. They disagree exactly when the two losses are not simultaneous: \
+one player loses, the collector snapshots the other as survivor, the second loss lands, \
+and the engine then calls it a draw. That is why recorded winners sometimes have LESS \
+life than the loser (14 vs 18, 18 vs 20, 20 vs 38). seat_won inherits this and is wrong \
+on those rows, undetectably.\n\n\
+THE PAIRING PREDISPOSES; THE OCCURRENCE DOES NOT REPRODUCE. Replaying the nine known \
+anomalous seeds at the same pin (f0008f6d both sides): 4 of 9 came back doubled, 5 of 9 \
+as single games, and seed 926273 went from 4 games to TWELVE. Opening hands reproduce \
+42/44 and decision sequences 1/44 -- same deck pair, same deal, different play. Certain \
+matchups draw repeatedly; the individual occurrence is not deterministic.",
   "status": "closed",
   "priority": 1,
   "type": "bug",
