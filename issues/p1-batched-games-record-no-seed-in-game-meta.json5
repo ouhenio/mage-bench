@@ -1,0 +1,40 @@
+{
+  "title": "Batched games record no seed: write_game_meta reads \
+MAGEBENCH_GAME_SEED, the batch launcher sets MAGEBENCH_GAME_SEEDS",
+  "description": "`write_game_meta` (game_finalization.py) stamps the seed from \
+the env var `MAGEBENCH_GAME_SEED`, singular. The sequential-batch path sets \
+`MAGEBENCH_GAME_SEEDS`, plural — a comma-separated list, one per game. The \
+singular name is never set on that path, so every batched game writes a \
+game_meta.json with NO seed field at all.\n\n\
+MEASURED: 0 of 166 game_meta.json files across two runs (a 20-game smoke and a \
+146-game corpus run) carry a `seed` key. Both ran through the batch launcher.\n\n\
+Why it matters more than a missing label. The seed is the independent variable: \
+two nodes generate a shared corpus from disjoint seed blocks, and \"no game was \
+generated twice\" is only checkable if each game says which seed produced it. \
+Without it the property is true by construction and unprovable from the \
+artefacts. It also makes any individual game unreproducible — you cannot re-run \
+the one that behaved strangely.\n\n\
+The obvious fallback does NOT work. `config` looks like a per-game label \
+(`g915076`, written by the launcher as g<seed>.json) but it is a WORKER label: \
+it repeats once per game in the batch, 5x in our runs. Recovering the seed from \
+it is wrong and looks right, which is the dangerous kind of wrong.\n\n\
+The file's own comment argues this case already, about temperature and arm: \
+\"for a common-random-numbers experiment the seed IS the independent variable: \
+if one game fails and an arm comes up short, arms misalign silently and nothing \
+detects it.\" The reasoning is right; the batch path just does not reach it.\n\n\
+Repro: run any batch with MAGEBENCH_GAME_SEEDS set and grep the produced \
+game_meta.json for \"seed\". Expected one per game; actual none.\n\n\
+Suggested fix: stamp the seed the game actually used, taken from wherever the \
+batch path consumes the seed list, rather than from an env var read once per \
+process. A per-process env var cannot describe a per-game value — that mismatch \
+is the bug, not the variable name.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "orchestration",
+    "provenance",
+  ],
+  "created_at": "2026-08-24T00:00:00.000000-08:00",
+  "updated_at": "2026-08-24T00:00:00.000000-08:00",
+}

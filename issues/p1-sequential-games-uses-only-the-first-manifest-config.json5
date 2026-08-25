@@ -1,0 +1,37 @@
+{
+  "title": "--sequential-games uses only the FIRST manifest config, so a batch of \
+N games all play the same matchup",
+  "description": "A launcher writes N per-game configs into a manifest and runs \
+`--batch-config-manifest manifest.json --sequential-games N`. Every game in the \
+batch is played with the FIRST config. The remaining N-1 are written, passed, \
+parsed, and ignored. Nothing warns.\n\n\
+MEASURED on a live 5,000-game corpus run (stopped because of this), 116 games \
+completed, 5 games per worker:\n\
+  - 30 distinct deck pairs over 116 games -> 3.9 games per pair\n\
+  - pair repeat histogram {5: 18 groups, 4: 2, 3: 1, 2: 6, 1: 3}\n\
+  - 24 of 24 multi-game config groups had ALL games on ONE deck pair\n\
+  - 60 distinct decks touched, from a 952-deck training pool\n\n\
+The games are NOT duplicates: seeds vary per game via MAGEBENCH_GAME_SEEDS, so \
+shuffles differ. In one group the five games ran 133/160/149/236/274 decisions \
+with different opening hands. So the corpus is valid and silently NARROW — which \
+is why nothing downstream would have caught it. The rendered conversations look \
+correct; only a count of distinct (deckA, deckB) pairs reveals it.\n\n\
+Impact for us: intended 5,000 matchups, would have got ~1,000. Matchup diversity \
+is the entire point of the corpus, so this is a p1.\n\n\
+Repro: build a manifest of N configs with DIFFERENT decks, run with \
+--sequential-games N, then compare `deck_path` across the produced \
+game_meta.json files. Expected N distinct pairs; actual 1.\n\n\
+Suggested shape of a fix: consume the manifest entry per sequential game, and \
+fail loudly if the manifest length and --sequential-games disagree — a manifest \
+that is silently truncated to its first element is worse than an error, because \
+the run succeeds.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "orchestration",
+    "batch",
+  ],
+  "created_at": "2026-08-24T00:00:00.000000-08:00",
+  "updated_at": "2026-08-24T00:00:00.000000-08:00",
+}
