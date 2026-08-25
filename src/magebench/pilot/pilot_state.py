@@ -90,6 +90,28 @@ class PilotLoopState:
     # The pair is the anchor: tokens from the engine, chars from what we sent.
     last_prompt_chars: int | None = None
 
+    # SEGMENTS. Training splits a trajectory too long for the context into
+    # segments that each stand alone; the pilot cuts at the same place by the
+    # same rule, so a boundary the model meets in play is a boundary it met in
+    # training. See magebench.pilot.context_segments.
+    #
+    # How many decisions the CURRENT segment holds. Distinct from
+    # decisions_seen, which is the rendered header's index: they agree today
+    # because both restart at a cut, and they are kept apart because the header
+    # is a thing the model reads and this is a thing the budget counts.
+    segment_decisions: int = 0
+    # How many cuts this game has taken. 0 for every game short enough never to
+    # reach the budget, which is all of them so far.
+    segment_index: int = 0
+    # The raw tool result of the decision just appended to history, held so the
+    # crossing decision can be re-rendered as the first of the next segment --
+    # with a fresh board and a cleared `seen`, exactly as the assembler
+    # re-renders it. Consumed by the cut check on the next render.
+    pending_decision_blob: str | None = None
+    # Characters that decision contributed to history, so the check can price
+    # the pending decision without re-rendering it.
+    pending_decision_chars: int = 0
+
 
 @dataclass
 class PilotTurnState:
@@ -101,7 +123,7 @@ class PilotTurnState:
     chat_messages_this_turn: int = 0
 
 
-def _reset_render_cache(state: PilotLoopState) -> None:
+def reset_render_cache(state: PilotLoopState) -> None:
     """Drop cached prompt metadata after a context reset."""
     state.state_summary = ""
     state.cache_breakpoint_idx = None
@@ -156,7 +178,7 @@ def reset_context(
             "content": build_reset_message(base_text, last_reasoning),
         },
     ]
-    _reset_render_cache(state)
+    reset_render_cache(state)
     state.seen_oracle_cards.clear()
     if reset_board_context:
         state.board_tracker.reset()

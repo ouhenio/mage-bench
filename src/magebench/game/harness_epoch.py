@@ -104,8 +104,26 @@ from magebench.game.season import SEASON_1_START_EPOCH as GAME_EXPORT_SEASON_1_S
 #       from prompts collected after it on every decision but the first. snapshot_index
 #       stays 0: the pilot renders one snapshot per decision, so there 0 is the true
 #       value rather than a missing one.
+#  64 - The pilot cuts long games where training cuts them (Aug 25). A game that
+#       outgrows the context is now SPLIT at a decision boundary by the same rule the
+#       training assembler uses -- same character budget, same CHARS_PER_TOKEN_WORST,
+#       system prompt and deck block repeated, `seen` reset, the crossing decision
+#       re-rendered as decision 0 of the next segment -- instead of running until the
+#       serving engine refuses the request and then resetting with a "the conversation
+#       was reset" preamble that appears nowhere in training. The rule now lives in
+#       magebench.pilot.context_segments and render_conversations imports it, so there
+#       is one definition rather than two.
+#
+#       Behaviourally this is a no-op on every game recorded so far: the largest prompt
+#       in 10,875 recorded calls is 12,409 tokens against a 131,072-token budget, and
+#       the cut has never had occasion to fire. The epoch moves anyway, because the
+#       renderer's history and header index are now reachable in a state (segment 2+)
+#       that no earlier epoch could produce, and a game that DOES cross the budget is
+#       not comparable to one collected before this. MAGEBENCH_CONTEXT_WINDOW=full|
+#       windowed names the arm; MAGEBENCH_APPEND_ONLY keeps working as its older
+#       spelling and a disagreement between the two is refused rather than resolved.
 
-HARNESS_EPOCH = 63
+HARNESS_EPOCH = 64
 
 # Re-exported here so existing callers keep a stable import path while the
 # canonical season boundary now lives with the export pipeline.

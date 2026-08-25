@@ -440,7 +440,17 @@ def render_context(
     # compute). Opt OUT with MAGEBENCH_APPEND_ONLY=0 -- the windowed path is kept
     # deliberately, because it is the reference arm for re-running that A/B and
     # for re-measuring every baseline taken before today. Not dead code.
-    if os.environ.get("MAGEBENCH_APPEND_ONLY", "1") != "0":
+    # MAGEBENCH_CONTEXT_WINDOW=full|windowed is the name the training-side
+    # presets and the report use; MAGEBENCH_APPEND_ONLY=0/1 is the older
+    # spelling of the same setting and still works. See context_window_mode.
+    #
+    # Imported here rather than at module scope: context_segments imports
+    # CHARS_PER_TOKEN_WORST from this module, and a top-level import would close
+    # the cycle. The constant belongs to rendering and the rule belongs to
+    # segmentation, so the dependency runs this way round on purpose.
+    from magebench.pilot.context_segments import context_window_mode
+
+    if context_window_mode() == "full":
         messages.extend(history)
         # MAGEBENCH_CONTEXT_LIMIT is the SERVER's max_model_len, not a budget we
         # pick. It had a default of 40960 here, which was the server's setting the

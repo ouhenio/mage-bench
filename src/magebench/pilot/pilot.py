@@ -59,7 +59,20 @@ from magebench.pilot.pilot_rendering import (
     render_context,
     render_for_pilot,
 )
-from magebench.pilot.pilot_state import record_decision_seq, PilotLoopState, PilotTurnState, reset_context
+from magebench.pilot.context_segments import (
+    PENDING_ANSWER_RESERVE_CHARS,
+    SEGMENT_MAX_DECISIONS,
+    context_window_mode,
+    segment_budget_chars,
+    should_close_segment,
+)
+from magebench.pilot.pilot_state import (
+    record_decision_seq,
+    PilotLoopState,
+    PilotTurnState,
+    reset_render_cache,
+    reset_context,
+)
 from magebench.pilot.prompts import load_prompts
 from magebench.pilot.tool_error import ToolExecutionError
 
@@ -259,13 +272,107 @@ def _load_default_system_prompt() -> str:
     return prompts["default"]
 
 
+def close_segment_if_needed(
+    state: PilotLoopState,
+    system_prompt: str,
+    game_log: GameLogWriter | None = None,
+) -> bool:
+    """Cut the conversation at a decision boundary, the way training cuts it.
+
+    A game long enough to outgrow the context gets SPLIT at training, never
+    dropped: each segment repeats the system prompt and the deck block, resets
+    `seen` so a card first revealed before the boundary is revealed again after
+    it, and re-renders the crossing decision as the first of the next segment.
+    Inference does the same thing here, by the same rule, from the same module.
+
+    The alternative was to keep letting the serving engine refuse the request
+    and reset reactively. That reset is a DIFFERENT boundary: it lands wherever
+    the token ceiling happens to fall, restarts with a "the conversation was
+    reset" preamble that appears nowhere in training, and keeps the header
+    index counting. Every one of those is a conditioning the model never saw.
+    The reactive path stays as the backstop -- the character budget is an
+    estimate and the engine's refusal is not -- but it should now be unreachable
+    in a game the budget bounds.
+
+    Returns True if a cut happened.
+    """
+    blob = state.pending_decision_blob
+    if blob is None:
+        return False
+    # Consumed whether or not it cuts: one decision, one check. Leaving it set
+    # would re-price the same decision on every LLM call of a stalled turn,
+    # where several calls answer one decision.
+    state.pending_decision_blob = None
+    pending_chars = state.pending_decision_chars
+
+    if context_window_mode() != "full":
+        # The windowed arm bounds the prompt by construction, and cutting it
+        # here would put a boundary in the reference arm that the arm it is
+        # being compared against does not have.
+        return False
+
+    # The characters that are actually in the prompt, not a model of them: the
+    # system prompt (which carries the deck block when there is one, so a cut
+    # repeats it automatically) plus every message in history. Training's `used`
+    # is the same quantity computed over what IT emits. Where the two
+    # conversations coincide -- one call per decision, no tool errors -- the two
+    # numbers coincide and the boundary lands in the same place. Where inference
+    # spent extra turns on a decision its prompt really is larger, and cutting
+    # earlier for it is right rather than a discrepancy.
+    used_after = len(system_prompt) + prompt_char_count(state.history)
+    used_before = used_after - pending_chars
+
+    if not should_close_segment(
+        used_chars=used_before,
+        pending_cost_chars=pending_chars + PENDING_ANSWER_RESERVE_CHARS,
+        decisions_in_segment=state.segment_decisions,
+        budget_chars=segment_budget_chars(),
+        max_decisions=SEGMENT_MAX_DECISIONS,
+    ):
+        state.segment_decisions += 1
+        return False
+
+    state.seen_oracle_cards.clear()
+    state.last_board = None
+    text, state.last_board = render_for_pilot(blob, None, state.seen_oracle_cards, 0)
+    # A `user` message, not a `tool` message. The tool message it replaces was
+    # the answer to an assistant tool call that is being dropped with the rest
+    # of history, and a tool result whose call is gone is a 400 from the server.
+    # Training writes this decision as a user message too, so the replacement is
+    # also what makes the two renderings match.
+    state.history = [{"role": "user", "content": text}]
+    # The header restarts at 0 exactly as the assembler's decision_index does.
+    # It was rendered above with index 0; the decision it names is this one, so
+    # the count standing at 1 afterwards is the same off-by-one the append site
+    # keeps.
+    state.decisions_seen = 1
+    state.segment_decisions = 1
+    state.segment_index += 1
+    reset_render_cache(state)
+    logger.info(
+        "[pilot] context segment %d closed at the training budget; "
+        "the crossing decision reopens as decision 0",
+        state.segment_index,
+    )
+    if game_log:
+        game_log.emit(
+            "context_reset",
+            cause="segment_boundary",
+            harness_action=True,
+            reset_index=state.segment_index,
+        )
+    return True
+
+
 async def _build_loop_messages(
     state: PilotLoopState,
     session: ClientSession,
     system_prompt: str,
     cache_control: dict | None,
+    game_log: GameLogWriter | None = None,
 ) -> list[dict]:
     """Render the next LLM request from the current history."""
+    close_segment_if_needed(state, system_prompt, game_log)
     if len(state.history) > CONTEXT_RECENT_COUNT:
         state.render_counter += 1
         if not state.state_summary or state.render_counter % RENDER_INTERVAL == 0:
@@ -548,6 +655,7 @@ async def _process_tool_calls(
                 return True, turn_state.tools_called
 
         display_text = result_text
+        decision_blob: str | None = None
         if fn.name in ("pass_priority", "get_action_choices", "choose_action"):
             # Stamp the decision seq HERE, from the same result_text that is about to be
             # rendered into history -- not from the capture at :378, which happens BEFORE
@@ -568,6 +676,12 @@ async def _process_tool_calls(
             # wrong the day the renderer decorates anything else.
             if _carries_a_decision(result_text):
                 state.decisions_seen += 1
+                # Only a decision that was actually RENDERED delimits a segment,
+                # which is why this is set inside the branch that renders rather
+                # than beside the history append below. A result carrying
+                # action_pending from some other tool would be stashed there and
+                # re-rendered at a cut into text the game never showed.
+                decision_blob = result_text
             turns_since_chat = state.current_game_turn - state.last_chat_turn
             chat_budget_left = turn_state.chat_messages_this_turn < MAX_CHAT_MESSAGES_PER_TURN
             if _chat_prompts_enabled() and turns_since_chat >= 2 and display_text != result_text and chat_budget_left:
@@ -583,6 +697,19 @@ async def _process_tool_calls(
                 "content": display_text,
             }
         )
+        if decision_blob is not None:
+            # Hand the segment check the raw blob and what it cost, so the cut
+            # can re-render this decision from a clean board if it turns out to
+            # start the next segment. Priced HERE, after the append, because
+            # display_text may have picked up the chat nag since it was
+            # rendered, and the budget has to count the characters that were
+            # actually sent. Recorded here because this is the only place that
+            # holds the blob; ACTED ON in _build_loop_messages, where history is
+            # between turns and consistent -- cutting from inside this loop
+            # would drop the assistant message whose tool_call_id this result
+            # still names.
+            state.pending_decision_blob = decision_blob
+            state.pending_decision_chars = len(display_text)
 
     if not turn_state.had_successful_action and (
         turn_state.had_actionable_opportunity
@@ -689,7 +816,9 @@ async def run_pilot_loop(
             await auto_pass_loop(session, "pilot")
             return
         try:
-            messages = await _build_loop_messages(state, session, system_prompt, cache_control)
+            messages = await _build_loop_messages(
+                state, session, system_prompt, cache_control, game_log
+            )
             _mark_tail_cache_breakpoint(messages, state, cache_control)
 
             create_kwargs: dict = {
