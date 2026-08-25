@@ -322,6 +322,22 @@ public final class AiDecisionRecorder {
                 }
             }
             sb.append("],");
+            // CHOSE WITHOUT BEING OFFERED, marked so an audit can count it.
+            //
+            // A decision with no options is what the harness auto-resolves by
+            // passing (MAGEBENCH_AUTO_RESOLVE_FORCED), on the measured grounds
+            // that 310,954 of block 2's 310,980 zero-option decisions are
+            // answered by passing. The other 26 -- 0.01% -- answer with a play,
+            // and those are exactly the ones auto-resolve gets wrong.
+            //
+            // The loss is accepted at that rate. This flag is how it stays
+            // COUNTABLE rather than showing up later as an unexplained drop in
+            // actions taken: an audit can sum it and say what auto-resolve cost,
+            // instead of inferring it from a behaviour change with no field
+            // attached to it.
+            if (chosen != null && (options == null || options.isEmpty())) {
+                sb.append("\"chose_unoffered\":true,");
+            }
             // DO NOT write "pass" for a null action. `chosen == null` means the AI
             // produced no action, and that is true both when it deliberately passed
             // and when its search was cut short by maxThinkTimeSecs or maxNodes.
