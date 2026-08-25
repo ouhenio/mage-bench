@@ -2059,7 +2059,7 @@
     "seq": 55,
   },
   "game_type": "Two Player Duel",
-  "harness_epoch": 63,
+  "harness_epoch": 64,
   "id": "bolt_on_stack",
   "llm_events": [
     {
