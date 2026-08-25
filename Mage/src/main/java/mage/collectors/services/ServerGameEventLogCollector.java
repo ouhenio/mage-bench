@@ -232,10 +232,24 @@ public class ServerGameEventLogCollector extends EmptyDataCollector {
         event.put("seq", seq);
         event.put("type", "game_end");
 
-        // Find winner and life totals in a single pass.
-        // hasWon() is only set for explicit "win the game" effects.
-        // Most games end via a player losing (life <= 0, decking, etc.),
-        // so fall back to: if exactly one player hasn't lost, they won.
+        // THE ENGINE'S VERDICT, NOT A RECONSTRUCTION OF IT.
+        //
+        // This used to be: take hasWon() if set, otherwise "if exactly one player
+        // hasn't lost, they won". That fallback existed because onGameEnd was
+        // called from end(), which runs DURING the play loop, before
+        // GameImpl:1135 assigns winnerId -- so there was no verdict to read and
+        // guessing was the only option.
+        //
+        // The call site moved to after the verdict, so hasWon() IS the verdict
+        // now: findWinnersAndLosers() sets it on whoever wins, and on a draw sets
+        // it on nobody. No fallback is needed and the fallback was wrong exactly
+        // when it mattered -- on a non-simultaneous double loss it named a
+        // "winner" who had also lost, twice out of four with LESS life than the
+        // player it called the loser.
+        //
+        // `survivor` keeps the old computation under a NEW NAME. Anything that
+        // keyed on the old meaning of `winner` should fail to find it rather than
+        // silently read a different quantity.
         String winnerName = null;
         String survivor = null;
         int survivorCount = 0;
@@ -249,10 +263,11 @@ public class ServerGameEventLogCollector extends EmptyDataCollector {
                 survivorCount++;
             }
         }
-        if (winnerName == null && survivorCount == 1) {
-            winnerName = survivor;
-        }
         event.put("winner", winnerName);
+        // GameImpl.isADraw() is exactly `hasEnded() && winnerId == null`, so this
+        // is the engine's own word for it rather than an inference from a null.
+        event.put("draw", game.isADraw());
+        event.put("survivor", survivorCount == 1 ? survivor : null);
         event.put("life_totals", lifeTotals);
 
         // Final state snapshot — captures life totals after combat damage resolves.

@@ -1149,6 +1149,27 @@ public abstract class GameImpl implements Game {
                 count++;
             }
             logger.debug(sb.toString());
+
+            // EMITTED HERE, NOT FROM end(), BECAUSE THE VERDICT DOES NOT EXIST YET
+            // THERE. end() is called from checkIfGameIsOver() DURING the play
+            // loop -- as soon as one player has lost -- and winnerId is assigned
+            // on the line above, after the loop. A collector running inside end()
+            // therefore cannot read the verdict and has to reconstruct one from
+            // player flags, sampled while they are still settling.
+            //
+            // That reconstruction is right 99.8% of the time and wrong exactly
+            // when the two losses are NOT simultaneous: the first loss ends the
+            // game, the collector snapshots the other player as a survivor and
+            // calls them the winner, the second loss lands, and the engine then
+            // correctly records a DRAW. Measured on 4 of 4 captured anomalies,
+            // two of which named a "winner" holding LESS life than the loser.
+            //
+            // THE TRADE, taken deliberately: this narrows game_end to games that
+            // reach this line, so a thread dying between end() and here now
+            // writes no event instead of a wrong one. A missing game_end is
+            // detectable -- audit_step1 looks for it as no_game_end_and_stale --
+            // and a fabricated winner is not.
+            DataCollectorServices.getInstance().onGameEnd(this);
         }
     }
 
@@ -1717,8 +1738,6 @@ public abstract class GameImpl implements Game {
                     .filter(Objects::nonNull)
                     .sorted()
                     .forEach(this::informPlayers);
-
-            DataCollectorServices.getInstance().onGameEnd(this);
         }
     }
 

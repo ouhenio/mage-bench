@@ -414,25 +414,37 @@ public class ObserverMageFrame extends MageFrame {
 
         // END THE PREVIOUS MATCH BEFORE STARTING THE NEXT, or it keeps playing.
         //
-        // A game ending is not a match ending. MatchImpl.endGame credits a win only
-        // `if (player.hasWon())`, and checkIfMatchEnds only ends the match when some
-        // player's wins reach winsNeeded. A game that ends WITHOUT a win -- a
-        // deck-out, an effect, a concession, or a genuine draw -- credits
-        // nobody, so the match is not over and TableController:855 immediately calls
-        // startGame again. That next game inherits the match's gameLogDir, which is
-        // the directory of the game we just finished, and the server appends a
-        // second game's events into it while this observer has already moved on.
+        // A game ending is not a match ending, and THE ENGINE IS CORRECT HERE.
+        // MatchImpl.endGame credits a win only `if (player.hasWon())`, and
+        // checkIfMatchEnds ends the match only when a player's wins reach
+        // winsNeeded. A DRAWN game credits nobody, so the match is not over and
+        // the server starts its next game -- which is right for a best-of-N
+        // match. What is wrong is that this harness plays ONE GAME PER TABLE and
+        // never tells the server so. THIS IS OUR POLICY, NOT AN ENGINE FIX; do
+        // not "correct" MatchImpl to end on a draw.
         //
-        // Measured on the step-1 corpus: 10 of 3,907 directories hold two games.
-        // Nine of the ten first games ended with NO player at or below 0 life,
-        // against 583 of 600 sampled normal games ending on a kill -- so the
-        // signature is a game that finished without anybody winning. The second
-        // game always begins about 1.1 s after the first ends, never overlapping,
-        // which is what ruled out a directory race between workers.
+        // THE MECHANISM, established from flag dumps rather than inferred. Four
+        // captured anomalies all dump [A => L] - [B => L]: both players lost, no
+        // W, no Q, no T. That is a draw by the engine's own definition --
+        // GameImpl.isADraw() is `hasEnded() && winnerId == null`. Across three
+        // corpora, 11,778 endings: every continuation is one of these and there
+        // are no false positives.
         //
-        // Quitting the match here is the fix rather than anything about winsNeeded:
-        // the engine's behaviour is correct for a best-of-N match, and what is wrong
-        // is that this harness plays one game per table and never tells the server so.
+        // (The earlier note here said the signature was "a game that finished
+        // without anybody winning", measured as nine of ten ending with nobody at
+        // or below 0 life. That was a correlate. The discriminator is whether the
+        // ending emitted lostForced's "has lost the game" -- present in 11,767
+        // endings, absent in exactly the 11 that continued.)
+        //
+        // THIS QUIT ALREADY COVERS DRAWS: it is unconditional and does not look at
+        // how the previous game ended. What it does NOT fix is WHEN. It fires when
+        // the next keepAlive command arrives, and the server starts the next game
+        // of a live match the instant the previous one ends -- measured at 109 ms
+        // ahead of this call in session_20260825_060344. Block 2 ran with this in
+        // place and still doubled 3 of 1,680 against 10 of 3,964 without it,
+        // Fisher one-sided p=0.428: no evidence it changed anything. Closing that
+        // window needs a game-over callback in this observer, which does not exist
+        // yet; quitting here is necessary and demonstrably not sufficient.
         quitPreviousMatch();
 
         // Clean up any previous game pane
