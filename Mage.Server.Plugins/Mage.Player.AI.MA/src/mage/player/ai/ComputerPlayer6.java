@@ -1489,11 +1489,19 @@ public class ComputerPlayer6 extends ComputerPlayer {
         // exactly like a run where nobody mulliganed.
         if (AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_mulligan")) {
             int lands = hand.getCards(new FilterLandCard(), game).size();
+            // EMPTY IDS, TEXT ONLY. A mulligan is a boolean, not a target: there
+            // is no card whose uuid could identify the choice. The assembler
+            // requires every chosen id to be a comma-separated list of UUIDs and
+            // treats "" as legitimate -- a decline carries no id -- so anything
+            // else fails build_dataset's malformed_label check and DROPS THE
+            // WHOLE GAME. Measured before this was fixed: 287 of 290 games
+            // dropped, i.e. essentially every game, because nearly every game
+            // contains at least one mulligan decision.
             AiDecisionRecorder.recordChoice(game, this, "choose_mulligan",
                     "Mulligan? hand=" + hand.size() + " lands=" + lands,
+                    Arrays.asList("", ""),
                     Arrays.asList("keep", "mulligan"),
-                    Arrays.asList("keep", "mulligan"),
-                    mulligan ? "mulligan" : "keep",
+                    "",
                     mulligan ? "mulligan" : "keep");
         }
         return mulligan;
