@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -63,7 +64,9 @@ from magebench.orchestration.batch_coordination import (
     claim_run_file,
     claim_session_dir,
 )
+from magebench.common.env import env_or_none
 from magebench.orchestration.config import Config
+from magebench.orchestration.game_processes import ai_budget_props
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
     MAIN_CLASS_OBSERVER,
@@ -97,6 +100,44 @@ class SequentialBatchResult:
         return len(self.completed) + len(self.failed)
 
 
+
+def _private_server_dir(project_root: Path, session_dir: Path) -> Path:
+    """A working directory of this session's own, with its own copy of db/.
+
+    THE CARD DATABASE IS AN EXCLUSIVE LOCK AND EVERY SESSION WAS SHARING ONE.
+    XMage opens Mage.Server/db/cards.h2.mv.db relative to the working directory,
+    and every session launched with cwd=Mage.Server. Measured by karn-research with
+    lsof, sampled every 5s across two minutes of a live 4-worker sweep: EXACTLY ONE
+    process held the file in all 16 samples while 12 to 14 JVMs were alive, the
+    descriptor was `78uW` -- open for write, exclusive -- and cards.h2.lock.db sat
+    beside it. Not contention that a bigger box would absorb: only one server can
+    open the database at all, and the rest wait.
+
+    That is the flat games/hour curve. 4 workers 228 games/h, 10 workers 218, with
+    per-game wall going 63s to 165s against a ~56s single-game baseline -- per-game
+    time rising in proportion to worker count is the queueing signature, and this is
+    what it was queueing on.
+
+    The copy is ~260 MB per session (and growing: it is written during play, not a
+    read-only artefact). Twelve workers is ~3 GB against 1007 GB of RAM and 37 TB of
+    disk, so the resource this trades is the cheap one.
+
+    Symlinking the jars and copying only db/ keeps that cost to the database alone.
+    """
+    private = session_dir / "server-home"
+    private.mkdir(parents=True, exist_ok=True)
+    source = project_root / "Mage.Server"
+    for entry in source.iterdir():
+        target = private / entry.name
+        if target.exists() or target.is_symlink():
+            continue
+        if entry.name == "db":
+            shutil.copytree(entry, target)
+        else:
+            target.symlink_to(entry)
+    return private
+
+
 def _start_server(
     pm: ProcessManager,
     project_root: Path,
@@ -105,6 +146,7 @@ def _start_server(
     server_log: Path,
     port: int,
     ai_record_dir: Path | None,
+    session_dir: Path,
 ) -> subprocess.Popen:
     """Start one headless server JVM directly, without going through maven.
 
@@ -130,6 +172,15 @@ def _start_server(
         },
         max_heap="1024m",
     )
+    # SEARCH BUDGETS BELONG HERE, and this runner used to carry them nowhere at
+    # all. ComputerPlayer6 is a server plugin and reads xmage.ai.nodes.<skill> and
+    # xmage.ai.time.<skill> with Integer.getInteger, so they are read in THIS
+    # process. Passing them to the observer, or to the GUI client as the older path
+    # did, sets them where nothing reads them -- and nothing errors, so every run
+    # used the engine defaults while its metadata recorded what the caller asked.
+    cmd.extend(
+        ai_budget_props(env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME"))
+    )
     env = os.environ.copy()
     env.update(
         {
@@ -146,7 +197,7 @@ def _start_server(
     # is the thing holding the batch together.
     return pm.start_jvm_process(
         args=cmd,
-        cwd=project_root / "Mage.Server",
+        cwd=_private_server_dir(project_root, session_dir),
         env=env,
         log_file=server_log,
     )
@@ -285,7 +336,8 @@ def run_sequential_batch(
         ai_record_dir = Path(ai_record_dir_env)
         ai_record_dir.mkdir(parents=True, exist_ok=True)
     server_proc = _start_server(
-        pm, project_root, config, server_config_path, server_log, port, ai_record_dir
+        pm, project_root, config, server_config_path, server_log, port, ai_record_dir,
+        session_dir,
     )
     if not wait_for_port(config.server, port, config.server_wait):
         kill_tree(server_proc.pid)
