@@ -15,92 +15,52 @@
       "type": "phase_change",
     },
     {
-      "message": "TestPlayer skips Draw step",
+      "message": "TestPlayer's library is shuffled",
       "seq": 7,
+    },
+    {
+      "message": "TestPlayer puts a card from hand to the bottom of their library",
+      "seq": 9,
+    },
+    {
+      "message": "TestPlayer's library is shuffled",
+      "seq": 11,
+    },
+    {
+      "message": "TestPlayer puts a card from hand to the bottom of their library",
+      "seq": 13,
+    },
+    {
+      "message": "TestPlayer puts a card from hand to the bottom of their library",
+      "seq": 15,
+    },
+    {
+      "message": "TestPlayer skips Draw step",
+      "seq": 17,
     },
     {
       "active_player": "TestPlayer",
       "phase": "BEGINNING",
-      "seq": 8,
+      "seq": 18,
       "step": "DRAW",
       "turn": 1,
       "type": "phase_change",
     },
     {
-      "message": "TestPlayer skip attack",
-      "seq": 11,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "COMBAT",
-      "seq": 12,
-      "step": "DECLARE_ATTACKERS",
-      "turn": 1,
-      "type": "phase_change",
-    },
-    {
-      "message": "TestPlayer puts Mountain from hand onto the Battlefield",
-      "seq": 16,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "POSTCOMBAT_MAIN",
-      "seq": 17,
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 1,
-      "type": "phase_change",
-    },
-    {
-      "message": "Opponent puts Mountain from hand onto the Battlefield",
-      "seq": 21,
-    },
-    {
-      "active_player": "Opponent",
-      "seq": 22,
-      "turn": 2,
-      "type": "turn_change",
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "PRECOMBAT_MAIN",
-      "seq": 23,
-      "step": "PRECOMBAT_MAIN",
-      "turn": 2,
-      "type": "phase_change",
-    },
-    {
-      "message": "Opponent skip attack",
-      "seq": 26,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "COMBAT",
-      "seq": 27,
-      "step": "DECLARE_ATTACKERS",
-      "turn": 2,
-      "type": "phase_change",
-    },
-    {
-      "message": "TestPlayer puts Mountain from hand onto the Battlefield",
-      "seq": 33,
-    },
-    {
-      "active_player": "TestPlayer",
-      "seq": 34,
-      "turn": 3,
-      "type": "turn_change",
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "PRECOMBAT_MAIN",
-      "seq": 35,
-      "step": "PRECOMBAT_MAIN",
-      "turn": 3,
-      "type": "phase_change",
-    },
-    {
       "message": "TestPlayer wants to concede",
-      "seq": 37,
+      "seq": 20,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "seq": 21,
+      "step": "PRECOMBAT_MAIN",
+      "turn": 1,
+      "type": "phase_change",
+    },
+    {
+      "message": "Opponent has won the game",
+      "seq": 22,
     }
   ],
   "card_data": {
@@ -132,85 +92,72 @@
       "response_type": "boolean",
       "snapshot_index": 1,
       "step": null,
-      "subsequent_actions": [],
+      "subsequent_actions": [
+        "TestPlayer's library is shuffled",
+      ],
       "turn": 1,
     },
     {
       "action_result": {
         "action_pending": true,
-        "action_taken": "no",
-        "action_type": "GAME_SELECT",
+        "action_taken": "auto_selected_required_target",
+        "action_type": "GAME_ASK",
         "board": [
           {
             "hand": [
               {
-                "id": "p10",
+                "id": "p17",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p11",
+                "id": "p18",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p12",
+                "id": "p19",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p13",
+                "id": "p20",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p14",
+                "id": "p21",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p15",
+                "id": "p22",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
             ],
-            "hand_size": 7,
-            "is_active": true,
+            "hand_size": 6,
+            "is_active": false,
             "is_you": true,
-            "library_size": 53,
+            "library_size": 54,
             "life": 20,
             "name": "TestPlayer",
           },
@@ -223,63 +170,106 @@
             "name": "Opponent",
           }
         ],
-        "board_cursor": 3,
-        "choices": [
-          {
-            "action": "land",
-            "id": "p10",
-            "index": 0,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p11",
-            "index": 1,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p12",
-            "index": 2,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p13",
-            "index": 3,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p14",
-            "index": 4,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p15",
-            "index": 5,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p16",
-            "index": 6,
-            "name": "Mountain",
-          }
-        ],
-        "context": "T1 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 9,
-        "land_drops_used": 0,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=pN to play, or choice=no to pass",
-        "response_type": "select",
+        "board_cursor": 4,
+        "context": "T1 ()",
+        "game_seq": 10,
+        "message": "Mulligan down to 5 cards?",
+        "respond_with": "choice=yes or choice=no",
+        "response_type": "boolean",
         "success": true,
+        "warning": "Required target auto-selected. Use get_action_choices first, then index=N.",
+        "your_hand": [
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+        ]
       },
-      "action_seq": 9,
-      "action_type": "GAME_ASK",
-      "choice_count": 0,
-      "choices": [],
+      "action_seq": 10,
+      "action_type": "GAME_TARGET",
+      "choice_count": 7,
+      "choices": [
+        {
+          "id": "p14",
+          "index": 0,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p17",
+          "index": 1,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p18",
+          "index": 2,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p19",
+          "index": 3,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p20",
+          "index": 4,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p21",
+          "index": 5,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p22",
+          "index": 6,
+          "name": "Mountain",
+          "target_type": "card",
+        }
+      ],
       "chosen": false,
       "chosen_args": {
         "choice": "no",
@@ -291,64 +281,21 @@
         5,
         6,
       ],
-      "message": "Mulligan down to 6 cards?",
+      "message": "Select a card (1 more) to put on the bottom of your library",
       "phase": null,
       "player": "TestPlayer",
-      "response_type": "boolean",
-      "snapshot_index": 1,
+      "response_type": "index",
+      "snapshot_index": 2,
       "step": null,
       "subsequent_actions": [],
       "turn": 1,
     },
     {
       "action_result": {},
-      "action_seq": 9,
-      "action_type": "GAME_SELECT",
-      "choice_count": 7,
-      "choices": [
-        {
-          "action": "land",
-          "id": "p10",
-          "index": 0,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p11",
-          "index": 1,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p12",
-          "index": 2,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p13",
-          "index": 3,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p14",
-          "index": 4,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p15",
-          "index": 5,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p16",
-          "index": 6,
-          "name": "Mountain",
-        }
-      ],
+      "action_seq": 10,
+      "action_type": "GAME_ASK",
+      "choice_count": 0,
+      "choices": [],
       "chosen": null,
       "chosen_args": {},
       "index": 2,
@@ -357,293 +304,27 @@
         6,
         7,
       ],
-      "message": "Play spells and abilities",
-      "phase": "PRECOMBAT_MAIN",
-      "pilot_context": {
-        "land_drops_used": 0,
-        "playable_cards": [
-          "p10",
-          "p11",
-          "p12",
-          "p13",
-          "p14",
-          "p15",
-          "p16",
-        ]
-      },
-      "player": "TestPlayer",
-      "response_type": "select",
-      "snapshot_index": 2,
-      "step": "PRECOMBAT_MAIN",
-      "subsequent_actions": [
-        "TestPlayer skip attack",
-      ],
-      "turn": 1,
-    },
-    {
-      "action_result": {
-        "action_pending": true,
-        "action_taken": "selected_0",
-        "action_type": "GAME_SELECT",
-        "board": [
-          {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
-            "hand": [
-              {
-                "id": "p11",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-            ],
-            "hand_size": 6,
-            "is_active": true,
-            "is_you": true,
-            "library_size": 53,
-            "life": 20,
-            "name": "TestPlayer",
-          },
-          {
-            "hand_size": 7,
-            "is_active": false,
-            "is_you": false,
-            "library_size": 53,
-            "life": 20,
-            "name": "Opponent",
-          }
-        ],
-        "board_cursor": 6,
-        "context": "T1 Postcombat Main/Postcombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 18,
-        "land_drops_used": 1,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=yes (confirm) or choice=no (pass)",
-        "response_type": "boolean",
-        "success": true,
-        "untapped_lands": 1,
-      },
-      "action_seq": 18,
-      "action_type": "GAME_SELECT",
-      "choice_count": 7,
-      "choices": [
-        {
-          "action": "land",
-          "id": "p10",
-          "index": 0,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p11",
-          "index": 1,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p12",
-          "index": 2,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p13",
-          "index": 3,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p14",
-          "index": 4,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p15",
-          "index": 5,
-          "name": "Mountain",
-        },
-        {
-          "action": "land",
-          "id": "p16",
-          "index": 6,
-          "name": "Mountain",
-        }
-      ],
-      "chosen": 0,
-      "chosen_args": {
-        "choice": "0",
-      },
-      "index": 3,
-      "is_forced": false,
-      "llm_event_indices": [
-        8,
-        9,
-        10,
-      ],
-      "message": "Play spells and abilities",
-      "phase": "POSTCOMBAT_MAIN",
-      "pilot_context": {
-        "land_drops_used": 0,
-        "playable_cards": [
-          "p10",
-          "p11",
-          "p12",
-          "p13",
-          "p14",
-          "p15",
-          "p16",
-        ]
-      },
-      "player": "TestPlayer",
-      "response_type": "select",
-      "snapshot_index": 6,
-      "step": "POSTCOMBAT_MAIN",
-      "subsequent_actions": [],
-      "turn": 1,
-    },
-    {
-      "action_result": {},
-      "action_seq": 18,
-      "action_type": "GAME_SELECT",
-      "choice_count": 0,
-      "choices": [],
-      "chosen": null,
-      "chosen_args": {},
-      "index": 4,
-      "is_forced": false,
-      "llm_event_indices": [
-        10,
-        11,
-        13,
-        15,
-      ],
-      "message": "Play spells and abilities",
-      "phase": "POSTCOMBAT_MAIN",
-      "pilot_context": {
-        "land_drops_used": 1,
-        "untapped_lands": 1,
-      },
+      "message": "Mulligan down to 5 cards?",
+      "phase": null,
       "player": "TestPlayer",
       "response_type": "boolean",
-      "snapshot_index": 7,
-      "step": "POSTCOMBAT_MAIN",
+      "snapshot_index": 3,
+      "step": null,
       "subsequent_actions": [
-        "Opponent puts Mountain from hand onto the Battlefield",
-        "Opponent skip attack",
+        "TestPlayer's library is shuffled",
       ],
       "turn": 1,
     },
     {
       "action_result": {
         "action_pending": true,
-        "action_taken": "selected_0",
-        "action_type": "GAME_SELECT",
+        "action_taken": "selected_target_0",
+        "action_type": "GAME_TARGET",
         "board": [
           {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              },
-              {
-                "id": "p11",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand": [
               {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
+                "id": "p23",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -658,88 +339,381 @@
                   "{T}: Add {R}.",
                 ]
               },
+              {
+                "id": "p25",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p26",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p27",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p28",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
             ],
             "hand_size": 6,
-            "is_active": true,
+            "is_active": false,
             "is_you": true,
-            "library_size": 52,
+            "library_size": 54,
             "life": 20,
             "name": "TestPlayer",
           },
           {
-            "battlefield": [
-              {
-                "id": "p3",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand_size": 7,
             "is_active": false,
             "is_you": false,
-            "library_size": 52,
+            "library_size": 53,
             "life": 20,
             "name": "Opponent",
           }
         ],
-        "board_cursor": 11,
-        "context": "T2 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 36,
-        "land_drops_used": 1,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=yes (confirm) or choice=no (pass)",
-        "response_type": "boolean",
+        "board_cursor": 6,
+        "can_cancel": false,
+        "choices": [
+          {
+            "id": "p23",
+            "index": 0,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p24",
+            "index": 1,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p25",
+            "index": 2,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p26",
+            "index": 3,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p27",
+            "index": 4,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p28",
+            "index": 5,
+            "name": "Mountain",
+            "target_type": "card",
+          }
+        ],
+        "context": "T1 ()",
+        "game_seq": 14,
+        "message": "Select a card (1 more) to put on the bottom of your library",
+        "required": true,
+        "respond_with": "choice=pN — must pick a target",
+        "response_type": "index",
         "success": true,
-        "untapped_lands": 2,
       },
-      "action_seq": 36,
-      "action_type": "GAME_SELECT",
+      "action_seq": 14,
+      "action_type": "GAME_TARGET",
       "choice_count": 7,
       "choices": [
         {
-          "action": "land",
-          "id": "p11",
+          "id": "p17",
           "index": 0,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p12",
+          "id": "p23",
           "index": 1,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p13",
+          "id": "p24",
           "index": 2,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p14",
+          "id": "p25",
           "index": 3,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p15",
+          "id": "p26",
           "index": 4,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p16",
+          "id": "p27",
           "index": 5,
           "name": "Mountain",
+          "target_type": "card",
         },
         {
-          "action": "land",
-          "id": "p24",
+          "id": "p28",
           "index": 6,
           "name": "Mountain",
+          "target_type": "card",
+        }
+      ],
+      "chosen": 0,
+      "chosen_args": {
+        "choice": "0",
+      },
+      "index": 3,
+      "is_forced": false,
+      "llm_event_indices": [
+        8,
+        9,
+        10,
+      ],
+      "message": "Select a card (2 more) to put on the bottom of your library",
+      "phase": null,
+      "player": "TestPlayer",
+      "response_type": "index",
+      "snapshot_index": 4,
+      "step": null,
+      "subsequent_actions": [],
+      "turn": 1,
+    },
+    {
+      "action_result": {},
+      "action_seq": 14,
+      "action_type": "GAME_TARGET",
+      "choice_count": 6,
+      "choices": [
+        {
+          "id": "p23",
+          "index": 0,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 1,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 2,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 3,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 4,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 5,
+          "name": "Mountain",
+          "target_type": "card",
+        }
+      ],
+      "chosen": null,
+      "chosen_args": {},
+      "index": 4,
+      "is_forced": false,
+      "llm_event_indices": [
+        10,
+        11,
+        13,
+        15,
+      ],
+      "message": "Select a card (1 more) to put on the bottom of your library",
+      "phase": null,
+      "player": "TestPlayer",
+      "response_type": "index",
+      "snapshot_index": 5,
+      "step": null,
+      "subsequent_actions": [],
+      "turn": 1,
+    },
+    {
+      "action_result": {
+        "action_pending": true,
+        "action_taken": "selected_target_0",
+        "action_type": "GAME_ASK",
+        "board": [
+          {
+            "hand": [
+              {
+                "id": "p24",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p25",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p26",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p27",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p28",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+            ],
+            "hand_size": 5,
+            "is_active": false,
+            "is_you": true,
+            "library_size": 55,
+            "life": 20,
+            "name": "TestPlayer",
+          },
+          {
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": false,
+            "library_size": 53,
+            "life": 20,
+            "name": "Opponent",
+          }
+        ],
+        "board_cursor": 7,
+        "context": "T1 ()",
+        "game_seq": 16,
+        "message": "Mulligan down to 4 cards?",
+        "respond_with": "choice=yes or choice=no",
+        "response_type": "boolean",
+        "success": true,
+        "your_hand": [
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+        ]
+      },
+      "action_seq": 16,
+      "action_type": "GAME_TARGET",
+      "choice_count": 6,
+      "choices": [
+        {
+          "id": "p23",
+          "index": 0,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 1,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 2,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 3,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 4,
+          "name": "Mountain",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 5,
+          "name": "Mountain",
+          "target_type": "card",
         }
       ],
       "chosen": 0,
@@ -753,32 +727,19 @@
         17,
         18,
       ],
-      "message": "Play spells and abilities",
-      "phase": "PRECOMBAT_MAIN",
-      "pilot_context": {
-        "land_drops_used": 0,
-        "playable_cards": [
-          "p11",
-          "p12",
-          "p13",
-          "p14",
-          "p15",
-          "p16",
-          "p24",
-        ],
-        "untapped_lands": 1,
-      },
+      "message": "Select a card (1 more) to put on the bottom of your library",
+      "phase": null,
       "player": "TestPlayer",
-      "response_type": "select",
-      "snapshot_index": 16,
-      "step": "PRECOMBAT_MAIN",
+      "response_type": "index",
+      "snapshot_index": 5,
+      "step": null,
       "subsequent_actions": [],
-      "turn": 3,
+      "turn": 1,
     },
     {
       "action_result": {},
-      "action_seq": 36,
-      "action_type": "GAME_SELECT",
+      "action_seq": 16,
+      "action_type": "GAME_ASK",
       "choice_count": 0,
       "choices": [],
       "chosen": null,
@@ -790,29 +751,27 @@
         19,
         21,
       ],
-      "message": "Play spells and abilities",
-      "phase": "PRECOMBAT_MAIN",
-      "pilot_context": {
-        "land_drops_used": 1,
-        "untapped_lands": 2,
-      },
+      "message": "Mulligan down to 4 cards?",
+      "phase": null,
       "player": "TestPlayer",
       "response_type": "boolean",
-      "snapshot_index": 16,
-      "step": "PRECOMBAT_MAIN",
+      "snapshot_index": 6,
+      "step": null,
       "subsequent_actions": [
+        "TestPlayer skips Draw step",
         "TestPlayer wants to concede",
+        "Opponent has won the game",
       ],
-      "turn": 3,
+      "turn": 1,
     }
   ],
   "deck_type": "Constructed - Legacy",
   "game_over": {
     "message": "Opponent",
-    "seq": 38,
+    "seq": 23,
   },
   "game_type": "Two Player Duel",
-  "harness_epoch": 64,
+  "harness_epoch": 65,
   "id": "chat_between_players",
   "llm_events": [
     {
@@ -1001,7 +960,7 @@
       "game_seq": 5,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 4,
+      "seq": 5,
       "tool_calls": [
         {
           "arguments": {},
@@ -1014,27 +973,248 @@
       "args": {
         "board_cursor": 2,
       },
-      "game_seq": 5,
+      "game_seq": 8,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_type": "GAME_ASK",
-        "board_cursor": 2,
-        "board_unchanged": true,
+        "action_type": "GAME_TARGET",
+        "board": [
+          {
+            "hand": [
+              {
+                "id": "p14",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p17",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p18",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p19",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p20",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p21",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p22",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+            ],
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": true,
+            "library_size": 53,
+            "life": 20,
+            "name": "TestPlayer",
+          },
+          {
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": false,
+            "library_size": 53,
+            "life": 20,
+            "name": "Opponent",
+          }
+        ],
+        "board_cursor": 3,
+        "can_cancel": false,
+        "choices": [
+          {
+            "id": "p14",
+            "index": 0,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p17",
+            "index": 1,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p18",
+            "index": 2,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p19",
+            "index": 3,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p20",
+            "index": 4,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p21",
+            "index": 5,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p22",
+            "index": 6,
+            "name": "Mountain",
+            "target_type": "card",
+          }
+        ],
         "context": "T1 ()",
-        "game_seq": 5,
-        "message": "Mulligan down to 6 cards?",
+        "game_seq": 8,
+        "message": "Select a card (1 more) to put on the bottom of your library",
+        "required": true,
+        "respond_with": "choice=pN — must pick a target",
+        "response_type": "index",
+        "stop_reason": "non_priority_action",
+      },
+      "seq": 6,
+      "tool": "pass_priority",
+      "type": "tool_call",
+    },
+    {
+      "cost_usd": 0.0,
+      "game_seq": 8,
+      "player": "TestPlayer",
+      "reasoning": null,
+      "seq": 7,
+      "tool_calls": [
+        {
+          "arguments": {
+            "choice": "no",
+          },
+          "name": "choose_action",
+        }
+      ],
+      "type": "llm_response",
+    },
+    {
+      "args": {
+        "choice": "no",
+      },
+      "game_seq": 10,
+      "player": "TestPlayer",
+      "result": {
+        "action_pending": true,
+        "action_taken": "auto_selected_required_target",
+        "action_type": "GAME_ASK",
+        "board": [
+          {
+            "hand": [
+              {
+                "id": "p17",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p18",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p19",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p20",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p21",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p22",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+            ],
+            "hand_size": 6,
+            "is_active": false,
+            "is_you": true,
+            "library_size": 54,
+            "life": 20,
+            "name": "TestPlayer",
+          },
+          {
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": false,
+            "library_size": 53,
+            "life": 20,
+            "name": "Opponent",
+          }
+        ],
+        "board_cursor": 4,
+        "context": "T1 ()",
+        "game_seq": 10,
+        "message": "Mulligan down to 5 cards?",
         "respond_with": "choice=yes or choice=no",
         "response_type": "boolean",
-        "stop_reason": "non_priority_action",
+        "success": true,
+        "warning": "Required target auto-selected. Use get_action_choices first, then index=N.",
         "your_hand": [
-          {
-            "is_land": true,
-            "name": "Mountain",
-            "rules": [
-              "{T}: Add {R}.",
-            ]
-          },
           {
             "is_land": true,
             "name": "Mountain",
@@ -1079,182 +1259,16 @@
           },
         ]
       },
-      "seq": 5,
-      "tool": "pass_priority",
-      "type": "tool_call",
-    },
-    {
-      "cost_usd": 0.0,
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "reasoning": null,
-      "seq": 6,
-      "tool_calls": [
-        {
-          "arguments": {
-            "choice": "no",
-          },
-          "name": "choose_action",
-        }
-      ],
-      "type": "llm_response",
-    },
-    {
-      "args": {
-        "choice": "no",
-      },
-      "game_seq": 9,
-      "player": "TestPlayer",
-      "result": {
-        "action_pending": true,
-        "action_taken": "no",
-        "action_type": "GAME_SELECT",
-        "board": [
-          {
-            "hand": [
-              {
-                "id": "p10",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p11",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-            ],
-            "hand_size": 7,
-            "is_active": true,
-            "is_you": true,
-            "library_size": 53,
-            "life": 20,
-            "name": "TestPlayer",
-          },
-          {
-            "hand_size": 7,
-            "is_active": false,
-            "is_you": false,
-            "library_size": 53,
-            "life": 20,
-            "name": "Opponent",
-          }
-        ],
-        "board_cursor": 3,
-        "choices": [
-          {
-            "action": "land",
-            "id": "p10",
-            "index": 0,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p11",
-            "index": 1,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p12",
-            "index": 2,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p13",
-            "index": 3,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p14",
-            "index": 4,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p15",
-            "index": 5,
-            "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p16",
-            "index": 6,
-            "name": "Mountain",
-          }
-        ],
-        "context": "T1 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 9,
-        "land_drops_used": 0,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=pN to play, or choice=no to pass",
-        "response_type": "select",
-        "success": true,
-      },
-      "seq": 7,
+      "seq": 8,
       "tool": "choose_action",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 9,
+      "game_seq": 10,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 8,
+      "seq": 10,
       "tool_calls": [
         {
           "arguments": {},
@@ -1265,82 +1279,75 @@
     },
     {
       "args": {
-        "board_cursor": 3,
+        "board_cursor": 4,
       },
-      "game_seq": 15,
+      "game_seq": 12,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_type": "GAME_SELECT",
+        "action_type": "GAME_TARGET",
         "board": [
           {
             "hand": [
               {
-                "id": "p10",
+                "id": "p17",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p11",
+                "id": "p23",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p12",
+                "id": "p24",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p13",
+                "id": "p25",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p14",
+                "id": "p26",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p15",
+                "id": "p27",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
               {
-                "id": "p16",
+                "id": "p28",
                 "is_land": true,
                 "name": "Mountain",
-                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
             ],
             "hand_size": 7,
-            "is_active": true,
+            "is_active": false,
             "is_you": true,
             "library_size": 53,
             "life": 20,
@@ -1356,69 +1363,69 @@
           }
         ],
         "board_cursor": 5,
+        "can_cancel": false,
         "choices": [
           {
-            "action": "land",
-            "id": "p10",
+            "id": "p17",
             "index": 0,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p11",
+            "id": "p23",
             "index": 1,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p12",
+            "id": "p24",
             "index": 2,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p13",
+            "id": "p25",
             "index": 3,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p14",
+            "id": "p26",
             "index": 4,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p15",
+            "id": "p27",
             "index": 5,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p16",
+            "id": "p28",
             "index": 6,
             "name": "Mountain",
+            "target_type": "card",
           }
         ],
-        "context": "T1 Postcombat Main/Postcombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 15,
-        "has_playable_cards": true,
-        "land_drops_used": 0,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=pN to play, or choice=no to pass",
-        "response_type": "select",
-        "stop_reason": "playable_cards",
+        "context": "T1 ()",
+        "game_seq": 12,
+        "message": "Select a card (2 more) to put on the bottom of your library",
+        "required": true,
+        "respond_with": "choice=pN — must pick a target",
+        "response_type": "index",
+        "stop_reason": "non_priority_action",
       },
-      "seq": 9,
+      "seq": 11,
       "tool": "pass_priority",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 15,
+      "game_seq": 12,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 10,
+      "seq": 12,
       "tool_calls": [
         {
           "arguments": {
@@ -1433,27 +1440,17 @@
       "args": {
         "choice": "0",
       },
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_taken": "selected_0",
-        "action_type": "GAME_SELECT",
+        "action_taken": "selected_target_0",
+        "action_type": "GAME_TARGET",
         "board": [
           {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand": [
               {
-                "id": "p11",
+                "id": "p23",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1461,7 +1458,7 @@
                 ]
               },
               {
-                "id": "p12",
+                "id": "p24",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1469,7 +1466,7 @@
                 ]
               },
               {
-                "id": "p13",
+                "id": "p25",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1477,7 +1474,7 @@
                 ]
               },
               {
-                "id": "p14",
+                "id": "p26",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1485,7 +1482,7 @@
                 ]
               },
               {
-                "id": "p15",
+                "id": "p27",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1493,7 +1490,7 @@
                 ]
               },
               {
-                "id": "p16",
+                "id": "p28",
                 "is_land": true,
                 "name": "Mountain",
                 "rules": [
@@ -1502,9 +1499,9 @@
               },
             ],
             "hand_size": 6,
-            "is_active": true,
+            "is_active": false,
             "is_you": true,
-            "library_size": 53,
+            "library_size": 54,
             "life": 20,
             "name": "TestPlayer",
           },
@@ -1518,25 +1515,63 @@
           }
         ],
         "board_cursor": 6,
-        "context": "T1 Postcombat Main/Postcombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 18,
-        "land_drops_used": 1,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=yes (confirm) or choice=no (pass)",
-        "response_type": "boolean",
+        "can_cancel": false,
+        "choices": [
+          {
+            "id": "p23",
+            "index": 0,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p24",
+            "index": 1,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p25",
+            "index": 2,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p26",
+            "index": 3,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p27",
+            "index": 4,
+            "name": "Mountain",
+            "target_type": "card",
+          },
+          {
+            "id": "p28",
+            "index": 5,
+            "name": "Mountain",
+            "target_type": "card",
+          }
+        ],
+        "context": "T1 ()",
+        "game_seq": 14,
+        "message": "Select a card (1 more) to put on the bottom of your library",
+        "required": true,
+        "respond_with": "choice=pN — must pick a target",
+        "response_type": "index",
         "success": true,
-        "untapped_lands": 1,
       },
-      "seq": 11,
+      "seq": 13,
       "tool": "choose_action",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 12,
+      "seq": 14,
       "tool_calls": [
         {
           "arguments": {
@@ -1551,21 +1586,21 @@
       "args": {
         "message": "Good luck have fun!",
       },
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "result": {
         "success": true,
       },
-      "seq": 13,
+      "seq": 15,
       "tool": "send_chat_message",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 14,
+      "seq": 16,
       "tool_calls": [
         {
           "arguments": {
@@ -1580,26 +1615,24 @@
       "args": {
         "max_chars": 10000,
       },
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "result": {
-        "cursor": 17,
-        "log": "TestPlayer turn 1:\n\
-TestPlayer played Mountain\n\
-[Chat] TestPlayer: Good luck have fun!",
-        "total_length": 84,
+        "cursor": 29,
+        "log": "[Chat] TestPlayer: Good luck have fun!",
+        "total_length": 38,
         "truncated": false,
       },
-      "seq": 15,
+      "seq": 17,
       "tool": "get_game_log",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 18,
+      "game_seq": 14,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 16,
+      "seq": 18,
       "tool_calls": [
         {
           "arguments": {
@@ -1615,182 +1648,70 @@ TestPlayer played Mountain\n\
         "board_cursor": 6,
         "until": "my_turn",
       },
-      "game_seq": 32,
+      "game_seq": 14,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_type": "GAME_SELECT",
-        "board": [
-          {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
-            "hand": [
-              {
-                "id": "p11",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p24",
-                "is_land": true,
-                "name": "Mountain",
-                "playable": true,
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-            ],
-            "hand_size": 7,
-            "is_active": true,
-            "is_you": true,
-            "library_size": 52,
-            "life": 20,
-            "name": "TestPlayer",
-          },
-          {
-            "battlefield": [
-              {
-                "id": "p3",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
-            "hand_size": 7,
-            "is_active": false,
-            "is_you": false,
-            "library_size": 52,
-            "life": 20,
-            "name": "Opponent",
-          }
-        ],
-        "board_cursor": 10,
+        "action_type": "GAME_TARGET",
+        "board_cursor": 6,
+        "board_unchanged": true,
+        "can_cancel": false,
         "choices": [
           {
-            "action": "land",
-            "id": "p11",
+            "id": "p23",
             "index": 0,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p12",
+            "id": "p24",
             "index": 1,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p13",
+            "id": "p25",
             "index": 2,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p14",
+            "id": "p26",
             "index": 3,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p15",
+            "id": "p27",
             "index": 4,
             "name": "Mountain",
+            "target_type": "card",
           },
           {
-            "action": "land",
-            "id": "p16",
+            "id": "p28",
             "index": 5,
             "name": "Mountain",
-          },
-          {
-            "action": "land",
-            "id": "p24",
-            "index": 6,
-            "name": "Mountain",
+            "target_type": "card",
           }
         ],
-        "context": "T2 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 32,
-        "has_playable_cards": true,
-        "land_drops_used": 0,
-        "message": "Play spells and abilities",
-        "recent_chat": [
-          "Opponent: You too, glhf!",
-        ],
-        "respond_with": "choice=pN to play, or choice=no to pass",
-        "response_type": "select",
-        "stop_reason": "playable_cards",
-        "untapped_lands": 1,
+        "context": "T1 ()",
+        "game_seq": 14,
+        "message": "Select a card (1 more) to put on the bottom of your library",
+        "required": true,
+        "respond_with": "choice=pN — must pick a target",
+        "response_type": "index",
+        "stop_reason": "non_priority_action",
       },
-      "seq": 17,
+      "seq": 19,
       "tool": "pass_priority",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 32,
+      "game_seq": 14,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 18,
+      "seq": 20,
       "tool_calls": [
         {
           "arguments": {
@@ -1805,73 +1726,15 @@ TestPlayer played Mountain\n\
       "args": {
         "choice": "0",
       },
-      "game_seq": 36,
+      "game_seq": 16,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_taken": "selected_0",
-        "action_type": "GAME_SELECT",
+        "action_taken": "selected_target_0",
+        "action_type": "GAME_ASK",
         "board": [
           {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              },
-              {
-                "id": "p11",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand": [
-              {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
               {
                 "id": "p24",
                 "is_land": true,
@@ -1880,53 +1743,110 @@ TestPlayer played Mountain\n\
                   "{T}: Add {R}.",
                 ]
               },
+              {
+                "id": "p25",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p26",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p27",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p28",
+                "is_land": true,
+                "name": "Mountain",
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
             ],
-            "hand_size": 6,
-            "is_active": true,
+            "hand_size": 5,
+            "is_active": false,
             "is_you": true,
-            "library_size": 52,
+            "library_size": 55,
             "life": 20,
             "name": "TestPlayer",
           },
           {
-            "battlefield": [
-              {
-                "id": "p3",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand_size": 7,
             "is_active": false,
             "is_you": false,
-            "library_size": 52,
+            "library_size": 53,
             "life": 20,
             "name": "Opponent",
           }
         ],
-        "board_cursor": 11,
-        "context": "T2 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
-        "game_seq": 36,
-        "land_drops_used": 1,
-        "message": "Play spells and abilities",
-        "respond_with": "choice=yes (confirm) or choice=no (pass)",
+        "board_cursor": 7,
+        "context": "T1 ()",
+        "game_seq": 16,
+        "message": "Mulligan down to 4 cards?",
+        "respond_with": "choice=yes or choice=no",
         "response_type": "boolean",
         "success": true,
-        "untapped_lands": 2,
+        "your_hand": [
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+          {
+            "is_land": true,
+            "name": "Mountain",
+            "rules": [
+              "{T}: Add {R}.",
+            ]
+          },
+        ]
       },
-      "seq": 19,
+      "seq": 21,
       "tool": "choose_action",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 36,
+      "game_seq": 16,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 20,
+      "seq": 23,
       "tool_calls": [
         {
           "arguments": {
@@ -1941,33 +1861,25 @@ TestPlayer played Mountain\n\
       "args": {
         "max_chars": 10000,
       },
-      "game_seq": 36,
+      "game_seq": 16,
       "player": "TestPlayer",
       "result": {
-        "cursor": 24,
-        "log": "TestPlayer turn 1:\n\
-TestPlayer played Mountain\n\
-[Chat] TestPlayer: Good luck have fun!\n\
-Opponent turn 1:\n\
-Opponent drew a card\n\
-Opponent played Mountain\n\
-[Chat] Opponent: You too, glhf!\n\
-TestPlayer turn 2:\n\
-TestPlayer drew Mountain\n\
-TestPlayer played Mountain",
-        "total_length": 250,
+        "cursor": 30,
+        "log": "[Chat] TestPlayer: Good luck have fun!\n\
+TestPlayer turn 1:",
+        "total_length": 57,
         "truncated": false,
       },
-      "seq": 21,
+      "seq": 24,
       "tool": "get_game_log",
       "type": "tool_call",
     },
     {
       "cost_usd": 0.0,
-      "game_seq": 36,
+      "game_seq": 16,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 22,
+      "seq": 25,
       "tool_calls": [
         {
           "arguments": {},
@@ -1978,116 +1890,85 @@ TestPlayer played Mountain",
     },
     {
       "args": {},
-      "game_seq": 36,
+      "game_seq": 19,
       "player": "TestPlayer",
       "result": {
         "active_player": "TestPlayer",
         "available": true,
-        "game_seq": 36,
+        "game_seq": 19,
         "phase": "Precombat Main",
         "players": [
           {
-            "battlefield": [
-              {
-                "id": "p10",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              },
-              {
-                "id": "p11",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand": [
-              {
-                "id": "p12",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p13",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p14",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p15",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
-              {
-                "id": "p16",
-                "is_land": true,
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ]
-              },
               {
                 "id": "p24",
                 "is_land": true,
                 "name": "Mountain",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p25",
+                "is_land": true,
+                "name": "Mountain",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p26",
+                "is_land": true,
+                "name": "Mountain",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p27",
+                "is_land": true,
+                "name": "Mountain",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {R}.",
+                ]
+              },
+              {
+                "id": "p28",
+                "is_land": true,
+                "name": "Mountain",
+                "playable": true,
                 "rules": [
                   "{T}: Add {R}.",
                 ]
               },
             ],
-            "hand_size": 6,
+            "hand_size": 5,
             "is_active": true,
             "is_you": true,
-            "library_size": 52,
+            "library_size": 55,
             "life": 20,
             "name": "TestPlayer",
           },
           {
-            "battlefield": [
-              {
-                "id": "p3",
-                "name": "Mountain",
-                "rules": [
-                  "{T}: Add {R}.",
-                ],
-                "tapped": false,
-              }
-            ],
             "hand_size": 7,
             "is_active": false,
             "is_you": false,
-            "library_size": 52,
+            "library_size": 53,
             "life": 20,
             "name": "Opponent",
           }
         ],
         "priority_player": "TestPlayer",
-        "snapshot_id": 44738628800,
+        "snapshot_id": 979794255595,
         "stack": [],
         "step": "Precombat Main",
-        "turn": 2,
+        "turn": 1,
       },
-      "seq": 23,
+      "seq": 26,
       "tool": "get_game_state",
       "type": "tool_call",
     }
@@ -2283,8 +2164,8 @@ TestPlayer played Mountain",
       "turn": 1,
     },
     {
-      "active_player": "TestPlayer",
-      "phase": "PRECOMBAT_MAIN",
+      "active_player": null,
+      "phase": null,
       "players": [
         {
           "battlefield": [],
@@ -2351,34 +2232,6 @@ TestPlayer played Mountain",
           "graveyard": [],
           "hand": [
             {
-              "id": "p10",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
               "id": "p14",
               "name": "Mountain",
               "visible_to": [
@@ -2386,14 +2239,42 @@ TestPlayer played Mountain",
               ]
             },
             {
-              "id": "p15",
+              "id": "p17",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p16",
+              "id": "p18",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p19",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p20",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p21",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p22",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
@@ -2405,15 +2286,15 @@ TestPlayer played Mountain",
           "name": "TestPlayer",
         }
       ],
-      "priority_player": "TestPlayer",
-      "seq": 9,
+      "priority_player": null,
+      "seq": 8,
       "stack": [],
-      "step": "PRECOMBAT_MAIN",
+      "step": null,
       "turn": 1,
     },
     {
-      "active_player": "TestPlayer",
-      "phase": "PRECOMBAT_MAIN",
+      "active_player": null,
+      "phase": null,
       "players": [
         {
           "battlefield": [],
@@ -2480,69 +2361,62 @@ TestPlayer played Mountain",
           "graveyard": [],
           "hand": [
             {
-              "id": "p10",
+              "id": "p17",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p11",
+              "id": "p18",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p12",
+              "id": "p19",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p13",
+              "id": "p20",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p14",
+              "id": "p21",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
             {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
+              "id": "p22",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
               ]
             },
           ],
-          "library_size": 53,
+          "library_size": 54,
           "life": 20,
           "name": "TestPlayer",
         }
       ],
-      "priority_player": "Opponent",
+      "priority_player": null,
       "seq": 10,
       "stack": [],
-      "step": "PRECOMBAT_MAIN",
+      "step": null,
       "turn": 1,
     },
     {
-      "active_player": "TestPlayer",
-      "phase": "COMBAT",
+      "active_player": null,
+      "phase": null,
       "players": [
         {
           "battlefield": [],
@@ -2609,1687 +2483,14 @@ TestPlayer played Mountain",
           "graveyard": [],
           "hand": [
             {
-              "id": "p10",
+              "id": "p17",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
-              ]
-            },
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 13,
-      "stack": [],
-      "step": "DECLARE_ATTACKERS",
-      "turn": 1,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "COMBAT",
-      "players": [
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p10",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 14,
-      "stack": [],
-      "step": "DECLARE_ATTACKERS",
-      "turn": 1,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "POSTCOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p10",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 15,
-      "stack": [],
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 1,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "POSTCOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 18,
-      "stack": [],
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 1,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "POSTCOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 19,
-      "stack": [],
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 1,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "PRECOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
               ]
             },
             {
               "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 20,
-      "stack": [],
-      "step": "PRECOMBAT_MAIN",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "PRECOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 24,
-      "stack": [],
-      "step": "PRECOMBAT_MAIN",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "PRECOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 25,
-      "stack": [],
-      "step": "PRECOMBAT_MAIN",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "COMBAT",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 28,
-      "stack": [],
-      "step": "DECLARE_ATTACKERS",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "COMBAT",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 29,
-      "stack": [],
-      "step": "DECLARE_ATTACKERS",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "POSTCOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "Opponent",
-      "seq": 30,
-      "stack": [],
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 2,
-    },
-    {
-      "active_player": "Opponent",
-      "phase": "POSTCOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-          ],
-          "library_size": 53,
-          "life": 20,
-          "name": "TestPlayer",
-        }
-      ],
-      "priority_player": "TestPlayer",
-      "seq": 31,
-      "stack": [],
-      "step": "POSTCOMBAT_MAIN",
-      "turn": 2,
-    },
-    {
-      "active_player": "TestPlayer",
-      "phase": "PRECOMBAT_MAIN",
-      "players": [
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p4",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p5",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p6",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p7",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p8",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p9",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-            {
-              "id": "p23",
-              "name": "Mountain",
-              "visible_to": [
-                "Opponent",
-              ]
-            },
-          ],
-          "library_size": 52,
-          "life": 20,
-          "name": "Opponent",
-        },
-        {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p10",
-              "name": "Mountain",
-              "summoning_sick": false,
-              "tapped": false,
-              "token": false,
-            }
-          ],
-          "exile": [],
-          "graveyard": [],
-          "hand": [
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p12",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p13",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p14",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p15",
-              "name": "Mountain",
-              "visible_to": [
-                "TestPlayer",
-              ]
-            },
-            {
-              "id": "p16",
               "name": "Mountain",
               "visible_to": [
                 "TestPlayer",
@@ -4302,36 +2503,62 @@ TestPlayer played Mountain",
                 "TestPlayer",
               ]
             },
+            {
+              "id": "p25",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p26",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p27",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p28",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
           ],
-          "library_size": 52,
+          "library_size": 53,
           "life": 20,
           "name": "TestPlayer",
         }
       ],
-      "priority_player": "TestPlayer",
-      "seq": 32,
+      "priority_player": null,
+      "seq": 12,
       "stack": [],
-      "step": "PRECOMBAT_MAIN",
-      "turn": 3,
+      "step": null,
+      "turn": 1,
     },
     {
-      "active_player": "TestPlayer",
-      "phase": "PRECOMBAT_MAIN",
+      "active_player": null,
+      "phase": null,
       "players": [
         {
-          "battlefield": [
-            {
-              "face_down": false,
-              "id": "p3",
-              "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
-          ],
+          "battlefield": [],
           "exile": [],
           "graveyard": [],
           "hand": [
+            {
+              "id": "p3",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
             {
               "id": "p4",
               "name": "Mountain",
@@ -4374,37 +2601,250 @@ TestPlayer played Mountain",
                 "Opponent",
               ]
             },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
             {
               "id": "p23",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p24",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p25",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p26",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p27",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p28",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 54,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": null,
+      "seq": 14,
+      "stack": [],
+      "step": null,
+      "turn": 1,
+    },
+    {
+      "active_player": null,
+      "phase": null,
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
               "name": "Mountain",
               "visible_to": [
                 "Opponent",
               ]
             },
           ],
-          "library_size": 52,
+          "library_size": 53,
           "life": 20,
           "name": "Opponent",
         },
         {
-          "battlefield": [
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
             {
-              "face_down": false,
-              "id": "p10",
+              "id": "p24",
               "name": "Mountain",
-              "summoning_sick": false,
-              "tapped": false,
-              "token": false,
+              "visible_to": [
+                "TestPlayer",
+              ]
             },
             {
-              "face_down": false,
-              "id": "p11",
+              "id": "p25",
               "name": "Mountain",
-              "summoning_sick": true,
-              "tapped": false,
-              "token": false,
-            }
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p26",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p27",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p28",
+              "name": "Mountain",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
           ],
+          "library_size": 55,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": null,
+      "seq": 16,
+      "stack": [],
+      "step": null,
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Mountain",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
           "exile": [],
           "graveyard": [],
           "hand": [],
@@ -4414,13 +2854,13 @@ TestPlayer played Mountain",
         }
       ],
       "priority_player": "TestPlayer",
-      "seq": 38,
+      "seq": 23,
       "stack": [],
       "step": "PRECOMBAT_MAIN",
-      "turn": 3,
+      "turn": 1,
     }
   ],
-  "total_turns": 3,
+  "total_turns": 1,
   "tournament": null,
   "version": 9,
   "winner": "Opponent",

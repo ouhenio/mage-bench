@@ -3,6 +3,13 @@
 import json
 import os
 
+from magebench.pilot.auto_resolve import (
+    auto_resolve_enabled,
+    card_text_mode,
+    is_forced_decision,
+    render_auto_resolved,
+)
+
 from mcp import ClientSession
 
 from magebench.game.decision_renderer import render_decision
@@ -158,6 +165,21 @@ def render_for_pilot(
     if not isinstance(data, dict) or not data.get("action_pending"):
         return result_text, last_board
 
+    # A FORCED DECISION COSTS ONE LINE, NOT A BOARD -- and this is where the
+    # saving actually lands, because it is the one renderer BOTH the pilot and
+    # render_conversations call. Putting it here rather than at either call site
+    # is what makes the training transcript and the inference transcript agree by
+    # construction instead of by two matching edits.
+    #
+    # `last_board` IS RETURNED UNCHANGED, which is the load-bearing half. The
+    # board is not shown, so the next decision that IS shown must still render
+    # its delta against the last board the model actually saw. Advancing it here
+    # would silently diff against a board that appears nowhere in the transcript.
+    # `seen_oracle_cards` is untouched for the same reason: no card text was
+    # emitted, so nothing may be marked as already seen.
+    if auto_resolve_enabled() and is_forced_decision(data):
+        return render_auto_resolved(decision_index), last_board
+
     board = data.get("board")
     if isinstance(board, list):
         last_board = board
@@ -173,7 +195,19 @@ def render_for_pilot(
     snapshot = build_pilot_snapshot(data, board, decision)
 
     oracle_texts = extract_oracle_texts_from_board(board) if board else {}
-    if seen_oracle_cards is not None:
+    mode = card_text_mode()
+    if mode == "none":
+        # Arm B. No card text at all -- not suppressed-because-seen, absent.
+        oracle_texts = {}
+    elif mode == "always":
+        # Arm C. Every card on the board, every decision, in the same block
+        # format as a first reveal. `seen_oracle_cards` is deliberately NOT
+        # updated: nothing is ever suppressed in this mode, so recording what
+        # has been seen would only matter if a later mode switch read it, and a
+        # mid-game switch is not a thing we support.
+        pass
+    elif seen_oracle_cards is not None:
+        # first-reveal, the default: once, at first sight, never again.
         oracle_texts = {k: v for k, v in oracle_texts.items() if k not in seen_oracle_cards}
         seen_oracle_cards.update(oracle_texts)
 

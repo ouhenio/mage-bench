@@ -15,8 +15,84 @@
       "type": "phase_change",
     },
     {
+      "message": "TestPlayer skips Draw step",
+      "seq": 7,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "BEGINNING",
+      "seq": 8,
+      "step": "DRAW",
+      "turn": 1,
+      "type": "phase_change",
+    },
+    {
+      "message": "TestPlayer skip attack",
+      "seq": 11,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "COMBAT",
+      "seq": 12,
+      "step": "DECLARE_ATTACKERS",
+      "turn": 1,
+      "type": "phase_change",
+    },
+    {
+      "message": "Opponent skip attack",
+      "seq": 19,
+    },
+    {
+      "active_player": "Opponent",
+      "seq": 20,
+      "turn": 2,
+      "type": "turn_change",
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "COMBAT",
+      "seq": 21,
+      "step": "DECLARE_ATTACKERS",
+      "turn": 2,
+      "type": "phase_change",
+    },
+    {
+      "message": "Opponent discards down to 7 hand cards",
+      "seq": 26,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "END",
+      "seq": 27,
+      "step": "CLEANUP",
+      "turn": 2,
+      "type": "phase_change",
+    },
+    {
+      "message": "Opponent discards Aether Vial",
+      "seq": 29,
+    },
+    {
       "message": "TestPlayer wants to concede",
-      "seq": 6,
+      "seq": 31,
+    },
+    {
+      "active_player": "TestPlayer",
+      "seq": 32,
+      "turn": 3,
+      "type": "turn_change",
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "seq": 33,
+      "step": "PRECOMBAT_MAIN",
+      "turn": 3,
+      "type": "phase_change",
+    },
+    {
+      "message": "Opponent has won the game",
+      "seq": 34,
     }
   ],
   "card_data": {
@@ -35,6 +111,11 @@
       "mana_cost": "",
       "oracle_text": "({T}: Add {B} or {R}.)",
       "type_line": "Land — Swamp Mountain",
+    },
+    "Blood Moon": {
+      "mana_cost": "{2}{R}",
+      "oracle_text": "Nonbasic lands are Mountains.",
+      "type_line": "Enchantment",
     }
   },
   "card_images": {},
@@ -57,23 +138,77 @@
       "phase": null,
       "player": "TestPlayer",
       "response_type": "boolean",
-      "snapshot_index": 0,
+      "snapshot_index": 1,
       "step": null,
-      "subsequent_actions": [],
+      "subsequent_actions": [
+        "TestPlayer skips Draw step",
+        "TestPlayer skip attack",
+      ],
       "turn": 1,
     },
     {
       "action_result": {
-        "error": "GAME_ASK requires choice=\"yes\" or choice=\"no\". This is a yes/no question.",
+        "choices": [
+          {
+            "action": "land",
+            "id": "p10",
+            "index": 0,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p11",
+            "index": 1,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p12",
+            "index": 2,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p13",
+            "index": 3,
+            "name": "Ancient Tomb",
+          }
+        ],
+        "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
         "error_code": "missing_param",
-        "game_seq": 5,
+        "game_seq": 15,
         "retryable": true,
         "success": false,
       },
-      "action_seq": 5,
-      "action_type": "GAME_ASK",
-      "choice_count": 0,
-      "choices": [],
+      "action_seq": 15,
+      "action_type": "GAME_SELECT",
+      "choice_count": 4,
+      "choices": [
+        {
+          "action": "land",
+          "id": "p10",
+          "index": 0,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p11",
+          "index": 1,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p12",
+          "index": 2,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p13",
+          "index": 3,
+          "name": "Ancient Tomb",
+        }
+      ],
       "chosen": false,
       "chosen_args": {
         "answer": false,
@@ -86,21 +221,59 @@
         6,
         7,
       ],
-      "message": "Mulligan down to 6 cards?",
-      "phase": null,
+      "message": "Play spells and abilities",
+      "phase": "POSTCOMBAT_MAIN",
+      "pilot_context": {
+        "land_drops_used": 0,
+        "playable_cards": [
+          "p10",
+          "p11",
+          "p12",
+          "p13",
+        ]
+      },
       "player": "TestPlayer",
-      "response_type": "boolean",
-      "snapshot_index": 0,
-      "step": null,
-      "subsequent_actions": [],
+      "response_type": "select",
+      "snapshot_index": 6,
+      "step": "POSTCOMBAT_MAIN",
+      "subsequent_actions": [
+        "Opponent skip attack",
+        "Opponent discards down to 7 hand cards",
+        "Opponent discards Aether Vial",
+      ],
       "turn": 1,
     },
     {
       "action_result": {},
-      "action_seq": 5,
-      "action_type": "GAME_ASK",
-      "choice_count": 0,
-      "choices": [],
+      "action_seq": 30,
+      "action_type": "GAME_SELECT",
+      "choice_count": 4,
+      "choices": [
+        {
+          "action": "land",
+          "id": "p10",
+          "index": 0,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p11",
+          "index": 1,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p12",
+          "index": 2,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p13",
+          "index": 3,
+          "name": "Ancient Tomb",
+        }
+      ],
       "chosen": null,
       "chosen_args": {},
       "index": 2,
@@ -109,25 +282,35 @@
         8,
         9,
       ],
-      "message": "Mulligan down to 6 cards?",
-      "phase": null,
+      "message": "Play spells and abilities",
+      "phase": "END",
+      "pilot_context": {
+        "land_drops_used": 0,
+        "playable_cards": [
+          "p10",
+          "p11",
+          "p12",
+          "p13",
+        ]
+      },
       "player": "TestPlayer",
-      "response_type": "boolean",
-      "snapshot_index": 0,
-      "step": null,
+      "response_type": "select",
+      "snapshot_index": 14,
+      "step": "CLEANUP",
       "subsequent_actions": [
         "TestPlayer wants to concede",
+        "Opponent has won the game",
       ],
-      "turn": 1,
+      "turn": 2,
     }
   ],
   "deck_type": "Constructed - Legacy",
   "game_over": {
     "message": "Opponent",
-    "seq": 7,
+    "seq": 35,
   },
   "game_type": "Two Player Duel",
-  "harness_epoch": 64,
+  "harness_epoch": 65,
   "id": "initial_decision",
   "llm_events": [
     {
@@ -317,127 +500,7 @@
       "game_seq": 5,
       "player": "TestPlayer",
       "reasoning": null,
-      "seq": 4,
-      "tool_calls": [
-        {
-          "arguments": {},
-          "name": "pass_priority",
-        }
-      ],
-      "type": "llm_response",
-    },
-    {
-      "args": {
-        "board_cursor": 2,
-      },
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "result": {
-        "action_pending": true,
-        "action_type": "GAME_ASK",
-        "board_cursor": 2,
-        "board_unchanged": true,
-        "context": "T1 ()",
-        "game_seq": 5,
-        "message": "Mulligan down to 6 cards?",
-        "respond_with": "choice=yes or choice=no",
-        "response_type": "boolean",
-        "stop_reason": "non_priority_action",
-        "your_hand": [
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-        ]
-      },
       "seq": 5,
-      "tool": "pass_priority",
-      "type": "tool_call",
-    },
-    {
-      "cost_usd": 0.0,
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "reasoning": null,
-      "seq": 6,
-      "tool_calls": [
-        {
-          "arguments": {
-            "answer": false,
-          },
-          "name": "choose_action",
-        }
-      ],
-      "type": "llm_response",
-    },
-    {
-      "args": {
-        "answer": false,
-      },
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "result": {
-        "error": "GAME_ASK requires choice=\"yes\" or choice=\"no\". This is a yes/no question.",
-        "error_code": "missing_param",
-        "game_seq": 5,
-        "retryable": true,
-        "success": false,
-      },
-      "seq": 7,
-      "tool": "choose_action",
-      "type": "tool_call",
-    },
-    {
-      "cost_usd": 0.0,
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "reasoning": null,
-      "seq": 8,
       "tool_calls": [
         {
           "arguments": {},
@@ -450,104 +513,19 @@
       "args": {
         "board_cursor": 2,
       },
-      "game_seq": 5,
+      "game_seq": 15,
       "player": "TestPlayer",
       "result": {
         "action_pending": true,
-        "action_type": "GAME_ASK",
-        "board_cursor": 2,
-        "board_unchanged": true,
-        "context": "T1 ()",
-        "game_seq": 5,
-        "message": "Mulligan down to 6 cards?",
-        "respond_with": "choice=yes or choice=no",
-        "response_type": "boolean",
-        "stop_reason": "non_priority_action",
-        "your_hand": [
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "is_land": true,
-            "name": "Ancient Tomb",
-            "rules": [
-              "{T}: Add {C}{C}. {this} deals 2 damage to you.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-          {
-            "mana_cost": "{2}{R}",
-            "name": "Blood Moon",
-            "rules": [
-              "Nonbasic lands are Mountains.",
-            ]
-          },
-        ]
-      },
-      "seq": 9,
-      "tool": "pass_priority",
-      "type": "tool_call",
-    },
-    {
-      "cost_usd": 0.0,
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "reasoning": null,
-      "seq": 10,
-      "tool_calls": [
-        {
-          "arguments": {},
-          "name": "get_game_state",
-        }
-      ],
-      "type": "llm_response",
-    },
-    {
-      "args": {},
-      "game_seq": 5,
-      "player": "TestPlayer",
-      "result": {
-        "active_player": "",
-        "available": true,
-        "game_seq": 5,
-        "players": [
+        "action_type": "GAME_SELECT",
+        "board": [
           {
             "hand": [
               {
                 "id": "p10",
                 "is_land": true,
                 "name": "Ancient Tomb",
+                "playable": true,
                 "rules": [
                   "{T}: Add {C}{C}. {this} deals 2 damage to you.",
                 ]
@@ -556,6 +534,7 @@
                 "id": "p11",
                 "is_land": true,
                 "name": "Ancient Tomb",
+                "playable": true,
                 "rules": [
                   "{T}: Add {C}{C}. {this} deals 2 damage to you.",
                 ]
@@ -564,6 +543,7 @@
                 "id": "p12",
                 "is_land": true,
                 "name": "Ancient Tomb",
+                "playable": true,
                 "rules": [
                   "{T}: Add {C}{C}. {this} deals 2 damage to you.",
                 ]
@@ -572,6 +552,7 @@
                 "id": "p13",
                 "is_land": true,
                 "name": "Ancient Tomb",
+                "playable": true,
                 "rules": [
                   "{T}: Add {C}{C}. {this} deals 2 damage to you.",
                 ]
@@ -602,7 +583,7 @@
               },
             ],
             "hand_size": 7,
-            "is_active": false,
+            "is_active": true,
             "is_you": true,
             "library_size": 43,
             "life": 20,
@@ -617,12 +598,406 @@
             "name": "Opponent",
           }
         ],
-        "priority_player": "",
-        "snapshot_id": 1018570327402,
-        "stack": [],
-        "turn": 1,
+        "board_cursor": 5,
+        "choices": [
+          {
+            "action": "land",
+            "id": "p10",
+            "index": 0,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p11",
+            "index": 1,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p12",
+            "index": 2,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p13",
+            "index": 3,
+            "name": "Ancient Tomb",
+          }
+        ],
+        "context": "T1 Postcombat Main/Postcombat Main (TestPlayer) YOUR_MAIN",
+        "game_seq": 15,
+        "has_playable_cards": true,
+        "land_drops_used": 0,
+        "message": "Play spells and abilities",
+        "respond_with": "choice=pN to play, or choice=no to pass",
+        "response_type": "select",
+        "stop_reason": "playable_cards",
       },
+      "seq": 6,
+      "tool": "pass_priority",
+      "type": "tool_call",
+    },
+    {
+      "cost_usd": 0.0,
+      "game_seq": 15,
+      "player": "TestPlayer",
+      "reasoning": null,
+      "seq": 7,
+      "tool_calls": [
+        {
+          "arguments": {
+            "answer": false,
+          },
+          "name": "choose_action",
+        }
+      ],
+      "type": "llm_response",
+    },
+    {
+      "args": {
+        "answer": false,
+      },
+      "game_seq": 15,
+      "player": "TestPlayer",
+      "result": {
+        "choices": [
+          {
+            "action": "land",
+            "id": "p10",
+            "index": 0,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p11",
+            "index": 1,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p12",
+            "index": 2,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p13",
+            "index": 3,
+            "name": "Ancient Tomb",
+          }
+        ],
+        "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
+        "error_code": "missing_param",
+        "game_seq": 15,
+        "retryable": true,
+        "success": false,
+      },
+      "seq": 8,
+      "tool": "choose_action",
+      "type": "tool_call",
+    },
+    {
+      "cost_usd": 0.0,
+      "game_seq": 15,
+      "player": "TestPlayer",
+      "reasoning": null,
+      "seq": 9,
+      "tool_calls": [
+        {
+          "arguments": {},
+          "name": "pass_priority",
+        }
+      ],
+      "type": "llm_response",
+    },
+    {
+      "args": {
+        "board_cursor": 5,
+      },
+      "game_seq": 30,
+      "player": "TestPlayer",
+      "result": {
+        "action_pending": true,
+        "action_type": "GAME_SELECT",
+        "board": [
+          {
+            "hand": [
+              {
+                "id": "p10",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p11",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p12",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p13",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p14",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p15",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p16",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p24",
+                "mana_cost": "{2}{R}",
+                "name": "Broadside Bombardiers",
+                "power": "2",
+                "rules": [
+                  "Menace",
+                  "Haste",
+                  "Boast &mdash; Sacrifice another creature or artifact: {this} deals damage equal to 2 plus the sacrificed permanent's mana value to any target. (Activate only if this creature attacked this turn and only once each turn.)",
+                  ": ",
+                  "ICON_BADCan activate Boast ability",
+                ],
+                "toughness": "2",
+              }
+            ],
+            "hand_size": 8,
+            "is_active": true,
+            "is_you": true,
+            "library_size": 42,
+            "life": 20,
+            "name": "TestPlayer",
+          },
+          {
+            "graveyard": [
+              {
+                "id": "p3",
+                "name": "Aether Vial",
+                "rules": [
+                  "At the beginning of your upkeep, you may put a charge counter on {this}.",
+                  "{T}: You may put a creature card with mana value equal to the number of charge counters on {this} from your hand onto the battlefield.",
+                ]
+              },
+            ],
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": false,
+            "library_size": 52,
+            "life": 20,
+            "name": "Opponent",
+          }
+        ],
+        "board_cursor": 9,
+        "choices": [
+          {
+            "action": "land",
+            "id": "p10",
+            "index": 0,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p11",
+            "index": 1,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p12",
+            "index": 2,
+            "name": "Ancient Tomb",
+          },
+          {
+            "action": "land",
+            "id": "p13",
+            "index": 3,
+            "name": "Ancient Tomb",
+          }
+        ],
+        "context": "T2 Precombat Main/Precombat Main (TestPlayer) YOUR_MAIN",
+        "game_seq": 30,
+        "has_playable_cards": true,
+        "land_drops_used": 0,
+        "message": "Play spells and abilities",
+        "respond_with": "choice=pN to play, or choice=no to pass",
+        "response_type": "select",
+        "stop_reason": "playable_cards",
+      },
+      "seq": 10,
+      "tool": "pass_priority",
+      "type": "tool_call",
+    },
+    {
+      "cost_usd": 0.0,
+      "game_seq": 30,
+      "player": "TestPlayer",
+      "reasoning": null,
       "seq": 11,
+      "tool_calls": [
+        {
+          "arguments": {},
+          "name": "get_game_state",
+        }
+      ],
+      "type": "llm_response",
+    },
+    {
+      "args": {},
+      "game_seq": 30,
+      "player": "TestPlayer",
+      "result": {
+        "active_player": "TestPlayer",
+        "available": true,
+        "game_seq": 30,
+        "phase": "Precombat Main",
+        "players": [
+          {
+            "hand": [
+              {
+                "id": "p10",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p11",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p12",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p13",
+                "is_land": true,
+                "name": "Ancient Tomb",
+                "playable": true,
+                "rules": [
+                  "{T}: Add {C}{C}. {this} deals 2 damage to you.",
+                ]
+              },
+              {
+                "id": "p14",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p15",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p16",
+                "mana_cost": "{2}{R}",
+                "name": "Blood Moon",
+                "rules": [
+                  "Nonbasic lands are Mountains.",
+                ]
+              },
+              {
+                "id": "p24",
+                "mana_cost": "{2}{R}",
+                "name": "Broadside Bombardiers",
+                "power": "2",
+                "rules": [
+                  "Menace",
+                  "Haste",
+                  "Boast &mdash; Sacrifice another creature or artifact: {this} deals damage equal to 2 plus the sacrificed permanent's mana value to any target. (Activate only if this creature attacked this turn and only once each turn.)",
+                  ": ",
+                  "ICON_BADCan activate Boast ability",
+                ],
+                "toughness": "2",
+              }
+            ],
+            "hand_size": 8,
+            "is_active": true,
+            "is_you": true,
+            "library_size": 42,
+            "life": 20,
+            "name": "TestPlayer",
+          },
+          {
+            "graveyard": [
+              {
+                "id": "p3",
+                "name": "Aether Vial",
+                "rules": [
+                  "At the beginning of your upkeep, you may put a charge counter on {this}.",
+                  "{T}: You may put a creature card with mana value equal to the number of charge counters on {this} from your hand onto the battlefield.",
+                ]
+              },
+            ],
+            "hand_size": 7,
+            "is_active": false,
+            "is_you": false,
+            "library_size": 52,
+            "life": 20,
+            "name": "Opponent",
+          }
+        ],
+        "priority_player": "TestPlayer",
+        "snapshot_id": 773746699961,
+        "stack": [],
+        "step": "Precombat Main",
+        "turn": 2,
+      },
+      "seq": 12,
       "tool": "get_game_state",
       "type": "tool_call",
     }
@@ -755,20 +1130,1880 @@
           "battlefield": [],
           "exile": [],
           "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": null,
+      "seq": 5,
+      "stack": [],
+      "step": null,
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 9,
+      "stack": [],
+      "step": "PRECOMBAT_MAIN",
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 10,
+      "stack": [],
+      "step": "PRECOMBAT_MAIN",
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "COMBAT",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 13,
+      "stack": [],
+      "step": "DECLARE_ATTACKERS",
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "COMBAT",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 14,
+      "stack": [],
+      "step": "DECLARE_ATTACKERS",
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "POSTCOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 15,
+      "stack": [],
+      "step": "POSTCOMBAT_MAIN",
+      "turn": 1,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "POSTCOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 53,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 16,
+      "stack": [],
+      "step": "POSTCOMBAT_MAIN",
+      "turn": 1,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 17,
+      "stack": [],
+      "step": "PRECOMBAT_MAIN",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 18,
+      "stack": [],
+      "step": "PRECOMBAT_MAIN",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "COMBAT",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 22,
+      "stack": [],
+      "step": "DECLARE_ATTACKERS",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "COMBAT",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 23,
+      "stack": [],
+      "step": "DECLARE_ATTACKERS",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "POSTCOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 24,
+      "stack": [],
+      "step": "POSTCOMBAT_MAIN",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "POSTCOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "TestPlayer",
+      "seq": 25,
+      "stack": [],
+      "step": "POSTCOMBAT_MAIN",
+      "turn": 2,
+    },
+    {
+      "active_player": "Opponent",
+      "phase": "END",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
+          "hand": [
+            {
+              "id": "p10",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p11",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p12",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p13",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p14",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p15",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+            {
+              "id": "p16",
+              "name": "Blood Moon",
+              "visible_to": [
+                "TestPlayer",
+              ]
+            },
+          ],
+          "library_size": 43,
+          "life": 20,
+          "name": "TestPlayer",
+        }
+      ],
+      "priority_player": "Opponent",
+      "seq": 28,
+      "stack": [],
+      "step": "CLEANUP",
+      "turn": 2,
+    },
+    {
+      "active_player": "TestPlayer",
+      "phase": "PRECOMBAT_MAIN",
+      "players": [
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+            }
+          ],
+          "hand": [
+            {
+              "id": "p4",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p5",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p6",
+              "name": "Aether Vial",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p7",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p8",
+              "name": "Ancient Tomb",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p9",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+            {
+              "id": "p23",
+              "name": "Badlands",
+              "visible_to": [
+                "Opponent",
+              ]
+            },
+          ],
+          "library_size": 52,
+          "life": 20,
+          "name": "Opponent",
+        },
+        {
+          "battlefield": [],
+          "exile": [],
+          "graveyard": [],
           "hand": [],
           "library_size": 0,
           "life": 20,
           "name": "TestPlayer",
         }
       ],
-      "priority_player": null,
-      "seq": 7,
+      "priority_player": "TestPlayer",
+      "seq": 35,
       "stack": [],
-      "step": null,
-      "turn": 1,
+      "step": "PRECOMBAT_MAIN",
+      "turn": 3,
     }
   ],
-  "total_turns": 1,
+  "total_turns": 3,
   "tournament": null,
   "version": 9,
   "winner": "Opponent",

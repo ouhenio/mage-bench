@@ -34,68 +34,59 @@ rather than fatal: the games are already on disk and failing the session would n
 unwrite them; what matters is seeing it at generation rather than inferring it at \
 assembly from a provenance field that is right for one of the two games. The detector \
 was validated against the real corpus, not only fixtures: 3,964 directories scanned, \
-exactly the 10 known cases found. \
+exactly the 10 known cases found.\n\n\
+ROOT CAUSE FOUND 2026-08-25 on ranokau, from a filtered DEBUG capture of GameImpl's \
+per-player flag dump over 1,932 games (4 anomalies against ~3.2 expected).\n\n\
+THE GAMES ARE DRAWS. Every anomaly shows BOTH players marked lost -- normal is \
+[Skill1 => L] - [Skill8 => W]; the anomalies are [Skill1 => L] - [Skill8 => L], 4 of 4, \
+with no W and no Q/T/I. With both already lost, neither branch of findWinnersAndLosers \
+fires, winnerId stays null, isADraw() is true, MatchImpl credits no win and plays \
+another game. That is CORRECT best-of-N behaviour for a drawn game; the harness is what \
+assumes one game per match.\n\n\
+PlayerImpl.leave() IS NOT INVOLVED and the concede-queue hypothesis is closed. A widened \
+capture over a 45-game replay containing 14 real draws found ZERO DRAW-for-gameId lines \
+and ZERO per-player left/lost lines. Both are logged only when remainingPlayers == 0, \
+which counts !hasLeft(); zero across 14 draws means neither player LEFT. The draw comes \
+from both being marked lost without leaving.\n\n\
+THE RECORDED WINNER IS NOT THE ENGINE VERDICT. winnerId is assigned once, after the play \
+loop; the event collector runs from checkIfGameIsOver DURING the loop and reconstructs a \
+winner from player flags. They disagree exactly when the two losses are not simultaneous: \
+one player loses, the collector snapshots the other as survivor, the second loss lands, \
+and the engine then calls it a draw. That is why recorded winners sometimes have LESS \
+life than the loser (14 vs 18, 18 vs 20, 20 vs 38). seat_won inherits this and is wrong \
+on those rows, undetectably.\n\n\
+THE PAIRING PREDISPOSES; THE OCCURRENCE DOES NOT REPRODUCE. Replaying the nine known \
+anomalous seeds at the same pin (f0008f6d both sides): 4 of 9 came back doubled, 5 of 9 \
+as single games, and seed 926273 went from 4 games to TWELVE. Opening hands reproduce \
+42/44 and decision sequences 1/44 -- same deck pair, same deal, different play. Certain \
+matchups draw repeatedly; the individual occurrence is not deterministic. \
 \
-REOPENED 2026-08-25. THE FIX DID NOT WORK, AND THE MECHANISM ABOVE IS PARTLY WRONG. \
-Block 2 (pin f0008f6d, quitPreviousMatch in place) produced games/step1-b2/lascar/logs/game_20260825_060344_s2, seed 921507, with two game_start and two game_end. Measured over block 2 so far: 3 doubled of 1,680 directories (0.179%) WITH the fix, against 10 of 3,964 (0.252%) without it. Fisher one-sided p=0.428 -- no evidence of any reduction, and rates up to 0.46% are still consistent with 3/1,680. Treat the fix as unproven, not as partial. \
+HOW TO FIND THESE DIRECTORIES -- restored from the earlier revision, because the \
+root cause changed and the DETECTION RULE did not. Cross-tabulating every \
+completed ending against whether another game_start follows it: \
 \
-WHY IT MISSES, from the two logs, and it is a RACE THE FIX ENTERS TOO LATE rather than a quit that fails. Session session_20260825_060344, one keepAlive observer: \
-  09:05:01.536  keepAlive receives ONE command for gameDir _s2, gameSeed 921507 \
-  09:05:01.539  quitPreviousMatch for game 2c4b2edd (the PREVIOUS dir) -- works \
-  09:05:01.696  table 3b8ca52f created; game b707e99b starts, seeded 921507 \
-  09:05:31.700  game 23a28664 GameImpl.init, seeded 921507 AGAIN  <-- game 2 of the same match, started by the server the moment game 1 ended \
-  09:05:31.809  quitPreviousMatch for b707e99b  <-- 109 ms TOO LATE \
-The quit fires when the NEXT command arrives, and the server starts the next game of the live match before that command can get there. Sibling seeds are 921506/921507/ 921508/921509, one per directory, so both games seeded 921507 belong to _s2 and the second is not a misdirected write from a neighbour. \
+    exit          loss message   followed   n \
+    DAMAGE        yes            no         4815 \
+    non-damage    yes            no          110 \
+    non-damage    NO             YES          11 \
 \
-THE `hasWon()` STORY IS RIGHT; THE `no winner` STORY IS NOT. This instance\'s FIRST game_end carries winner=Skill8, life {Skill8: 17, Skill1: 7} -- a credited winner in the event, with the loser alive at 7 life. The event\'s winner is DERIVED, not hasWon(): ServerGameEventLogCollector says so in its own comment -- \"hasWon() is only set for explicit win the game effects... fall back to: if exactly one player hasn\'t lost, they won\". So the title\'s \"without a winner\" describes the event field, which is the wrong field, and \"nine of ten ended with no player at or below 0 life\" is a correlate rather than the mechanism. WHAT IS STILL UNEXPLAINED, and is the next thing to establish: if hasWon() is false for nearly every normal ending, the match should fail to end nearly every time, yet 3,961 of 3,964 directories hold one game. checkIfMatchEnds has a second exit -- activePlayers < 2 via matchPlayer.hasQuit() -- so the discriminator is most likely whether the LOSER leaves the match, not whether the winner won. Not verified. Do not write a fix against the hasWon() branch until it is. \
+Necessary AND sufficient over 11,778 endings across three corpora: 19 of 19 \
+continuations carry no lostForced \"has lost the game\", with ZERO false \
+positives. That is the query to run on a new corpus. It is a CONSEQUENCE of the \
+draw rather than a cause -- a drawn game marks both players lost without \
+lostForced -- but it is the field that separates them in data, which is what an \
+audit needs. \
 \
-DIRECTION, unimplemented: end the match when its game ends rather than when the next command arrives -- the observer already tracks watchedGameId, so quitting on the game-over callback closes the 109 ms window that this instance lost by. That is a change of WHEN, not of what. \
-\
-COUNT game_start, NOT game_end. Two of block 2\'s three doubled directories record game_start twice and game_end ONCE, so a game_end count finds 1 of 3. The runner\'s own detector (dirs_holding_more_than_one_game) already counts game_start and is correct; the undercount is downstream, in mtg pipelines/synth/audit_step1.py, which takes `next(e for e in ev if type == game_end)` and therefore sees a doubled directory \
-as one complete game. \
-\
-MECHANISM, ESTABLISHED 2026-08-25, and it predicts the rate in both directions. \
-Cross-tabulating every completed game ending on lascar block 2, segmented per game in \
-the authoritative server stream, against whether another game_start follows it: \
-\
-    exit          loss message   followed by another game   n \
-    DAMAGE        yes            no                         1908 \
-    non-damage    yes            no                           30 \
-    non-damage    NO             YES                           3 \
-\
-1,941 endings. The discriminator is not the exit type and not the winner field: it is \
-whether the ending emitted `lostForced`\'s \"has lost the game\". Necessary AND \
-sufficient here -- 3 of 3 continue, 0 of 1,938 false positives. karn-ranokau measured \
-the coarser cut independently on ranokau (non-damage endings continue 5 of 46, 10.87%, \
-damage endings 0 of 1,766); the 41 non-damage endings that do NOT continue are exactly \
-the ones that DO record a loss, which is what refines 10.87% to 100%. \
-\
-IN CODE: PlayerImpl.leave() sets `loses = true; left = true` directly and never calls \
-lostForced, so no LOST event fires and the survivor\'s won() is never reached. \
-MatchImpl.endGame credits a win on hasWon() and marks a player out on hasQuit(). A \
-player who left satisfies NEITHER -- quit is a different flag from left -- so no win is \
-credited, activePlayers stays 2, checkIfMatchEnds returns false, and the server starts \
-the next game of a match that never ended. The collector still names a winner because \
-its survivor test is `!hasLost() && !hasLeft()`, which is why these game_end rows carry \
-a winner beside a living loser. \
-\
-OPEN, AND THE FIX DEPENDS ON IT: WHICH caller invokes leave() as the CAUSE of these \
-three endings. Six sites exist -- GameController:411, 425, 429, 555, 1597 and \
-GameImpl:3479 -- and the logs do not distinguish them. None of the three sessions \
-contains a \"FIX command result\" (WARN, the can\'t-respond path), a \"User \
-disconnected\" (WARN), a \"has conceded\", a timeout or a disconnect line. Every \
-remaining candidate logs at DEBUG only. A RETRACTED READING, recorded so it is not \
-repeated: the three losers\' final snapshots show library, hand and graveyard all at \
-zero, which looks like leave()\'s own clearing -- but the CONTROLS show every normal \
-loser\'s snapshot has the same zeros, because GameImpl.leave runs for the loser at the \
-end of every game per 800.4a. It is a consequence of losing, not a signature of the \
-anomaly. THE NEXT STEP IS NOT MORE LOG READING: one session with DEBUG enabled on \
-mage.game.GameImpl and mage.server.game.GameController names the caller directly. \
-\
-IF IT TURNS OUT TO BE A STALL OR TIMEOUT PATH, the corpus contains ~0.16% of games that \
-were cut short and recorded with a derived winner, and the report has to say so. Not \
-yet established either way.",
-  "status": "open",
+THE HARNESS FIX IS UNPROVEN AND MUST NOT BE READ AS DONE. quitPreviousMatch() is \
+unconditional, so it always covered draws; draws were never the gap. The gap is \
+WHEN. It fires when the next keepAlive command arrives, and the server starts the \
+next game of a live match immediately -- measured at 109 ms ahead of the quit in \
+session_20260825_060344. Block 2 ran WITH the fix and still doubled: 3 of 1,680 \
+against 10 of 3,964 without it, Fisher one-sided p=0.428, rates up to 0.46% still \
+consistent with 3/1,680. No evidence it changed anything. Closing that window \
+needs a game-over callback in ObserverMageFrame, which does not exist; quitting \
+at next-command is necessary and demonstrably not sufficient.",
+  "status": "closed",
   "priority": 1,
   "type": "bug",
   "labels": [
@@ -103,9 +94,7 @@ yet established either way.",
     "silent-failure",
     "measured",
     "provenance",
-    "reopened",
-    "race",
   ],
   "created_at": "2026-08-25T00:30:00.000-04:00",
-  "updated_at": "2026-08-25T10:15:00.000-04:00",
+  "updated_at": "2026-08-25T00:30:00.000-04:00",
 }

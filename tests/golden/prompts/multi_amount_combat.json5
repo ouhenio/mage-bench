@@ -101,6 +101,16 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Forest] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Forest [id=p14], Forest [id=p17], Forest [id=p18], Forest [id=p19], Forest [id=p20], Forest [id=p21], Forest [id=p22]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -117,11 +127,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+[Decision 2, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Forest] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Forest [id=p14], Forest [id=p17], Forest [id=p18], Forest [id=p19], Forest [id=p20], Forest [id=p21], Forest [id=p22]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -144,15 +154,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (6): Forest [id=p10, land], Forest [id=p11, land], Forest [id=p12, land], Forest [id=p13, land], Forest [id=p14, land], Forest [id=p15, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 5 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_3",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 4, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Forest] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Forest [id=p17], Forest [id=p23], Forest [id=p24], Forest [id=p25], Forest [id=p26], Forest [id=p27], Forest [id=p28]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
   },
   {
     "content": null,
@@ -171,13 +189,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (6): Forest [id=p10, land], Forest [id=p11, land], Forest [id=p12, land], Forest [id=p13, land], Forest [id=p14, land], Forest [id=p15, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 5, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Forest] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Forest [id=p17], Forest [id=p23], Forest [id=p24], Forest [id=p25], Forest [id=p26], Forest [id=p27], Forest [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -200,12 +216,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=53 bf=[Forest] | Opponent: 20hp hand=7 lib=53\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)",
+[Decision 6, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Forest [id=p23], Forest [id=p24], Forest [id=p25], Forest [id=p26], Forest [id=p27], Forest [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -226,15 +241,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=52 bf=[Forest] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (6): Forest [id=p11, land], Forest [id=p12, land], Forest [id=p13, land], Forest [id=p14, land], Forest [id=p15, land], Forest [id=p25, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 7, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Forest [id=p23], Forest [id=p24], Forest [id=p25], Forest [id=p26], Forest [id=p27], Forest [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_6",
   },
@@ -257,17 +268,25 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Grizzly Bears] lib=52 bf=[Forest, Forest] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Grizzly Bears [id=p16, cast, {1}{G}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 8, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 4 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_7",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 9, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Forest [id=p24, land], Forest [id=p25, land], Forest [id=p26, land], Forest [id=p27, land], Forest [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
   },
   {
     "content": null,
@@ -288,15 +307,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=52 bf=[Forest (tapped), Forest (tapped)] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Stack: [Grizzly Bears]\n\
-  Land drops remaining: 0\n\
-  Message: Play instants and activated abilities\n\
+[Decision 10, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest] lib=55 bf=[Forest] | Opponent: 20hp hand=7 lib=53\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
+  Message: Play spells and abilities\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -317,15 +333,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest, Grizzly Bears 2/2] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
-  Untapped lands: 2, Land drops remaining: 1\n\
+[Decision 11, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=54 bf=[Forest] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Forest [id=p12, land], Forest [id=p13, land], Forest [id=p14, land], Forest [id=p15, land], Forest [id=p25, land], Forest [id=p29, land]\n\
+  Choices (5): Forest [id=p15, land], Forest [id=p25, land], Forest [id=p26, land], Forest [id=p27, land], Forest [id=p28, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_9",
   },
@@ -348,15 +364,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest, Grizzly Bears 2/2] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
-  Combat Phase: declare_attackers\n\
-  Untapped lands: 2\n\
-  Message: Select attackers\n\
-  Choices (2): Grizzly Bears [id=p16], All attack [id=all]\n\
-  Respond: attackers=p1,p2,... or choice=yes (confirm) or choice=no (skip)\n\
+[Decision 12, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=54 bf=[Forest] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_10",
   },
@@ -377,15 +392,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest, Grizzly Bears 2/2] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
-  Combat Phase: attackers\n\
-  Untapped lands: 2\n\
-  Message: Select attackers\n\
-  Choices (2): Grizzly Bears [id=p16], All attack [id=all]\n\
-  Respond: attackers=p1,p2,... or choice=yes (confirm) or choice=no (skip)\n\
+[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest] lib=54 bf=[Forest] | Opponent: 20hp hand=6 lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Forest [id=p15, land], Forest [id=p25, land], Forest [id=p26, land], Forest [id=p27, land], Forest [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_11",
   },
@@ -406,17 +421,45 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 11, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest, Grizzly Bears 2/2 (tapped)] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
-  Combat: Grizzly Bears -> Opponent\n\
-  Untapped lands: 2\n\
-  Message: Play instants and activated abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "action": "land",
+          "id": "p15",
+          "index": 0,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p25",
+          "index": 1,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p26",
+          "index": 2,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p27",
+          "index": 3,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p28",
+          "index": 4,
+          "name": "Forest",
+        }
+      ],
+      "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
+      "error_code": "missing_param",
+      "game_seq": 55,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_12",
   },
@@ -437,15 +480,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 12, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest, Grizzly Bears 2/2 (tapped)] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
-  Combat: Grizzly Bears blocked by Savannah Lions, Savannah Lions -> Opponent\n\
-  Untapped lands: 2\n\
-  Message: Assign combat damage among creatures blocking Grizzly Bears, P/T: 2/2\n\
-  Items (2): total=2\n\
-    0: Savannah Lions, P/T: 2/1 [min=0, max=2]\n\
-    1: Savannah Lions, P/T: 2/1 [min=0, max=2]\n\
-  Respond: amounts=[N,N,...] — one per item, sum must equal total (2)\n\
+[Decision 14, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=53 bf=[Forest] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Forest [id=p11, land], Forest [id=p15, land], Forest [id=p25, land], Forest [id=p26, land], Forest [id=p27, land], Forest [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
 [It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -471,17 +512,51 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 13, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest] gy=[Grizzly Bears] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains] gy=[Savannah Lions, Savannah Lions]\n\
-  Combat:  (blocked) -> Opponent\n\
-  Untapped lands: 2\n\
-  Message: Play instants and activated abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "action": "land",
+          "id": "p11",
+          "index": 0,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p15",
+          "index": 1,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p25",
+          "index": 2,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p26",
+          "index": 3,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p27",
+          "index": 4,
+          "name": "Forest",
+        },
+        {
+          "action": "land",
+          "id": "p28",
+          "index": 5,
+          "name": "Forest",
+        }
+      ],
+      "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
+      "error_code": "missing_param",
+      "game_seq": 76,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_14",
   },
@@ -504,11 +579,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 3 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=51 bf=[Forest, Forest] gy=[Grizzly Bears] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains] gy=[Savannah Lions, Savannah Lions]\n\
-  Untapped lands: 2, Land drops remaining: 1\n\
+[Decision 15, snapshot=0] Turn 3 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Forest, Forest, Forest, Forest, Forest, Forest] lib=53 bf=[Forest] | Opponent: 20hp hand=5 lib=51 bf=[Plains (tapped), Plains, Savannah Lions 2/1, Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Forest [id=p12, land], Forest [id=p13, land], Forest [id=p14, land], Forest [id=p15, land], Forest [id=p25, land], Forest [id=p29, land]\n\
+  Choices (6): Forest [id=p11, land], Forest [id=p15, land], Forest [id=p25, land], Forest [id=p26, land], Forest [id=p27, land], Forest [id=p28, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
@@ -534,55 +609,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": {
       "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 103,
+      "game_seq": 83,
       "phase": "Postcombat Main",
       "players": [
         {
           "battlefield": [
             {
-              "id": "p10",
+              "id": "p24",
               "name": "Forest",
               "rules": [
                 "{T}: Add {G}.",
               ],
               "tapped": false,
-            },
-            {
-              "id": "p11",
-              "name": "Forest",
-              "rules": [
-                "{T}: Add {G}.",
-              ],
-              "tapped": false,
-            }
-          ],
-          "graveyard": [
-            {
-              "id": "p16",
-              "name": "Grizzly Bears",
             }
           ],
           "hand": [
             {
-              "id": "p12",
-              "is_land": true,
-              "name": "Forest",
-              "playable": true,
-              "rules": [
-                "{T}: Add {G}.",
-              ]
-            },
-            {
-              "id": "p13",
-              "is_land": true,
-              "name": "Forest",
-              "playable": true,
-              "rules": [
-                "{T}: Add {G}.",
-              ]
-            },
-            {
-              "id": "p14",
+              "id": "p11",
               "is_land": true,
               "name": "Forest",
               "playable": true,
@@ -609,7 +652,25 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p29",
+              "id": "p26",
+              "is_land": true,
+              "name": "Forest",
+              "playable": true,
+              "rules": [
+                "{T}: Add {G}.",
+              ]
+            },
+            {
+              "id": "p27",
+              "is_land": true,
+              "name": "Forest",
+              "playable": true,
+              "rules": [
+                "{T}: Add {G}.",
+              ]
+            },
+            {
+              "id": "p28",
               "is_land": true,
               "name": "Forest",
               "playable": true,
@@ -621,7 +682,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
           "hand_size": 6,
           "is_active": true,
           "is_you": true,
-          "library_size": 51,
+          "library_size": 53,
           "life": 20,
           "name": "TestPlayer",
         },
@@ -642,16 +703,22 @@ Call get_action_choices to see your options, then choose_action to decide.",
                 "{T}: Add {W}.",
               ],
               "tapped": false,
-            }
-          ],
-          "graveyard": [
+            },
             {
               "id": "p8",
               "name": "Savannah Lions",
+              "power": 2,
+              "summoning_sick": false,
+              "tapped": false,
+              "toughness": 1,
             },
             {
               "id": "p9",
               "name": "Savannah Lions",
+              "power": 2,
+              "summoning_sick": true,
+              "tapped": false,
+              "toughness": 1,
             }
           ],
           "hand_size": 5,
@@ -663,7 +730,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 336820877778,
+      "snapshot_id": 852058741525,
       "stack": [],
       "step": "Postcombat Main",
       "turn": 3,

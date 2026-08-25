@@ -66,6 +66,12 @@ from magebench.pilot.context_segments import (
     segment_budget_chars,
     should_close_segment,
 )
+from magebench.pilot.auto_resolve import (
+    FORCED_ANSWER,
+    auto_resolve_enabled,
+    chose_unoffered,
+    is_forced_decision,
+)
 from magebench.pilot.mulligan import (
     count_lands,
     is_mulligan_decision,
@@ -367,6 +373,63 @@ def close_segment_if_needed(
             harness_action=True,
             reset_index=state.segment_index,
         )
+    return True
+
+
+async def _auto_resolve_forced_decision(
+    session: ClientSession,
+    state: PilotLoopState,
+    game_log: GameLogWriter | None,
+) -> bool:
+    """Answer a decision that offers nothing, without calling the policy.
+
+    Returns True if it answered, so the caller skips this turn's LLM call.
+
+    THE DECISION INDEX STILL COUNTS IT, deliberately. `decisions_seen` advances
+    here exactly as it does for a decision the policy answers, so "[Decision N]"
+    keeps meaning "the Nth decision in this game" rather than "the Nth decision
+    the policy was asked about". Two reasons: the index is what the recorder's
+    stream and the rendered transcript are joined on, and a renumbering would
+    make every corpus collected before this epoch disagree with every one after
+    it on which decision is which. The share of decisions the policy sees is a
+    thing to report, not a thing to hide by renumbering.
+    """
+    blob = state.pending_decision_blob
+    if blob is None or not auto_resolve_enabled():
+        return False
+    try:
+        data = json.loads(blob)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    if not is_forced_decision(data):
+        return False
+
+    if game_log:
+        game_log.emit(
+            "auto_resolved",
+            harness_action=True,
+            decision_index=state.decisions_seen,
+            game_seq=state.last_decision_seq,
+            # 26 of 310,980 zero-choice decisions in block 2 answer with a play
+            # despite offering none. Passing them is accepted at that rate; this
+            # flag is how the audit counts what it cost instead of inferring it.
+            chose_unoffered_risk=chose_unoffered(data, FORCED_ANSWER),
+        )
+
+    result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    record_decision_seq(state, result_text)
+    # THE FORCED DECISION'S OWN LINE IS ALREADY IN HISTORY. _process_tool_calls
+    # rendered and appended it before stashing the blob, and render_for_pilot
+    # reduced it to one line there -- so appending here would duplicate it.
+    # What this adds is the NEXT decision, the one the tool call returned.
+    display_text, state.last_board = render_for_pilot(
+        result_text, state.last_board, state.seen_oracle_cards, state.decisions_seen
+    )
+    if _carries_a_decision(result_text):
+        state.decisions_seen += 1
+    state.history.append({"role": "user", "content": display_text})
+    state.pending_decision_blob = result_text if _carries_a_decision(result_text) else None
+    state.pending_decision_chars = len(display_text)
     return True
 
 
@@ -905,6 +968,10 @@ async def run_pilot_loop(
             # instead of an LLM round trip, and keeps the decision out of a
             # context the model is not trained to answer.
             if await _answer_mulligan_from_the_engine_rule(session, state, game_log):
+                continue
+            # After the mulligan check, never before it: a mulligan ask carries no
+            # `choices` either, and is a real decision.
+            if await _auto_resolve_forced_decision(session, state, game_log):
                 continue
             messages = await _build_loop_messages(
                 state, session, system_prompt, cache_control, game_log
@@ -1491,7 +1558,17 @@ def main() -> int:
     logger.debug("[pilot] Project root: %s", project_root)
 
     system_prompt = args.system_prompt or _load_default_system_prompt()
-
+    # THE OWN-DECK BLOCK IS NOT WIRED HERE YET, deliberately, and the reason is
+    # worth leaving: the block must come from the SEAT'S DECK IN THE GAME CONFIG,
+    # not from a --deck flag. Every production invocation passes --config and
+    # none passes --deck (rollout_games.sh:368, mtg_agent_loop.py:468), so a
+    # version that required the flag would refuse to start every rollout.
+    #
+    # magebench.pilot.deck_text.build_deck_block is written and verified
+    # byte-identical to the training renderer on 400 real decks; what is missing
+    # is resolving this pilot's own seat within the config. Until then the pilot
+    # emits no block and TRAINING DOES -- the train/inference gap karn-research
+    # found is still open, and this comment is where the next person picks it up.
     pilot_tools = set(args.tools.split(",")) if args.tools else None
     ignore_providers = args.ignore_providers.split(",") if args.ignore_providers else None
     provider_order = args.provider_order.split(",") if args.provider_order else None

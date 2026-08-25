@@ -105,6 +105,18 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Forest [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -121,11 +133,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Forest [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -148,13 +162,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Forest [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=8 lib=52\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -175,13 +187,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 4, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Forest, Plains, Plains, Plains, Plains, Plains] lib=52 | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Forest [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land]\n\
+  Choices (8): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Forest [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -204,13 +218,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Plains, Plains, Plains, Plains] lib=53 bf=[Forest] | Opponent: 20hp hand=7 lib=53\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (1): Crashing Footfalls [id=p11, cast]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -231,13 +247,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Boggart Trawler, Crashing Footfalls, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (8): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Crashing Footfalls [id=p11, cast], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land]\n\
+  Choices (1): Crashing Footfalls [id=p11, cast]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -262,13 +278,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest (tapped)] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+  Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -291,15 +306,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest (tapped)] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+[Decision 8, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (7): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land]\n\
+  Choices (8): Boggart Bog [id=l17, activate], Boggart Trawler [id=p10, cast, {2}{B}], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p27, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -322,14 +337,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest (tapped)] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+[Decision 9, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Choose spell or ability to play: Boggart Trawler\n\
   Choices (1): Play Boggart Bog\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_9",
   },
@@ -352,14 +367,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Forest (tapped)] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+[Decision 10, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Boggart Trawler, Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: pay 3 life? (otherwise Boggart Bog becomes tapped)\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_10",
   },
@@ -385,14 +400,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
 \n\
 ## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Boggart Bog (tapped, copy of Boggart Trawler), Forest (tapped)] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 0\n\
+[Decision 11, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Boggart Bog (tapped, copy of Boggart Trawler), Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_11",
   },
@@ -413,15 +428,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 11, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Boggart Bog (copy of Boggart Trawler), Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+[Decision 12, snapshot=0] Turn 4 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=50 bf=[Boggart Bog (copy of Boggart Trawler), Forest] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=50 gy=[Mountain, Mountain, Mountain]\n\
   Untapped lands: 2, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p29, land]\n\
+  Choices (7): Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p27, land], Plains [id=p32, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+[It's been 4 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_12",
   },
@@ -444,14 +459,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 12, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+[Decision 13, snapshot=0] Turn 4 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=50 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=50 gy=[Mountain, Mountain, Mountain]\n\
   Untapped lands: 3, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+[It's been 4 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_13",
   },
@@ -472,15 +487,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 13, snapshot=0] Turn 4 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=50 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=50 gy=[Mountain, Mountain, Mountain]\n\
+[Decision 14, snapshot=0] Turn 5 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=49 gy=[Mountain, Mountain, Mountain, Mountain]\n\
   Untapped lands: 3, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p29, land], Plains [id=p32, land]\n\
+  Choices (7): Plains [id=p14, land], Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p27, land], Plains [id=p32, land], Plains [id=p35, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
-[It's been 4 turns since you last chatted — send a message to your opponent!]",
+[It's been 5 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_14",
   },
@@ -503,14 +518,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 4 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=50 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=50 gy=[Mountain, Mountain, Mountain]\n\
+[Decision 15, snapshot=0] Turn 5 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=49 gy=[Mountain, Mountain, Mountain, Mountain]\n\
   Untapped lands: 4, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
-[It's been 4 turns since you last chatted — send a message to your opponent!]",
+[It's been 5 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_15",
   },
@@ -531,15 +546,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 15, snapshot=0] Turn 5 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=49 gy=[Mountain, Mountain, Mountain, Mountain]\n\
-  Untapped lands: 4, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (6): Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p29, land], Plains [id=p32, land], Plains [id=p35, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+[Decision 16, snapshot=0] Turn 6 BEGINNING - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
+  Stack: [Crashing Footfalls - When the last time counter is removed from Crashing Footfalls, if it's exiled, ]\n\
+  Untapped lands: 4\n\
+  Message: Cast spell without paying its mana cost (Crashing Footfalls)?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no\n\
 \n\
-[It's been 5 turns since you last chatted — send a message to your opponent!]",
+[It's been 6 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_16",
   },
@@ -560,16 +575,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 16, snapshot=0] Turn 5 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=49 gy=[Mountain, Mountain, Mountain, Mountain]\n\
-  Untapped lands: 5, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 5 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "error": "GAME_ASK requires choice=\"yes\" or choice=\"no\". This is a yes/no question.",
+      "error_code": "missing_param",
+      "game_seq": 162,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_17",
   },
@@ -591,9 +603,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": "## Decision\n\
 \n\
 [Decision 17, snapshot=0] Turn 6 BEGINNING - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] exile=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
   Stack: [Crashing Footfalls - When the last time counter is removed from Crashing Footfalls, if it's exiled, ]\n\
-  Untapped lands: 5\n\
+  Untapped lands: 4\n\
   Message: Cast spell without paying its mana cost (Crashing Footfalls)?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no\n\
@@ -622,9 +634,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": "## Decision\n\
 \n\
 [Decision 18, snapshot=0] Turn 6 BEGINNING - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains, Plains] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=49 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
   Stack: [Crashing Footfalls]\n\
-  Untapped lands: 5\n\
+  Untapped lands: 4\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -654,10 +666,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
 ## Decision\n\
 \n\
 [Decision 19, snapshot=0] Turn 6 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=48 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains, Plains, Rhino Token 4/4 (sick, token), Rhino Token 4/4 (sick, token)] gy=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
-  Untapped lands: 5, Land drops remaining: 1\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=48 bf=[Boggart Bog (copy of Boggart Trawler), Forest, Plains, Plains, Rhino Token 4/4 (sick, token), Rhino Token 4/4 (sick, token)] gy=[Crashing Footfalls] | Opponent: 20hp hand=7 lib=48 gy=[Mountain, Mountain, Mountain, Mountain, Mountain]\n\
+  Untapped lands: 4, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Plains [id=p16, land], Plains [id=p24, land], Plains [id=p29, land], Plains [id=p32, land], Plains [id=p35, land], Plains [id=p42, land]\n\
+  Choices (7): Plains [id=p15, land], Plains [id=p16, land], Plains [id=p24, land], Plains [id=p27, land], Plains [id=p32, land], Plains [id=p35, land], Plains [id=p42, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
@@ -683,13 +695,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": {
       "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 172,
+      "game_seq": 169,
       "phase": "Precombat Main",
       "players": [
         {
           "battlefield": [
             {
-              "id": "p26",
+              "id": "p29",
               "name": "Boggart Bog",
               "original_card": "Boggart Trawler",
               "rules": [
@@ -716,14 +728,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
             },
             {
               "id": "p14",
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ],
-              "tapped": false,
-            },
-            {
-              "id": "p15",
               "name": "Plains",
               "rules": [
                 "{T}: Add {W}.",
@@ -767,6 +771,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
           ],
           "hand": [
             {
+              "id": "p15",
+              "is_land": true,
+              "name": "Plains",
+              "playable": true,
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
+            {
               "id": "p16",
               "is_land": true,
               "name": "Plains",
@@ -785,7 +798,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p29",
+              "id": "p27",
               "is_land": true,
               "name": "Plains",
               "playable": true,
@@ -821,7 +834,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
           ],
-          "hand_size": 6,
+          "hand_size": 7,
           "is_active": true,
           "is_you": true,
           "library_size": 48,
@@ -875,7 +888,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 875645921334,
+      "snapshot_id": 161851355707,
       "stack": [],
       "step": "Precombat Main",
       "turn": 6,

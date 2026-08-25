@@ -106,6 +106,16 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p15], Plains [id=p17], Plains [id=p18], Plains [id=p19], Plains [id=p20], Plains [id=p21], Plains [id=p22]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -122,11 +132,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+[Decision 2, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p15], Plains [id=p17], Plains [id=p18], Plains [id=p19], Plains [id=p20], Plains [id=p21], Plains [id=p22]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -149,15 +159,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Black Lotus [id=p10, cast, {0}], Dark Depths [id=p11, land], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Thespian's Stage [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 5 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_3",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 4, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
   },
   {
     "content": null,
@@ -176,13 +194,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Dark Depths, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Black Lotus [id=p10, cast, {0}], Dark Depths [id=p11, land], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Thespian's Stage [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 5, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -203,15 +219,57 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 bf=[Dark Depths (ice=10)] | Opponent: 20hp hand=7 lib=53\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Black Lotus [id=p10, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+    "content": {
+      "choices": [
+        {
+          "id": "p17",
+          "index": 0,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p23",
+          "index": 1,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 2,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 3,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 4,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 5,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 6,
+          "name": "Plains",
+          "target_type": "card",
+        }
+      ],
+      "error": "Object p11 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 12,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -232,15 +290,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=52 bf=[Dark Depths (ice=10)] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Black Lotus [id=p10, cast, {0}], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p24, land], Thespian's Stage [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 6, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_6",
   },
@@ -261,17 +315,57 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Black Lotus [id=p10, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "id": "p17",
+          "index": 0,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p23",
+          "index": 1,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 2,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 3,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 4,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 5,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 6,
+          "name": "Plains",
+          "target_type": "card",
+        }
+      ],
+      "error": "Object p16 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 12,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_7",
   },
@@ -292,15 +386,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Black Lotus [id=p10, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 7, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -321,16 +411,57 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 8, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Choose spell or ability to play: Black Lotus\n\
-  Choices (1): Cast Black Lotus\n\
-  Respond: choice=0, choice=1, etc. (not yes/no)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "id": "p17",
+          "index": 0,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p23",
+          "index": 1,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 2,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 3,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 4,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 5,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 6,
+          "name": "Plains",
+          "target_type": "card",
+        }
+      ],
+      "error": "Object p10 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 12,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_9",
   },
@@ -351,14 +482,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Choose spell or ability to play: Black Lotus\n\
-  Choices (1): Cast Black Lotus\n\
-  Respond: choice=0, choice=1, etc. (not yes/no)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 8, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_10",
   },
@@ -381,15 +509,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Stack: [Black Lotus]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play instants and activated abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 9, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_11",
   },
@@ -410,14 +534,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (2): Dark Depths [id=p11, activate], Thespian's Stage [id=p16, activate]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 10, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_12",
   },
@@ -438,16 +559,51 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 12, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Choose spell or ability to play: Thespian's Stage\n\
-  Choices (2): {T}: Add {C}., {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.\n\
-  Respond: choice=0, choice=1, etc. (not yes/no)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "id": "p23",
+          "index": 0,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p24",
+          "index": 1,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p25",
+          "index": 2,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p26",
+          "index": 3,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p27",
+          "index": 4,
+          "name": "Plains",
+          "target_type": "card",
+        },
+        {
+          "id": "p28",
+          "index": 5,
+          "name": "Plains",
+          "target_type": "card",
+        }
+      ],
+      "error": "Object p16 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 14,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_13",
   },
@@ -468,14 +624,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Choose spell or ability to play: Thespian's Stage\n\
-  Choices (2): {T}: Add {C}., {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.\n\
-  Respond: choice=0, choice=1, etc. (not yes/no)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 11, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_14",
   },
@@ -498,17 +651,25 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Select a land\n\
-  Choices (2): Dark Depths [id=p11], Thespian's Stage [id=p16]\n\
-  Respond: choice=pN, or choice=no to cancel\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 12, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 4 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_15",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 13, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Plains [id=p23, land], Plains [id=p25, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
   },
   {
     "content": null,
@@ -527,15 +688,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 15, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Black Lotus, Dark Depths (ice=10), Thespian's Stage] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Select a land\n\
-  Choices (2): Dark Depths [id=p11], Thespian's Stage [id=p16]\n\
-  Respond: choice=pN, or choice=no to cancel\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 14, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Plains [id=p23, land], Plains [id=p25, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_16",
   },
@@ -556,17 +715,45 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 16, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Stack: [Thespian's Stage - {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability. -> Dark Depths (yours)]\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Play instants and activated abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "action": "land",
+          "id": "p23",
+          "index": 0,
+          "name": "Plains",
+        },
+        {
+          "action": "land",
+          "id": "p25",
+          "index": 1,
+          "name": "Plains",
+        },
+        {
+          "action": "land",
+          "id": "p26",
+          "index": 2,
+          "name": "Plains",
+        },
+        {
+          "action": "land",
+          "id": "p27",
+          "index": 3,
+          "name": "Plains",
+        },
+        {
+          "action": "land",
+          "id": "p28",
+          "index": 4,
+          "name": "Plains",
+        }
+      ],
+      "error": "Object p11 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 25,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_17",
   },
@@ -587,12 +774,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 17, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Dark Depths (tapped, copy of Thespian's Stage)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Select a Dark Depths to keep (Legendary Rule)?\n\
-  Choices (2): Dark Depths [id=p11], Dark Depths [id=p16]\n\
-  Respond: choice=pN — must pick a target\n\
+[Decision 15, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=54 | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Plains [id=p23, land], Plains [id=p25, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land], Thespian's Stage [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -617,11 +805,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 18, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (tapped, copy of Thespian's Stage)] gy=[Black Lotus, Dark Depths] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Stack: [Dark Depths - When Dark Depths has no ice counters on it, sacrifice it. If you do, create Marit Lage, a legendary 20/20 black Avatar creature token with flying and indestructible.]\n\
-  Land drops remaining: 0\n\
-  Message: Play instants and activated abilities\n\
+[Decision 16, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Thespian's Stage] lib=54 bf=[Plains] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
+  Message: Play spells and abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
@@ -646,16 +833,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Card Reference\n\
-- Marit Lage 20/20: Flying / Indestructible\n\
+    "content": "## Decision\n\
 \n\
-## Decision\n\
-\n\
-[Decision 19, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
-  Land drops remaining: 1\n\
+[Decision 17, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 bf=[Plains] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p24, land], Plains [id=p31, land]\n\
+  Choices (6): Plains [id=p12, land], Plains [id=p23, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land], Thespian's Stage [id=p16, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
   REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
@@ -682,12 +866,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 20, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
-  Combat Phase: attackers\n\
-  Message: Select attackers\n\
-  Choices (2): Marit Lage [id=p29], All attack [id=all]\n\
-  Respond: attackers=p1,p2,... or choice=yes (confirm) or choice=no (skip)\n\
+[Decision 18, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 bf=[Plains] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
 [It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -710,16 +894,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 21, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=51 bf=[Marit Lage 20/20 (tapped, token)] gy=[Black Lotus, Dark Depths, Thespian's Stage] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
-  Combat: Marit Lage -> Opponent\n\
-  Message: Play instants and activated abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 3 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
+      "error_code": "missing_param",
+      "game_seq": 70,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_22",
   },
@@ -741,64 +922,19 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": {
       "active_player": "TestPlayer",
       "available": true,
-      "combat": [
-        {
-          "attackers": [
-            {
-              "id": "p29",
-              "name": "Marit Lage",
-              "power": 20,
-              "toughness": 20,
-            }
-          ],
-          "blocked": false,
-          "defending": "Opponent",
-        }
-      ],
-      "game_seq": 87,
+      "game_seq": 70,
       "phase": "Combat",
       "players": [
         {
           "battlefield": [
             {
-              "id": "p29",
-              "name": "Marit Lage",
-              "power": 20,
+              "id": "p25",
+              "name": "Plains",
               "rules": [
-                "Flying",
-                "Indestructible",
+                "{T}: Add {W}.",
               ],
-              "summoning_sick": false,
-              "tapped": true,
-              "token": true,
-              "toughness": 20,
+              "tapped": false,
             }
-          ],
-          "graveyard": [
-            {
-              "id": "p10",
-              "name": "Black Lotus",
-              "rules": [
-                "{T}, Sacrifice {this}: Add three mana of any one color.",
-              ]
-            },
-            {
-              "id": "p11",
-              "name": "Dark Depths",
-              "rules": [
-                "{this} enters with ten ice counters on it.",
-                "{3}: Remove an ice counter from {this}.",
-                "When {this} has no ice counters on it, sacrifice it. If you do, create Marit Lage, a legendary 20/20 black Avatar creature token with flying and indestructible.",
-              ]
-            },
-            {
-              "id": "p16",
-              "name": "Thespian's Stage",
-              "rules": [
-                "{T}: Add {C}.",
-                "{2}, {T}: {this} becomes a copy of target land, except it has this ability.",
-              ]
-            },
           ],
           "hand": [
             {
@@ -810,7 +946,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p13",
+              "id": "p23",
               "is_land": true,
               "name": "Plains",
               "rules": [
@@ -818,7 +954,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p14",
+              "id": "p26",
               "is_land": true,
               "name": "Plains",
               "rules": [
@@ -826,7 +962,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p15",
+              "id": "p27",
               "is_land": true,
               "name": "Plains",
               "rules": [
@@ -834,7 +970,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p24",
+              "id": "p28",
               "is_land": true,
               "name": "Plains",
               "rules": [
@@ -842,18 +978,19 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p31",
+              "id": "p16",
               "is_land": true,
-              "name": "Plains",
+              "name": "Thespian's Stage",
               "rules": [
-                "{T}: Add {W}.",
+                "{T}: Add {C}.",
+                "{2}, {T}: {this} becomes a copy of target land, except it has this ability.",
               ]
             },
           ],
           "hand_size": 6,
           "is_active": true,
           "is_you": true,
-          "library_size": 51,
+          "library_size": 53,
           "life": 20,
           "name": "TestPlayer",
         },
@@ -883,12 +1020,41 @@ Call get_action_choices to see your options, then choose_action to decide.",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 698816322071,
+      "snapshot_id": 906130834640,
       "stack": [],
       "step": "Declare Attackers",
       "turn": 3,
     },
     "role": "tool",
     "tool_call_id": "call_23",
+  },
+  {
+    "content": null,
+    "role": "assistant",
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": {},
+          "name": "pass_priority",
+        },
+        "id": "call_24",
+        "type": "function",
+      }
+    ],
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 19, snapshot=0] Turn 3 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Thespian's Stage] lib=53 bf=[Plains] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Plains [id=p12, land], Plains [id=p23, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land], Thespian's Stage [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
+    "role": "tool",
+    "tool_call_id": "call_24",
   }
 ]

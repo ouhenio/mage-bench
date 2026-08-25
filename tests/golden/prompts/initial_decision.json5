@@ -105,6 +105,18 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon] lib=43 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (4): Ancient Tomb [id=p10, land], Ancient Tomb [id=p11, land], Ancient Tomb [id=p12, land], Ancient Tomb [id=p13, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -121,11 +133,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon] lib=43 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (4): Ancient Tomb [id=p10, land], Ancient Tomb [id=p11, land], Ancient Tomb [id=p12, land], Ancient Tomb [id=p13, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -147,9 +161,35 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "error": "GAME_ASK requires choice=\"yes\" or choice=\"no\". This is a yes/no question.",
+      "choices": [
+        {
+          "action": "land",
+          "id": "p10",
+          "index": 0,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p11",
+          "index": 1,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p12",
+          "index": 2,
+          "name": "Ancient Tomb",
+        },
+        {
+          "action": "land",
+          "id": "p13",
+          "index": 3,
+          "name": "Ancient Tomb",
+        }
+      ],
+      "error": "GAME_SELECT requires choice=pN to play a card, or choice=\"no\" to pass priority. Call get_action_choices first to see available cards.",
       "error_code": "missing_param",
-      "game_seq": 5,
+      "game_seq": 15,
       "retryable": true,
       "success": false,
     },
@@ -171,13 +211,21 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
+    "content": "## Card Reference\n\
+- Aether Vial: At the beginning of your upkeep, you may put a charge counter on {this}. / {T}: You may put a creature card with mana value equal to the number of charge counters on {this} from your hand onto the battlefield.\n\
+- Broadside Bombardiers {2}{R} 2/2: Menace / Haste / Boast &mdash; Sacrifice another creature or artifact: {this} deals damage equal to 2 plus the sacrificed permanent's mana value to any target. (Activate only if this creature attacked this turn and only once each turn.) / :  / ICON_BADCan activate Boast ability\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 () - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon] lib=43 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+## Decision\n\
+\n\
+[Decision 3, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Ancient Tomb, Ancient Tomb, Ancient Tomb, Ancient Tomb, Blood Moon, Blood Moon, Blood Moon, Broadside Bombardiers] lib=42 | Opponent: 20hp hand=7 lib=52 gy=[Aether Vial]\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (4): Ancient Tomb [id=p10, land], Ancient Tomb [id=p11, land], Ancient Tomb [id=p12, land], Ancient Tomb [id=p13, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -197,9 +245,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "active_player": "",
+      "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 5,
+      "game_seq": 30,
+      "phase": "Precombat Main",
       "players": [
         {
           "hand": [
@@ -207,6 +256,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p10",
               "is_land": true,
               "name": "Ancient Tomb",
+              "playable": true,
               "rules": [
                 "{T}: Add {C}{C}. {this} deals 2 damage to you.",
               ]
@@ -215,6 +265,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p11",
               "is_land": true,
               "name": "Ancient Tomb",
+              "playable": true,
               "rules": [
                 "{T}: Add {C}{C}. {this} deals 2 damage to you.",
               ]
@@ -223,6 +274,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p12",
               "is_land": true,
               "name": "Ancient Tomb",
+              "playable": true,
               "rules": [
                 "{T}: Add {C}{C}. {this} deals 2 damage to you.",
               ]
@@ -231,6 +283,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p13",
               "is_land": true,
               "name": "Ancient Tomb",
+              "playable": true,
               "rules": [
                 "{T}: Add {C}{C}. {this} deals 2 damage to you.",
               ]
@@ -259,27 +312,52 @@ Call get_action_choices to see your options, then choose_action to decide.",
                 "Nonbasic lands are Mountains.",
               ]
             },
+            {
+              "id": "p24",
+              "mana_cost": "{2}{R}",
+              "name": "Broadside Bombardiers",
+              "power": 2,
+              "rules": [
+                "Menace",
+                "Haste",
+                "Boast &mdash; Sacrifice another creature or artifact: {this} deals damage equal to 2 plus the sacrificed permanent's mana value to any target. (Activate only if this creature attacked this turn and only once each turn.)",
+                ": ",
+                "ICON_BADCan activate Boast ability",
+              ],
+              "toughness": 2,
+            }
           ],
-          "hand_size": 7,
-          "is_active": false,
+          "hand_size": 8,
+          "is_active": true,
           "is_you": true,
-          "library_size": 43,
+          "library_size": 42,
           "life": 20,
           "name": "TestPlayer",
         },
         {
+          "graveyard": [
+            {
+              "id": "p3",
+              "name": "Aether Vial",
+              "rules": [
+                "At the beginning of your upkeep, you may put a charge counter on {this}.",
+                "{T}: You may put a creature card with mana value equal to the number of charge counters on {this} from your hand onto the battlefield.",
+              ]
+            },
+          ],
           "hand_size": 7,
           "is_active": false,
           "is_you": false,
-          "library_size": 53,
+          "library_size": 52,
           "life": 20,
           "name": "Opponent",
         }
       ],
-      "priority_player": "",
-      "snapshot_id": 1018570327402,
+      "priority_player": "TestPlayer",
+      "snapshot_id": 773746699961,
       "stack": [],
-      "turn": 1,
+      "step": "Precombat Main",
+      "turn": 2,
     },
     "role": "tool",
     "tool_call_id": "call_5",

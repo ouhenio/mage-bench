@@ -101,6 +101,16 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p14], Plains [id=p17], Plains [id=p18], Plains [id=p19], Plains [id=p20], Plains [id=p21], Plains [id=p22]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -117,11 +127,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+[Decision 2, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p14], Plains [id=p17], Plains [id=p18], Plains [id=p19], Plains [id=p20], Plains [id=p21], Plains [id=p22]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -144,13 +154,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Play instants and activated abilities\n\
+[Decision 3, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 5 cards?\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)",
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_3",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 4, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
   },
   {
     "content": null,
@@ -169,13 +189,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=52 | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Plains [id=p10, land], Plains [id=p11, land], Plains [id=p12, land], Plains [id=p13, land], Plains [id=p14, land], Plains [id=p15, land], Plains [id=p24, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 5, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -198,13 +216,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Savannah Lions] lib=52 bf=[Plains] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Savannah Lions [id=p16, cast, {W}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+[Decision 6, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -227,15 +243,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped)] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
-  Stack: [Savannah Lions]\n\
-  Land drops remaining: 0\n\
+[Decision 7, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 4 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
+    "role": "tool",
+    "tool_call_id": "call_6",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 8, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55 | Opponent: 20hp hand=7 lib=53\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)",
-    "role": "tool",
-    "tool_call_id": "call_6",
+    "role": "user",
   },
   {
     "content": null,
@@ -254,16 +278,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
-  Combat: Savannah Lions -> TestPlayer\n\
-  Combat Phase: blockers\n\
-  Incoming Attackers: Savannah Lions [id=p9, 2/1]\n\
-  Message: Select blockers\n\
-  Choices (1): Savannah Lions [id=p16]\n\
-  Respond: blockers=p5:p1,p6:p2 (blocker:attacker) or choice=yes (confirm) or choice=no (skip)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[Decision 9, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=54 | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Plains [id=p15, land], Plains [id=p24, land], Plains [id=p25, land], Plains [id=p26, land], Plains [id=p27, land], Plains [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_7",
   },
@@ -286,14 +307,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
-  Combat: Savannah Lions blocked by Savannah Lions -> TestPlayer\n\
-  Message: Select blockers\n\
+[Decision 10, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=54 bf=[Plains] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
+  Message: Play spells and abilities\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -316,14 +335,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped), Savannah Lions 2/1 (sick)] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains, Savannah Lions 2/1 (tapped)]\n\
-  Combat: Savannah Lions blocked by Savannah Lions -> TestPlayer\n\
+[Decision 11, snapshot=0] Turn 1 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=54 bf=[Plains] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_9",
   },
@@ -346,13 +363,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Plains (tapped)] gy=[Savannah Lions] | Opponent: 20hp hand=5 lib=52 bf=[Plains, Plains] gy=[Savannah Lions]\n\
-  Message: Play instants and activated abilities\n\
+[Decision 12, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=54 bf=[Plains] | Opponent: 20hp hand=5 lib=53 bf=[Plains (tapped), Savannah Lions 2/1 (sick)]\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
+  Message: Play spells and abilities\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_10",
   },
@@ -372,69 +388,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "active_player": "Opponent",
+      "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 70,
+      "game_seq": 46,
       "phase": "Postcombat Main",
       "players": [
         {
           "battlefield": [
             {
-              "id": "p10",
+              "id": "p15",
               "name": "Plains",
               "rules": [
                 "{T}: Add {W}.",
               ],
-              "tapped": true,
-            }
-          ],
-          "graveyard": [
-            {
-              "id": "p16",
-              "name": "Savannah Lions",
+              "tapped": false,
             }
           ],
           "hand": [
-            {
-              "id": "p11",
-              "is_land": true,
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ]
-            },
-            {
-              "id": "p12",
-              "is_land": true,
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ]
-            },
-            {
-              "id": "p13",
-              "is_land": true,
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ]
-            },
-            {
-              "id": "p14",
-              "is_land": true,
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ]
-            },
-            {
-              "id": "p15",
-              "is_land": true,
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ]
-            },
             {
               "id": "p24",
               "is_land": true,
@@ -443,11 +413,43 @@ Call get_action_choices to see your options, then choose_action to decide.",
                 "{T}: Add {W}.",
               ]
             },
+            {
+              "id": "p25",
+              "is_land": true,
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
+            {
+              "id": "p26",
+              "is_land": true,
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
+            {
+              "id": "p27",
+              "is_land": true,
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
+            {
+              "id": "p28",
+              "is_land": true,
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
           ],
-          "hand_size": 6,
-          "is_active": false,
+          "hand_size": 5,
+          "is_active": true,
           "is_you": true,
-          "library_size": 52,
+          "library_size": 54,
           "life": 20,
           "name": "TestPlayer",
         },
@@ -459,36 +461,30 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "rules": [
                 "{T}: Add {W}.",
               ],
-              "tapped": false,
+              "tapped": true,
             },
-            {
-              "id": "p4",
-              "name": "Plains",
-              "rules": [
-                "{T}: Add {W}.",
-              ],
-              "tapped": false,
-            }
-          ],
-          "graveyard": [
             {
               "id": "p9",
               "name": "Savannah Lions",
+              "power": 2,
+              "summoning_sick": true,
+              "tapped": false,
+              "toughness": 1,
             }
           ],
           "hand_size": 5,
-          "is_active": true,
+          "is_active": false,
           "is_you": false,
-          "library_size": 52,
+          "library_size": 53,
           "life": 20,
           "name": "Opponent",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 337472491819,
+      "snapshot_id": 98390484006,
       "stack": [],
       "step": "Postcombat Main",
-      "turn": 2,
+      "turn": 1,
     },
     "role": "tool",
     "tool_call_id": "call_11",
