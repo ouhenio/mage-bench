@@ -51,7 +51,50 @@ THE `hasWon()` STORY IS RIGHT; THE `no winner` STORY IS NOT. This instance\'s FI
 \
 DIRECTION, unimplemented: end the match when its game ends rather than when the next command arrives -- the observer already tracks watchedGameId, so quitting on the game-over callback closes the 109 ms window that this instance lost by. That is a change of WHEN, not of what. \
 \
-COUNT game_start, NOT game_end. Two of block 2\'s three doubled directories record game_start twice and game_end ONCE, so a game_end count finds 1 of 3. The runner\'s own detector (dirs_holding_more_than_one_game) already counts game_start and is correct; the undercount is downstream, in mtg pipelines/synth/audit_step1.py, which takes `next(e for e in ev if type == game_end)` and therefore sees a doubled directory as one complete game.",
+COUNT game_start, NOT game_end. Two of block 2\'s three doubled directories record game_start twice and game_end ONCE, so a game_end count finds 1 of 3. The runner\'s own detector (dirs_holding_more_than_one_game) already counts game_start and is correct; the undercount is downstream, in mtg pipelines/synth/audit_step1.py, which takes `next(e for e in ev if type == game_end)` and therefore sees a doubled directory \
+as one complete game. \
+\
+MECHANISM, ESTABLISHED 2026-08-25, and it predicts the rate in both directions. \
+Cross-tabulating every completed game ending on lascar block 2, segmented per game in \
+the authoritative server stream, against whether another game_start follows it: \
+\
+    exit          loss message   followed by another game   n \
+    DAMAGE        yes            no                         1908 \
+    non-damage    yes            no                           30 \
+    non-damage    NO             YES                           3 \
+\
+1,941 endings. The discriminator is not the exit type and not the winner field: it is \
+whether the ending emitted `lostForced`\'s \"has lost the game\". Necessary AND \
+sufficient here -- 3 of 3 continue, 0 of 1,938 false positives. karn-ranokau measured \
+the coarser cut independently on ranokau (non-damage endings continue 5 of 46, 10.87%, \
+damage endings 0 of 1,766); the 41 non-damage endings that do NOT continue are exactly \
+the ones that DO record a loss, which is what refines 10.87% to 100%. \
+\
+IN CODE: PlayerImpl.leave() sets `loses = true; left = true` directly and never calls \
+lostForced, so no LOST event fires and the survivor\'s won() is never reached. \
+MatchImpl.endGame credits a win on hasWon() and marks a player out on hasQuit(). A \
+player who left satisfies NEITHER -- quit is a different flag from left -- so no win is \
+credited, activePlayers stays 2, checkIfMatchEnds returns false, and the server starts \
+the next game of a match that never ended. The collector still names a winner because \
+its survivor test is `!hasLost() && !hasLeft()`, which is why these game_end rows carry \
+a winner beside a living loser. \
+\
+OPEN, AND THE FIX DEPENDS ON IT: WHICH caller invokes leave() as the CAUSE of these \
+three endings. Six sites exist -- GameController:411, 425, 429, 555, 1597 and \
+GameImpl:3479 -- and the logs do not distinguish them. None of the three sessions \
+contains a \"FIX command result\" (WARN, the can\'t-respond path), a \"User \
+disconnected\" (WARN), a \"has conceded\", a timeout or a disconnect line. Every \
+remaining candidate logs at DEBUG only. A RETRACTED READING, recorded so it is not \
+repeated: the three losers\' final snapshots show library, hand and graveyard all at \
+zero, which looks like leave()\'s own clearing -- but the CONTROLS show every normal \
+loser\'s snapshot has the same zeros, because GameImpl.leave runs for the loser at the \
+end of every game per 800.4a. It is a consequence of losing, not a signature of the \
+anomaly. THE NEXT STEP IS NOT MORE LOG READING: one session with DEBUG enabled on \
+mage.game.GameImpl and mage.server.game.GameController names the caller directly. \
+\
+IF IT TURNS OUT TO BE A STALL OR TIMEOUT PATH, the corpus contains ~0.16% of games that \
+were cut short and recorded with a derived winner, and the report has to say so. Not \
+yet established either way.",
   "status": "open",
   "priority": 1,
   "type": "bug",
@@ -64,5 +107,5 @@ COUNT game_start, NOT game_end. Two of block 2\'s three doubled directories reco
     "race",
   ],
   "created_at": "2026-08-25T00:30:00.000-04:00",
-  "updated_at": "2026-08-25T09:30:00.000-04:00",
+  "updated_at": "2026-08-25T10:15:00.000-04:00",
 }
