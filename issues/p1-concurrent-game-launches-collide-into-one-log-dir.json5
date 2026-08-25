@@ -35,7 +35,7 @@ TestTwoRunsNeverShareALogDirectory. NOT fixed by that work: the ZoneInfo timezon
 described above, which is why this issue stays open. A launch stagger is also still \
 load-bearing for anyone on the old path -- rollout_games.sh:185 sleep 3 is commented as \
 a port-scan stagger and was, silently, the only thing preventing this collision for that \
-driver.",
+driver. NOTE ADDED 2026-08-24 after review: the directory NAME is still not unique ACROSS NODES. Claiming makes it unique within one filesystem -- two processes on one box cannot share a directory -- and the sequential runner names game dirs session-timestamp plus _sN, which two nodes generating in the same second will both mint. That is deliberate and not a defect: identity is the engine's game UUID and the directory name is a LABEL. But do not read 'collision fixed' as 'the name became unique'. Anything that needs to key on a game must use game_id from the recorder output; build_dataset.py refuses a non-UUID at the producer for exactly this reason.",
   "status": "open",
   "priority": 1,
   "type": "bug",
