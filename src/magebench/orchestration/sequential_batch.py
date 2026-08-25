@@ -249,9 +249,34 @@ def run_sequential_batch(
         "config.timestamp must be set before a sequential batch: it keys the "
         "session directory and every game directory in it"
     )
-    players_config_json = config.get_players_config_json()
-    assert players_config_json, "Sequential batch needs a resolved players config"
-    players_config = json.loads(players_config_json)
+    # ONE CONFIG PER GAME WHEN A MANIFEST IS GIVEN. This used to resolve the players
+    # once and reuse it for every game in the session, so a worker handed a manifest
+    # of five deck pairs played the FIRST one five times -- measured by ranokau at
+    # 100 games: 24 of 24 groups had all five games on the same pair. The corpus
+    # looked the right size and covered a fifth of the matchups it claimed.
+    # An empty manifest and no manifest mean the same thing here -- one config for
+    # the session -- but say it rather than leaning on falsiness.
+    manifest = list(config.batch_config_files) if config.batch_config_files else []
+    if manifest:
+        assert len(manifest) == len(seeds), (
+            f"--batch-config-manifest has {len(manifest)} configs but "
+            f"--sequential-games is {len(seeds)}. One config per game, or the run "
+            f"silently repeats configs and the corpus is not what the manifest says."
+        )
+        game_configs = []
+        for config_file in manifest:
+            per_game = config.new_game_config(config_file=config_file, port=config.port)
+            per_game.load_config()
+            per_game.resolve_random_decks(project_root)
+            game_configs.append(per_game)
+    else:
+        game_configs = [config] * len(seeds)
+
+    players_configs = []
+    for game_config in game_configs:
+        raw = game_config.get_players_config_json()
+        assert raw, "Sequential batch needs a resolved players config"
+        players_configs.append(json.loads(raw))
 
     port_reservation = find_available_port(config.start_port)
     port = port_reservation.port
@@ -304,7 +329,15 @@ def run_sequential_batch(
                 "Game %d/%d -> %s (seed=%s)", index + 1, len(seeds), game_dir.name,
                 "unseeded" if seed is None else seed,
             )
-            write_game_meta(game_dir, config, project_root)
+            game_config = game_configs[index]
+            # The seed is this GAME's, and the config is the one the manifest named
+            # for it -- both used to be the session's, so every game in a worker
+            # recorded the same config name and no seed at all.
+            assert seed is not None or not manifest, (
+                f"game {index + 1} has no seed. A manifest run must be reproducible "
+                f"per game; refusing to start a game whose deal cannot be recorded."
+            )
+            write_game_meta(game_dir, game_config, project_root, game_seed=seed)
             (game_dir / "session.json").write_text(
                 json.dumps(
                     {
@@ -322,9 +355,9 @@ def run_sequential_batch(
             try:
                 observer.start_game(
                     game_dir,
-                    players_config,
+                    players_configs[index],
                     game_seed=seed,
-                    skip_init_shuffling=config.skip_init_shuffling,
+                    skip_init_shuffling=game_config.skip_init_shuffling,
                 )
                 observer.wait_for_ready(game_dir)
                 observer.wait_for_watching(game_dir)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -17,12 +18,14 @@ class _FakeObserver:
     def __init__(self, fail_on: set[int]) -> None:
         self.fail_on = fail_on
         self.started: list[tuple[str, int | None]] = []
+        self.started_full: list[dict] = []
         self.closed = False
         self.log_path = Path("/tmp/observer.log")
         self.proc = _FakeProc()
 
     def start_game(self, game_dir, players_config, **kwargs):
         self.started.append((game_dir.name, kwargs.get("game_seed")))
+        self.started_full.append({"players_config": players_config, **kwargs})
 
     def wait_for_ready(self, game_dir, timeout=0):
         return "table"
@@ -205,3 +208,71 @@ class TestTwoSessionsNeverShareASessionDirectory:
         sequential_batch.run_sequential_batch(_config(), tmp_path, log_dir, [1], pm=_FakePm())
 
         assert [p.name for p in log_dir.glob("session_*")] == ["session_20260819_200000"]
+
+
+class TestAManifestIsConsumedPerGame:
+    """Five games from a five-config manifest must play five configs, not the first one five times.
+
+    Measured by ranokau at 100 games before the fix: 24 of 24 groups had all five
+    games on the same deck pair. The corpus was the right SIZE and covered a fifth
+    of the matchups its manifest named -- which is the failure mode that survives
+    review, because every count is correct.
+    """
+
+    def _manifest(self, tmp_path, decks):
+        files = []
+        for i, deck in enumerate(decks):
+            f = tmp_path / f"cfg{i}.json"
+            f.write_text(json.dumps({
+                "gameType": "Two Player Duel", "deckType": "Constructed - Standard",
+                "players": [
+                    {"type": "cpu", "name": "Skill1", "deck": deck},
+                    {"type": "cpu", "name": "Skill8", "deck": deck},
+                ],
+            }))
+            files.append(f)
+        return files
+
+    def test_three_configs_give_three_distinct_deck_pairs(self, batch_env, tmp_path):
+        fake_observer, observers, _ = batch_env
+        fake_observer.fail_on = set()
+        config = _config()
+        config.batch_config_files = self._manifest(
+            tmp_path, ["a.dck", "b.dck", "c.dck"]
+        )
+
+        sequential_batch.run_sequential_batch(
+            config, tmp_path, tmp_path / "logs", [11, 22, 33], pm=_FakePm()
+        )
+
+        decks = []
+        for call in observers[0].started_full:
+            decks.append(call["players_config"]["players"][0]["deck"])
+        assert decks == ["a.dck", "b.dck", "c.dck"], (
+            f"each game must use ITS manifest entry, got {decks}"
+        )
+
+    def test_three_games_carry_three_distinct_seeds(self, batch_env, tmp_path):
+        fake_observer, observers, _ = batch_env
+        fake_observer.fail_on = set()
+        config = _config()
+        config.batch_config_files = self._manifest(tmp_path, ["a.dck", "b.dck", "c.dck"])
+
+        sequential_batch.run_sequential_batch(
+            config, tmp_path, tmp_path / "logs", [11, 22, 33], pm=_FakePm()
+        )
+
+        assert [c["game_seed"] for c in observers[0].started_full] == [11, 22, 33]
+
+    def test_a_length_mismatch_is_an_error_not_a_truncation(self, batch_env, tmp_path):
+        fake_observer, observers, _ = batch_env
+        fake_observer.fail_on = set()
+        config = _config()
+        config.batch_config_files = self._manifest(tmp_path, ["a.dck", "b.dck", "c.dck"])
+
+        # Truncating would run 2 games and look successful. Recycling would run 3 with
+        # a repeat. Both produce a corpus that disagrees with its own manifest.
+        with pytest.raises(AssertionError, match="One config per game"):
+            sequential_batch.run_sequential_batch(
+                config, tmp_path, tmp_path / "logs", [11, 22], pm=_FakePm()
+            )

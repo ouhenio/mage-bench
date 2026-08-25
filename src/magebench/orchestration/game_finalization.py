@@ -110,7 +110,9 @@ def write_error_log(game_dir: Path) -> None:
         error_log.write_text("No errors detected.\n")
 
 
-def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
+def write_game_meta(
+    game_dir: Path, config: Config, project_root: Path, game_seed: int | None = None
+) -> None:
     """Write game metadata with player configs, decklists, and git info."""
     assert config.game_type, "game_meta requires non-empty config.game_type"
     assert config.deck_type, "game_meta requires non-empty config.deck_type"
@@ -168,8 +170,18 @@ def write_game_meta(game_dir: Path, config: Config, project_root: Path) -> None:
     # Temperature is here for the same reason from the other side -- "the only
     # difference between the arms is the seed" has to be assertable from the
     # artefacts, not trusted because an env var was set once.
+    # THE SEED IS PASSED IN, NOT READ FROM THE ENVIRONMENT, when the caller knows it.
+    # MAGEBENCH_GAME_SEED is one value for a whole process, which is right for a path
+    # that runs one game per JVM and wrong for a session that runs many: the batch
+    # launcher sets MAGEBENCH_GAME_SEEDS (plural) and this read found nothing, so
+    # every game in a session recorded NO seed at all. A game whose metadata cannot
+    # say which deal it was is not reproducible and cannot be paired with anything.
+    if game_seed is not None:
+        meta["seed"] = int(game_seed)
     for key, env in (("seed", "MAGEBENCH_GAME_SEED"), ("temperature", "MAGEBENCH_TEMPERATURE"),
                      ("arm", "MAGEBENCH_ARM")):
+        if key == "seed" and "seed" in meta:
+            continue
         raw = env_or_none(env)
         if raw is not None:
             meta[key] = int(raw) if key == "seed" else float(raw) if key == "temperature" else raw
