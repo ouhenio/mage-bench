@@ -33,6 +33,39 @@ MVN_REPO_ARGS = (
 
 logger = get_logger(__name__)
 
+
+def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
+    """The per-skill search budgets, as -D properties FOR THE SERVER JVM.
+
+    THESE BELONG ON THE SERVER AND WERE ON THE CLIENT. ComputerPlayer6 lives in
+    Mage.Server.Plugins and reads them with Integer.getInteger, so they are read in
+    the process that runs the game:
+
+        maxNodes         = Integer.getInteger("xmage.ai.nodes." + skill, 5000 * max(1, skill))
+        maxThinkTimeSecs = Integer.getInteger("xmage.ai.time."  + skill, skill * 3)
+
+    They used to be built into start_gui_client's argument list, which is the
+    CLIENT, where nothing reads them; and the sequential runner never carried them
+    at all. So MAGEBENCH_AI_NODES has never reached the engine on either path, and
+    every run has used the engine's defaults while its metadata recorded whatever
+    the caller asked for. The 4,624-game corpus records nodes "1:1000,8:5000" and
+    cannot have used it.
+
+    Found because a think-time cap of 1s left the measured maximum at 3.08s against
+    a 3.10s baseline -- a knob that changed nothing, which is the only symptom this
+    has. Nothing errors when a property lands on the wrong process.
+
+    Keyed by skill number rather than seat order, matching the engine.
+    """
+    props: list[str] = []
+    for raw, name in ((ai_nodes, "nodes"), (ai_time, "time")):
+        for pair in (raw.split(",") if raw else []):
+            if ":" not in pair:
+                continue
+            skill, value = pair.split(":", 1)
+            props.append(f"-Dxmage.ai.{name}.{skill.strip()}={value.strip()}")
+    return props
+
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
 _SPECTATOR_GAME_STARTED = "AI Puppeteer: all players joined"
 # Matches the spectator's table announcement, which carries the table uuid.
@@ -165,6 +198,10 @@ def start_server(
             # process-global static -- so this is only sound with ONE game per
             # server JVM. Two games in one JVM would interleave their draws.
             *([f"-Dxmage.game.seed={game_seed}"] if game_seed else []),
+            # Read by ComputerPlayer6, which runs HERE.
+            *ai_budget_props(
+                env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME")
+            ),
         ]
     )
 
@@ -232,10 +269,6 @@ def start_gui_client(
     config_json = config.get_players_config_json()
 
     ai_skills = env_or_none("MAGEBENCH_AI_SKILLS")
-    # Per-skill node budgets, e.g. MAGEBENCH_AI_NODES="1:250,8:5000". The search
-    # budget is the only knob that changes this AI's strength, so it is the knob a
-    # difficulty ladder has to set.
-    ai_nodes = env_or_none("MAGEBENCH_AI_NODES")
 
     jvm_args = " ".join(
         [
@@ -250,8 +283,6 @@ def start_gui_client(
             # requires-python >=3.11, and uv resolves 3.11 here, so the double-quoted
             # version made THIS module -- the one that launches games -- unimportable
             # on a supported interpreter.
-            *[f"-Dxmage.ai.nodes.{pair.split(':')[0]}={pair.split(':')[1]}"
-              for pair in (ai_nodes.split(",") if ai_nodes else []) if ":" in pair],
             "-Dxmage.aiPuppeteer.autoConnect=true",
             "-Dxmage.aiPuppeteer.autoStart=true",
             "-Dxmage.aiPuppeteer.disableWhatsNew=true",

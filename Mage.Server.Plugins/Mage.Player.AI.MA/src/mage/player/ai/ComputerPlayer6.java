@@ -102,7 +102,21 @@ public class ComputerPlayer6 extends ComputerPlayer {
         } else {
             maxDepth = skill;
         }
-        maxThinkTimeSecs = skill * 3;
+        // WALL-CLOCK BUDGET, overridable per skill value: -Dxmage.ai.time.1=2
+        //
+        // Same shape and the same reason as the node budget below, and it is the
+        // knob that actually binds. Measured over 10 corpus games, 2,984 recorded
+        // decisions: the MEDIAN decision costs 20 ms, and both seats' maxima land
+        // exactly on their caps -- 3.10s against skill 1's 3s and 24.07s against
+        // skill 8's 24s. So the expensive decisions are ones that ran out of TIME,
+        // not ones that exhausted maxNodes, and 11 of skill 8's 1,503 decisions
+        // carried 46.6% of its total think time.
+        //
+        // Default is unchanged, so a JVM that does not set the property behaves
+        // exactly as before. Keyed by skill number rather than join order for the
+        // same reason as the node budget: a JVM-wide list indexed by seat can be
+        // mis-assigned and this cannot.
+        maxThinkTimeSecs = Integer.getInteger("xmage.ai.time." + skill, skill * 3);
         // Scale the node budget with skill, per the TODO above the constant.
         // Measured before this change: skill 8 and skill 1 were indistinguishable
         // over 16 games (8-8) with no latency separation, because maxDepth and
