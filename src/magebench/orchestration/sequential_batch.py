@@ -63,7 +63,9 @@ from magebench.orchestration.batch_coordination import (
     claim_run_file,
     claim_session_dir,
 )
+from magebench.common.env import env_or_none
 from magebench.orchestration.config import Config
+from magebench.orchestration.game_processes import ai_budget_props
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
     MAIN_CLASS_OBSERVER,
@@ -129,6 +131,15 @@ def _start_server(
             **({"xmage.ai.recordDir": str(ai_record_dir)} if ai_record_dir else {}),
         },
         max_heap="1024m",
+    )
+    # SEARCH BUDGETS BELONG HERE, and this runner used to carry them nowhere at
+    # all. ComputerPlayer6 is a server plugin and reads xmage.ai.nodes.<skill> and
+    # xmage.ai.time.<skill> with Integer.getInteger, so they are read in THIS
+    # process. Passing them to the observer, or to the GUI client as the older path
+    # did, sets them where nothing reads them -- and nothing errors, so every run
+    # used the engine defaults while its metadata recorded what the caller asked.
+    cmd.extend(
+        ai_budget_props(env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME"))
     )
     env = os.environ.copy()
     env.update(
