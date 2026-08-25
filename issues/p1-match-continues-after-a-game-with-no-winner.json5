@@ -3,8 +3,8 @@
   "description": "MECHANISM, from source and from the corpus on disk. MatchImpl.endGame \
 credits a win only `if (player.hasWon())`, and MatchImpl.checkIfMatchEnds ends the \
 match only when some player's wins reach winsNeeded (or fewer than two players remain). \
-A game that finishes with NOBODY marked as having won -- a draw, or any ending where \
-neither seat is a winner -- therefore credits no win, the match is not over, and \
+A game that finishes with NOBODY marked as having won -- a deck-out, an effect, a concession, or a genuine draw; anything \
+where neither seat is marked as having won -- therefore credits no win, the match is not over, and \
 TableController:855 immediately calls startGame again. That next game inherits the \
 match's gameLogDir, which is the directory of the game that just finished, so the \
 server appends a second game's events into it while the sequential runner has already \
@@ -18,8 +18,9 @@ affected session produced 5 distinct sibling directories (_s1.._s5), so claim_ga
 worked in every case. The second game carries a THIRD game id, belonging to neither \
 the finished game nor the next table's game, so it is not a misdirected write but a \
 game nobody was watching. Nine of the ten first games ended with NO player at or below \
-0 life, against 583 of 600 sampled normal games ending on a kill; three of the ten \
-record state.step DRAW explicitly. NOT SUFFICIENT, ONLY NECESSARY: 12 of those 600 \
+0 life, against 583 of 600 sampled normal games ending on a kill; three of the ten ended during the \
+DRAW STEP, which is a deck-out and not a drawn game -- `step` is the turn step, not \
+an outcome. NOT SUFFICIENT, ONLY NECESSARY: 12 of those 600 \
 normal games also ended without a kill and did NOT double, which is consistent with \
 the second game only appearing if it starts before the session tears the server down. \
 So the rate is a function of timing, not of worker count -- it does not fall with \

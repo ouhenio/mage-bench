@@ -416,8 +416,8 @@ public class ObserverMageFrame extends MageFrame {
         //
         // A game ending is not a match ending. MatchImpl.endGame credits a win only
         // `if (player.hasWon())`, and checkIfMatchEnds only ends the match when some
-        // player's wins reach winsNeeded. A game that ends WITHOUT a win -- a draw,
-        // or any finish where neither seat is marked as having won -- credits
+        // player's wins reach winsNeeded. A game that ends WITHOUT a win -- a
+        // deck-out, an effect, a concession, or a genuine draw -- credits
         // nobody, so the match is not over and TableController:855 immediately calls
         // startGame again. That next game inherits the match's gameLogDir, which is
         // the directory of the game we just finished, and the server appends a
