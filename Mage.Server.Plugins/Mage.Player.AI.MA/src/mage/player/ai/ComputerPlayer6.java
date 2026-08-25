@@ -18,6 +18,7 @@ import mage.constants.Outcome;
 import mage.constants.RangeOfInfluence;
 import mage.counters.CounterType;
 import mage.filter.StaticFilters;
+import mage.filter.common.FilterLandCard;
 import mage.game.Game;
 import mage.game.combat.Combat;
 import mage.game.combat.CombatGroup;
@@ -1455,6 +1456,55 @@ public class ComputerPlayer6 extends ComputerPlayer {
         }
         MageObject o = game.getObject(id);
         return o == null ? id.toString() : o.getName();
+    }
+
+    @Override
+    public boolean chooseMulligan(Game game) {
+        boolean mulligan = super.chooseMulligan(game);
+        // BEFORE THE HAND GOES BACK. Mulligan.executeMulliganPhase calls this and
+        // only then reshuffles, so the hand read here is the one the decision was
+        // made on. recordChoice's own header writes the hand with ids and names,
+        // so this adds only what the header cannot derive: how many of them are
+        // lands, which is the entire input to the rule.
+        //
+        // THE HAND IS NOT ALWAYS 7 HERE, which is worth writing down because the
+        // usual description of the London mulligan says it should be. XMage's
+        // LondonMulligan.mulligan() draws the full starting hand and then bottoms
+        // down to the new size IMMEDIATELY, inside the same call -- not at keep
+        // time -- so the next chooseMulligan sees a SMALLER hand. Measured over
+        // 290 games: 582 decisions at 7 cards, 112 at 6, 51 at 5. The chain is
+        // exact (112 mulligans at 7 produced 112 decisions at 6; 51 at 6 produced
+        // 51 at 5), so `hand.size() - 2` is a moving threshold and the
+        // `hand.size() < 6` early keep is live, not dead code: it fired on all 51
+        // five-card hands.
+        //
+        // HOOKED HERE AND NOT ON THE BASE CLASS, which is where it belongs and
+        // cannot go: AiDecisionRecorder lives in Mage.Player.AI.MA and
+        // ComputerPlayer in Mage.Player.AI, and the pom dependency runs MA -> AI
+        // only. So a BARE ComputerPlayer IS NOT COVERED by this, nor are
+        // SimulatedPlayerMCTS and ComputerPlayerControllableProxy, which override
+        // chooseMulligan themselves. That is not a gap in practice -- every seat
+        // in the corpus is a skill player, i.e. a ComputerPlayer6 -- but a run
+        // that ever uses a plain ComputerPlayer will record no mulligans and look
+        // exactly like a run where nobody mulliganed.
+        if (AiDecisionRecorder.isEnabled() && AiDecisionRecorder.hookEnabled("choose_mulligan")) {
+            int lands = hand.getCards(new FilterLandCard(), game).size();
+            // EMPTY IDS, TEXT ONLY. A mulligan is a boolean, not a target: there
+            // is no card whose uuid could identify the choice. The assembler
+            // requires every chosen id to be a comma-separated list of UUIDs and
+            // treats "" as legitimate -- a decline carries no id -- so anything
+            // else fails build_dataset's malformed_label check and DROPS THE
+            // WHOLE GAME. Measured before this was fixed: 287 of 290 games
+            // dropped, i.e. essentially every game, because nearly every game
+            // contains at least one mulligan decision.
+            AiDecisionRecorder.recordChoice(game, this, "choose_mulligan",
+                    "Mulligan? hand=" + hand.size() + " lands=" + lands,
+                    Arrays.asList("", ""),
+                    Arrays.asList("keep", "mulligan"),
+                    "",
+                    mulligan ? "mulligan" : "keep");
+        }
+        return mulligan;
     }
 
     @Override
