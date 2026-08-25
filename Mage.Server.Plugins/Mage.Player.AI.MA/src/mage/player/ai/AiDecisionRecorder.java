@@ -262,11 +262,30 @@ public final class AiDecisionRecorder {
                         if (att == null) {
                             continue;
                         }
+                        // A FACE-DOWN CREATURE HAS NO NAME. Morph, manifest and
+                        // disguise put a nameless 2/2 on the battlefield, and
+                        // getName() returns "" for it -- which is not a missing
+                        // object, it is a real attacker the defender must decide
+                        // about. Writing "" made the record unrenderable: the
+                        // blocking label names blocker:attacker, so an attacker with
+                        // no name has no alias, and a consumer either asks for an id
+                        // it never defined or refuses the record. Measured on the
+                        // live corpus: 5 of 3,208 blocking records, 0.16%, all with
+                        // a morph creature attacking.
+                        //
+                        // The engine already has the phrase -- its own combat log
+                        // says "Attacker: face down creature (2/2)" -- so use it
+                        // rather than invent one, and the prompt reads the way the
+                        // game reads.
+                        String attName = att.getName();
+                        if (attName == null || attName.isEmpty()) {
+                            attName = "face down creature";
+                        }
                         if (!first) {
                             sb.append(',');
                         }
                         first = false;
-                        sb.append("{\"attacker\":\"").append(esc(att.getName()))
+                        sb.append("{\"attacker\":\"").append(esc(attName))
                                 .append("\",\"defender\":\"")
                                 .append(esc(nameOf(game, cg.getDefenderId())))
                                 .append("\"}");
