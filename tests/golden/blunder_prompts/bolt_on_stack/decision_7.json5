@@ -1,7 +1,7 @@
 {
   "decision_index": 7,
-  "turn": 2,
-  "phase": "POSTCOMBAT_MAIN",
+  "turn": 4,
+  "phase": "PRECOMBAT_MAIN",
   "player": "TestPlayer",
   "message": "Play instants and activated abilities",
   "system": "You are a Magic: The Gathering expert evaluating a single decision from a game replay.\n\
@@ -72,8 +72,8 @@ You are evaluating **TestPlayer**'s decision.\n\
 \n\
 ## Decision\n\
 \n\
-[Decision 7, snapshot=14] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: Opponent: 20hp hand=8 lib=52 | TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plateau, Taiga] lib=53 bf=[Mountain (sick)]\n\
+[Decision 7, snapshot=23] Turn 4 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: Opponent: 20hp hand=8 lib=51 gy=[Mountain] | TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain (sick)]\n\
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\

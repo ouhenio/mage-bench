@@ -122,8 +122,39 @@ from magebench.game.season import SEASON_1_START_EPOCH as GAME_EXPORT_SEASON_1_S
 #       not comparable to one collected before this. MAGEBENCH_CONTEXT_WINDOW=full|
 #       windowed names the arm; MAGEBENCH_APPEND_ONLY keeps working as its older
 #       spelling and a disagreement between the two is refused rather than resolved.
+#  65 - Forced decisions are answered by the harness and cost one line (Aug 25). A
+#       decision offering ZERO options is not a decision: measured on block 2, 310,980
+#       of 948,511 (32.8%) offer none and 310,954 of those are answered by passing.
+#       The policy is no longer asked, and the transcript shows a one-line note instead
+#       of a board identical to the one before it. Measured over 20 real games replayed
+#       through the pilot renderer: prompt tokens per trajectory median 22,946 -> 17,587,
+#       total 1,034,073 -> 826,952, a 20.0% saving.
+#
+#       ZERO OPTIONS, NOT "FEWER THAN TWO", which is where the token-budget report drew
+#       it. A one-option decision is play-or-pass and the teacher takes the play one time
+#       in seven -- of 124,007 such decisions, 7,269 answer with a pN and 9,960 with
+#       attackers/blockers. Auto-passing those would have suppressed every single-attacker
+#       attack in the corpus. So the share of decisions the policy sees goes to 71.7%,
+#       not the ~100% the report projected for the wider rule.
+#
+#       ACCEPTED KNOWINGLY: 26 of block 2's 310,980 zero-choice decisions (0.01%) answer
+#       with a play despite offering none. The harness passes those. The event carries
+#       `chose_unoffered_risk` so an audit can count the cost rather than infer it.
+#
+#       Prompts and exports move for every game containing a forced decision, which is
+#       nearly all of them. MAGEBENCH_AUTO_RESOLVE_FORCED=0 reproduces the old transcript
+#       exactly and is the reference arm.
+#
+#       ALSO IN 65: MAGEBENCH_CARD_TEXT=first-reveal|none|always gates board oracle
+#       text, for the reading test's three arms. `first-reveal` is today's behaviour
+#       and the default, so prompts move only for the two new arms. `always` exists
+#       because under first-reveal a card's text appears ONCE and never again, so a
+#       policy is asked to have read something hundreds of decisions ago and carried
+#       it -- and a small first-reveal-vs-none gap cannot tell a policy that cannot
+#       READ from one that cannot REMEMBER. There is no deck block at inference; the
+#       training-side one is suppressed by render_conversations --no-deck-text.
 
-HARNESS_EPOCH = 64
+HARNESS_EPOCH = 65
 
 # Re-exported here so existing callers keep a stable import path while the
 # canonical season boundary now lives with the export pipeline.

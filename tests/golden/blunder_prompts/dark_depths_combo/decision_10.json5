@@ -1,9 +1,9 @@
 {
   "decision_index": 10,
-  "turn": 3,
-  "phase": "POSTCOMBAT_MAIN",
+  "turn": 1,
+  "phase": null,
   "player": "TestPlayer",
-  "message": "Play instants and activated abilities",
+  "message": "Mulligan down to 4 cards?",
   "system": "You are a Magic: The Gathering expert evaluating a single decision from a game replay.\n\
 \n\
 Analyze the decision below. If the play was reasonable, return null.\n\
@@ -63,18 +63,11 @@ Format: Constructed - Legacy (Two Player Duel)\n\
 \n\
 You are evaluating **TestPlayer**'s decision.\n\
 \n\
-## Card Reference\n\
-- Black Lotus {0} -- Artifact: {T}, Sacrifice this artifact: Add three mana of any one color.\n\
-- Dark Depths -- Legendary Snow Land: Dark Depths enters with ten ice counters on it. / {3}: Remove an ice counter from Dark Depths. / When Dark Depths has no ice counters on it, sacrifice it. If you do, create Marit Lage, a legendary 20/20 black Avatar creature token with flying and indestructible.\n\
-- Thespian's Stage -- Land: {T}: Add {C}. / {2}, {T}: This land becomes a copy of target land, except it has this ability.\n\
-\n\
 ## Decision\n\
 \n\
-[Decision 10, snapshot=22] Turn 3 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: Opponent: 20hp hand=7 lib=52 gy=[Mountain] | TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage (sick)]\n\
-  Stack: [Black Lotus]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play instants and activated abilities\n\
+[Decision 10, snapshot=6] Turn 1 PREGAME - TestPlayer\n\
+  Board: Opponent: 20hp hand=7 lib=53 | TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains] lib=55\n\
+  Message: Mulligan down to 4 cards?\n\
   Choices (0): \n\
 \n\
   Chosen: (no response)\n\

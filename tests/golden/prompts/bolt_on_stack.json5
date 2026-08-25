@@ -107,6 +107,18 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -123,11 +135,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -150,13 +164,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=8 lib=52\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -177,13 +189,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plateau, Taiga] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 4, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Mountain, Plains, Plateau, Taiga] lib=52 | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (5): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
+  Choices (6): Badlands [id=p10, land], Memnite [id=p13, cast, {0}], Mountain [id=p14, land], Plains [id=p24, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -206,13 +220,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plateau, Taiga] lib=53 bf=[Mountain] | Opponent: 20hp hand=7 lib=53\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (3): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -233,13 +249,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plateau, Taiga] lib=53 bf=[Mountain] | Opponent: 20hp hand=8 lib=52\n\
+[Decision 6, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_6",
   },
@@ -279,7 +296,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
       ],
       "error": "Object p13 not found in current choices",
       "error_code": "invalid_choice",
-      "game_seq": 21,
+      "game_seq": 38,
       "retryable": true,
       "success": false,
     },
@@ -303,12 +320,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 1 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plateau, Taiga] lib=53 bf=[Mountain] | Opponent: 20hp hand=8 lib=52\n\
-  Untapped lands: 1\n\
-  Message: Play instants and activated abilities\n\
-  Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
-  Respond: choice=pN to play, or choice=no to pass",
+[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
+  Message: Play spells and abilities\n\
+  Choices (3): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -331,13 +351,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plateau, Taiga] lib=53 bf=[Mountain] | Opponent: 20hp hand=8 lib=52\n\
+[Decision 8, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_9",
   },
@@ -358,13 +380,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Badlands [id=p10, land], Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}], Plains [id=p24, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
+[Decision 9, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
+  Untapped lands: 1\n\
+  Message: Play instants and activated abilities\n\
+  Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -387,17 +408,29 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 9, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (3): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "choices": [
+        {
+          "action": "cast",
+          "id": "p11",
+          "index": 0,
+          "mana_cost": "{R}",
+          "name": "Lightning Bolt",
+        },
+        {
+          "action": "cast",
+          "id": "p12",
+          "index": 1,
+          "mana_cost": "{R}",
+          "name": "Lightning Bolt",
+        }
+      ],
+      "error": "Object p10 not found in current choices",
+      "error_code": "invalid_choice",
+      "game_seq": 48,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_11",
   },
@@ -418,12 +451,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2\n\
+[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Mountain] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
+  Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -448,13 +482,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
+[Decision 11, snapshot=0] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plains, Plateau, Taiga] lib=51 bf=[Mountain] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1, Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (3): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}]\n\
+  Choices (8): Badlands [id=p10, land], Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}], Memnite [id=p13, cast, {0}], Plains [id=p24, land], Plains [id=p26, land], Plateau [id=p15, land], Taiga [id=p16, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -477,15 +511,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 12, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
-  Untapped lands: 2\n\
+[Decision 12, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Lightning Bolt, Memnite, Plains, Plains, Plateau, Taiga] lib=51 bf=[Mountain] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
+  Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (2): Lightning Bolt [id=p11, cast, {R}], Lightning Bolt [id=p12, cast, {R}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_14",
   },
@@ -508,15 +541,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 13, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
+[Decision 13, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Memnite, Plains, Plains, Plateau, Taiga] lib=51 bf=[Mountain] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
   Stack: [Lightning Bolt]\n\
-  Untapped lands: 2\n\
+  Untapped lands: 1\n\
   Message: Select any target\n\
   Choices (2): TestPlayer [id=p2], Opponent [id=p1]\n\
   Respond: choice=pN, or choice=no to cancel\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_15",
   },
@@ -539,16 +572,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Lightning Bolt, Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain (tapped)] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
+[Decision 14, snapshot=0] Turn 3 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Badlands, Lightning Bolt, Memnite, Plains, Plains, Plateau, Taiga] lib=51 bf=[Mountain (tapped)] | Opponent: 20hp hand=7 lib=51 gy=[Mountain, Mountain]\n\
   Stack: [Lightning Bolt -> Opponent]\n\
-  Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
-  Choices (1): Lightning Bolt [id=p12, cast, {R}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+[It's been 3 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_16",
   },
@@ -569,17 +600,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
-\n\
-[Decision 15, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Memnite, Plains, Plateau, Taiga] lib=52 bf=[Badlands, Mountain (tapped)] | Opponent: 20hp hand=8 lib=51 gy=[Mountain]\n\
-  Stack: [Lightning Bolt, Lightning Bolt -> Opponent]\n\
-  Untapped lands: 1\n\
-  Message: Select any target\n\
-  Choices (2): TestPlayer [id=p2], Opponent [id=p1]\n\
-  Respond: choice=pN, or choice=no to cancel\n\
-\n\
-[It's been 2 turns since you last chatted — send a message to your opponent!]",
+    "content": {
+      "error": "Index 0 is out of range (valid: 0--1). Call get_action_choices to see current options.",
+      "error_code": "index_out_of_range",
+      "game_seq": 64,
+      "retryable": true,
+      "success": false,
+    },
     "role": "tool",
     "tool_call_id": "call_17",
   },
@@ -601,24 +628,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "choices": [
-        {
-          "id": "p2",
-          "index": 0,
-          "is_you": true,
-          "name": "TestPlayer",
-          "target_type": "player",
-        },
-        {
-          "id": "p1",
-          "index": 1,
-          "name": "Opponent",
-          "target_type": "player",
-        }
-      ],
       "error": "Object p13 not found in current choices",
       "error_code": "invalid_choice",
-      "game_seq": 53,
+      "game_seq": 64,
       "retryable": true,
       "success": false,
     },
@@ -641,22 +653,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "active_player": "Opponent",
+      "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 53,
-      "phase": "Precombat Main",
+      "game_seq": 64,
+      "phase": "Combat",
       "players": [
         {
           "battlefield": [
-            {
-              "id": "p10",
-              "name": "Badlands",
-              "rules": [
-                "{T}: Add {B}.",
-                "{T}: Add {R}.",
-              ],
-              "tapped": false,
-            },
             {
               "id": "p14",
               "name": "Mountain",
@@ -668,6 +671,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
           ],
           "hand": [
             {
+              "id": "p10",
+              "is_land": true,
+              "name": "Badlands",
+              "rules": [
+                "{T}: Add {B}.",
+                "{T}: Add {R}.",
+              ]
+            },
+            {
+              "id": "p12",
+              "mana_cost": "{R}",
+              "name": "Lightning Bolt",
+              "rules": [
+                "{this} deals 3 damage to any target.",
+              ]
+            },
+            {
               "id": "p13",
               "mana_cost": "{0}",
               "name": "Memnite",
@@ -676,6 +696,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
             },
             {
               "id": "p24",
+              "is_land": true,
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ]
+            },
+            {
+              "id": "p26",
               "is_land": true,
               "name": "Plains",
               "rules": [
@@ -701,10 +729,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
           ],
-          "hand_size": 4,
-          "is_active": false,
+          "hand_size": 7,
+          "is_active": true,
           "is_you": true,
-          "library_size": 52,
+          "library_size": 51,
           "life": 20,
           "name": "TestPlayer",
         },
@@ -717,9 +745,16 @@ Call get_action_choices to see your options, then choose_action to decide.",
                 "{T}: Add {R}.",
               ]
             },
+            {
+              "id": "p4",
+              "name": "Mountain",
+              "rules": [
+                "{T}: Add {R}.",
+              ]
+            },
           ],
-          "hand_size": 8,
-          "is_active": true,
+          "hand_size": 7,
+          "is_active": false,
           "is_you": false,
           "library_size": 51,
           "life": 20,
@@ -727,18 +762,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 707799138694,
+      "snapshot_id": 449321061080,
       "stack": [
         {
           "id": "p27",
-          "name": "Lightning Bolt",
-          "owner": "TestPlayer",
-          "rules": [
-            "{this} deals 3 damage to any target.",
-          ]
-        },
-        {
-          "id": "p26",
           "name": "Lightning Bolt",
           "owner": "TestPlayer",
           "rules": [
@@ -752,8 +779,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
           ],
         }
       ],
-      "step": "Precombat Main",
-      "turn": 2,
+      "step": "Declare Attackers",
+      "turn": 3,
     },
     "role": "tool",
     "tool_call_id": "call_19",

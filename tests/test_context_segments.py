@@ -18,6 +18,7 @@ from magebench.pilot.context_segments import (
     context_window_mode,
     require_servable_context,
     segment_budget_chars,
+    segment_max_tokens,
     should_close_segment,
 )
 from magebench.pilot.pilot_rendering import CHARS_PER_TOKEN_WORST, MAX_TOKENS
@@ -312,3 +313,50 @@ def test_the_reserve_covers_the_measured_label_census_with_headroom():
     # list except board width, so the observed max is not a bound and setting
     # the reserve to it would repeat the original error with a bigger number.
     assert PENDING_ANSWER_RESERVE_CHARS >= 2 * 1436
+
+
+# ------------------------------------------------------- the RL budget override
+
+
+def test_unset_means_the_sft_budget(monkeypatch):
+    monkeypatch.delenv("MTG_RL_SEGMENT_BUDGET", raising=False)
+    assert segment_max_tokens() == SEGMENT_MAX_TOKENS
+    assert segment_budget_chars() == SEGMENT_MAX_TOKENS * 3 * CHARS_PER_TOKEN_WORST
+
+
+def test_a_smaller_budget_moves_the_cut(monkeypatch):
+    # The property, not just the getter: the CHARACTER budget both sides cut on
+    # must follow the override, or a training render and an inference run at the
+    # same nominal budget would cut in different places.
+    monkeypatch.setenv("MTG_RL_SEGMENT_BUDGET", "36864")
+    assert segment_max_tokens() == 36864
+    assert segment_budget_chars() == 36864 * 3 * CHARS_PER_TOKEN_WORST
+    assert segment_budget_chars() < SEGMENT_MAX_TOKENS * 3 * CHARS_PER_TOKEN_WORST
+
+
+def test_a_larger_budget_is_refused_not_clamped(monkeypatch):
+    # Clamping would honour the smaller number silently. Refusing says which
+    # number was wrong -- and a budget above the default produces segments the
+    # token-anchored serving guard rejects mid-game, which is the quiet failure
+    # this loud one replaces.
+    monkeypatch.setenv("MTG_RL_SEGMENT_BUDGET", str(SEGMENT_MAX_TOKENS + 1))
+    with pytest.raises(ValueError, match="exceeds"):
+        segment_max_tokens()
+
+
+def test_a_nonsense_budget_is_refused(monkeypatch):
+    monkeypatch.setenv("MTG_RL_SEGMENT_BUDGET", "lots")
+    with pytest.raises(ValueError, match="not an integer"):
+        segment_max_tokens()
+    monkeypatch.setenv("MTG_RL_SEGMENT_BUDGET", "0")
+    with pytest.raises(ValueError, match="must be positive"):
+        segment_max_tokens()
+
+
+def test_the_override_is_read_at_call_time(monkeypatch):
+    # Captured into a constant at import, a loop that sets this afterwards would
+    # be silently ignored -- the same silent-default shape as ORACLE_CARDS.
+    monkeypatch.delenv("MTG_RL_SEGMENT_BUDGET", raising=False)
+    assert segment_max_tokens() == SEGMENT_MAX_TOKENS
+    monkeypatch.setenv("MTG_RL_SEGMENT_BUDGET", "40960")
+    assert segment_max_tokens() == 40960

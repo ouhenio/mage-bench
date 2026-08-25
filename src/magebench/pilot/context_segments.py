@@ -94,7 +94,53 @@ SERVE_MIN_MODEL_LEN = 143360
 _MODES = ("full", "windowed")
 
 
-def segment_budget_chars(max_tokens: int = SEGMENT_MAX_TOKENS) -> float:
+def segment_max_tokens() -> int:
+    """The segment budget in tokens, with an RL override.
+
+    MTG_RL_SEGMENT_BUDGET lets an RL loop cut at a smaller budget than the SFT
+    corpus uses. Unset means 131,072 and the SFT corpus is unaffected.
+
+    ONLY DOWNWARDS. A value above the default is refused rather than clamped:
+    the budget's whole job is to keep a segment inside what the server will
+    accept, and silently honouring a larger number would produce segments that
+    the token-anchored guard then rejects mid-game -- trading a loud
+    misconfiguration for a quiet one.
+
+    Read at CALL TIME, not captured into a constant at import, so a loop that
+    sets it after this module is first imported is not silently ignored.
+    """
+    raw = os.environ.get("MTG_RL_SEGMENT_BUDGET")
+    if raw is None:
+        return SEGMENT_MAX_TOKENS
+    try:
+        value = int(raw)
+    except ValueError:
+        empty = "" if raw else (
+            " An EMPTY value is not the same as unset here, deliberately: a "
+            "launcher writing MTG_RL_SEGMENT_BUDGET=\"${RL_BUDGET:-}\" with "
+            "RL_BUDGET unset would otherwise get the full 131,072 silently while "
+            "believing it had set a smaller one. Leave the variable out entirely "
+            "to take the default."
+        )
+        raise ValueError(
+            f"MTG_RL_SEGMENT_BUDGET={raw!r} is not an integer number of tokens.{empty}"
+        ) from None
+    if value <= 0:
+        raise ValueError(
+            f"MTG_RL_SEGMENT_BUDGET={value} must be positive; a zero or negative "
+            f"budget would cut before every decision and make no progress."
+        )
+    if value > SEGMENT_MAX_TOKENS:
+        raise ValueError(
+            f"MTG_RL_SEGMENT_BUDGET={value} exceeds the {SEGMENT_MAX_TOKENS}-token "
+            f"default. This override exists to cut SMALLER than the SFT corpus, "
+            f"not larger: a bigger budget produces segments the serving guard "
+            f"rejects mid-game, which is a quiet failure where this is a loud one."
+        )
+    return value
+
+
+def segment_budget_chars(max_tokens: int | None = None) -> float:
     """Characters a segment may hold, from the token budget it has to fit.
 
     The inverse of the token estimate: approx_tokens = (chars/3) /
@@ -125,6 +171,8 @@ def segment_budget_chars(max_tokens: int = SEGMENT_MAX_TOKENS) -> float:
     ratio should measure it, and anything needing a row count should read
     stats.json, where it is counted rather than derived.
     """
+    if max_tokens is None:
+        max_tokens = segment_max_tokens()
     return max_tokens * 3 * CHARS_PER_TOKEN_WORST
 
 

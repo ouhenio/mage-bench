@@ -1,9 +1,9 @@
 {
   "decision_index": 6,
-  "turn": 3,
-  "phase": "PRECOMBAT_MAIN",
+  "turn": 1,
+  "phase": null,
   "player": "TestPlayer",
-  "message": "Play spells and abilities",
+  "message": "Select a card (2 more) to put on the bottom of your library",
   "system": "You are a Magic: The Gathering expert evaluating a single decision from a game replay.\n\
 \n\
 Analyze the decision below. If the play was reasonable, return null.\n\
@@ -63,20 +63,14 @@ Format: Constructed - Legacy (Two Player Duel)\n\
 \n\
 You are evaluating **TestPlayer**'s decision.\n\
 \n\
-## Card Reference\n\
-- Black Lotus {0} -- Artifact: {T}, Sacrifice this artifact: Add three mana of any one color.\n\
-- Dark Depths -- Legendary Snow Land: Dark Depths enters with ten ice counters on it. / {3}: Remove an ice counter from Dark Depths. / When Dark Depths has no ice counters on it, sacrifice it. If you do, create Marit Lage, a legendary 20/20 black Avatar creature token with flying and indestructible.\n\
-- Thespian's Stage -- Land: {T}: Add {C}. / {2}, {T}: This land becomes a copy of target land, except it has this ability.\n\
-\n\
 ## Decision\n\
 \n\
-[Decision 6, snapshot=17] Turn 3 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: Opponent: 20hp hand=7 lib=52 gy=[Mountain] | TestPlayer: 20hp hand=[Black Lotus, Plains, Plains, Plains, Plains, Plains] lib=52 bf=[Dark Depths (ice=10), Thespian's Stage (sick)]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (1): Black Lotus [id=p10, cast, {0}]\n\
+[Decision 6, snapshot=4] Turn 1 PREGAME - TestPlayer\n\
+  Board: Opponent: 20hp hand=7 lib=53 | TestPlayer: 20hp hand=[Plains, Plains, Plains, Plains, Plains, Plains, Plains] lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Plains [id=p17], Plains [id=p23], Plains [id=p24], Plains [id=p25], Plains [id=p26], Plains [id=p27], Plains [id=p28]\n\
 \n\
-  Chosen: (no response)\n\
+  Chosen: Plains\n\
 \n\
 ## Tool Reference: choose_action\n\
 \n\

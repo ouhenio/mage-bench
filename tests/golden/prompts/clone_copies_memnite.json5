@@ -105,6 +105,18 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Memnite [id=p16, cast, {0}]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -121,11 +133,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (6): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Memnite [id=p16, cast, {0}]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -148,13 +162,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (6): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Memnite [id=p16, cast, {0}]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=53 | Opponent: 20hp hand=8 lib=52\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -175,13 +187,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+[Decision 4, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Island, Memnite] lib=52 | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
-  Choices (6): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Memnite [id=p16, cast, {0}]\n\
+  Choices (7): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land], Memnite [id=p16, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -204,13 +218,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Memnite] lib=53 bf=[Island] | Opponent: 20hp hand=7 lib=53\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (2): Black Lotus [id=p10, cast, {0}], Memnite [id=p16, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -231,13 +247,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (6): Black Lotus [id=p10, cast, {0}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land], Memnite [id=p16, cast, {0}]\n\
+  Choices (2): Black Lotus [id=p10, cast, {0}], Memnite [id=p16, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -262,9 +278,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
   Choices (1): Cast Black Lotus\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -290,9 +306,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 8, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
   Choices (1): Cast Black Lotus\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -320,10 +336,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Black Lotus]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -349,13 +365,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (6): Clone [id=p11, cast, {3}{U}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land], Memnite [id=p16, cast, {0}]\n\
+  Choices (2): Clone [id=p11, cast, {3}{U}], Memnite [id=p16, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -380,9 +396,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Memnite\n\
   Choices (1): Cast Memnite\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -408,9 +424,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 11, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 12, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island, Memnite] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Memnite\n\
   Choices (1): Cast Memnite\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -438,10 +454,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 12, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Memnite]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -467,13 +483,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 13, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 14, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Clone, Island, Island, Island, Island] lib=52 bf=[Black Lotus, Island, Memnite 1/1 (sick)] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (5): Clone [id=p11, cast, {3}{U}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land]\n\
+  Choices (1): Clone [id=p11, cast, {3}{U}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -498,10 +514,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 15, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Island, Island, Island, Island] lib=52 bf=[Island (tapped), Memnite 1/1 (sick)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Clone]\n\
-  Land drops remaining: 1\n\
+  Land drops remaining: 0\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -527,10 +543,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 15, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 16, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Island, Island, Island, Island] lib=52 bf=[Island (tapped), Memnite 1/1 (sick)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
   Stack: [Clone]\n\
-  Land drops remaining: 1\n\
+  Land drops remaining: 0\n\
   Message: Use effect of Clone?\n\
   Choices (0): \n\
   Respond: choice=yes or choice=no\n\
@@ -558,13 +574,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 16, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 17, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Island, Island, Island, Island] lib=52 bf=[Island (tapped), Memnite 1/1 (sick, copy of Clone), Memnite 1/1 (sick)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+  Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (4): Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -589,13 +604,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 17, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 18, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Island, Island, Island, Island] lib=52 bf=[Island (tapped), Memnite 1/1 (sick, copy of Clone), Memnite 1/1 (sick)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=52 gy=[Mountain]\n\
-  Land drops remaining: 1\n\
+  Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (4): Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p24, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -666,7 +680,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p13",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -675,7 +688,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p14",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -684,7 +696,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p15",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -693,7 +704,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p24",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -725,7 +735,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 673462047574,
+      "snapshot_id": 1016556711482,
       "stack": [],
       "step": "Postcombat Main",
       "turn": 2,

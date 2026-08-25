@@ -101,6 +101,16 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Mountain [id=p14], Mountain [id=p17], Mountain [id=p18], Mountain [id=p19], Mountain [id=p20], Mountain [id=p21], Mountain [id=p22]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -117,11 +127,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (7): Mountain [id=p14], Mountain [id=p17], Mountain [id=p18], Mountain [id=p19], Mountain [id=p20], Mountain [id=p21], Mountain [id=p22]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -144,15 +154,23 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Mountain [id=p10, land], Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 5 cards?\n\
+  Choices (0): \n\
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_3",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 4, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Mountain [id=p17], Mountain [id=p23], Mountain [id=p24], Mountain [id=p25], Mountain [id=p26], Mountain [id=p27], Mountain [id=p28]\n\
+  Respond: choice=pN — must pick a target",
+    "role": "user",
   },
   {
     "content": null,
@@ -171,13 +189,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
+[Decision 5, snapshot=0] Turn 1 () - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Mountain [id=p10, land], Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+  Message: Select a card (2 more) to put on the bottom of your library\n\
+  Choices (7): Mountain [id=p17], Mountain [id=p23], Mountain [id=p24], Mountain [id=p25], Mountain [id=p26], Mountain [id=p27], Mountain [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -200,12 +216,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=53 bf=[Mountain] | Opponent: 20hp hand=7 lib=53\n\
-  Untapped lands: 1, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
-  Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)",
+[Decision 6, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Mountain [id=p23], Mountain [id=p24], Mountain [id=p25], Mountain [id=p26], Mountain [id=p27], Mountain [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -250,11 +265,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "cursor": 17,
-      "log": "TestPlayer turn 1:\n\
-TestPlayer played Mountain\n\
-[Chat] TestPlayer: Good luck have fun!",
-      "total_length": 84,
+      "cursor": 29,
+      "log": "[Chat] TestPlayer: Good luck have fun!",
+      "total_length": 38,
       "truncated": false,
     },
     "role": "tool",
@@ -279,14 +292,11 @@ TestPlayer played Mountain\n\
   {
     "content": "## Decision\n\
 \n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=52 bf=[Mountain] | Opponent: 20hp hand=7 lib=52 bf=[Mountain]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (7): Mountain [id=p11, land], Mountain [id=p12, land], Mountain [id=p13, land], Mountain [id=p14, land], Mountain [id=p15, land], Mountain [id=p16, land], Mountain [id=p24, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
-  Recent chat: Opponent: You too, glhf!",
+[Decision 7, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=54 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Select a card (1 more) to put on the bottom of your library\n\
+  Choices (6): Mountain [id=p23], Mountain [id=p24], Mountain [id=p25], Mountain [id=p26], Mountain [id=p27], Mountain [id=p28]\n\
+  Respond: choice=pN — must pick a target",
     "role": "tool",
     "tool_call_id": "call_8",
   },
@@ -309,14 +319,25 @@ TestPlayer played Mountain\n\
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain, Mountain] lib=52 bf=[Mountain, Mountain] | Opponent: 20hp hand=7 lib=52 bf=[Mountain]\n\
-  Untapped lands: 2, Land drops remaining: 0\n\
-  Message: Play spells and abilities\n\
+[Decision 8, snapshot=0] Turn 1 () - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Message: Mulligan down to 4 cards?\n\
   Choices (0): \n\
-  Respond: choice=yes (confirm) or choice=no (pass)",
+  Respond: choice=yes or choice=no",
     "role": "tool",
     "tool_call_id": "call_9",
+  },
+  {
+    "content": "## Decision\n\
+\n\
+[Decision 9, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Mountain, Mountain, Mountain, Mountain, Mountain] lib=55 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Mountain [id=p24, land], Mountain [id=p25, land], Mountain [id=p26, land], Mountain [id=p27, land], Mountain [id=p28, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
   },
   {
     "content": null,
@@ -336,18 +357,10 @@ TestPlayer played Mountain\n\
   },
   {
     "content": {
-      "cursor": 24,
-      "log": "TestPlayer turn 1:\n\
-TestPlayer played Mountain\n\
-[Chat] TestPlayer: Good luck have fun!\n\
-Opponent turn 1:\n\
-Opponent drew a card\n\
-Opponent played Mountain\n\
-[Chat] Opponent: You too, glhf!\n\
-TestPlayer turn 2:\n\
-TestPlayer drew Mountain\n\
-TestPlayer played Mountain",
-      "total_length": 250,
+      "cursor": 30,
+      "log": "[Chat] TestPlayer: Good luck have fun!\n\
+TestPlayer turn 1:",
+      "total_length": 57,
       "truncated": false,
     },
     "role": "tool",
@@ -371,109 +384,78 @@ TestPlayer played Mountain",
     "content": {
       "active_player": "TestPlayer",
       "available": true,
-      "game_seq": 36,
+      "game_seq": 19,
       "phase": "Precombat Main",
       "players": [
         {
-          "battlefield": [
-            {
-              "id": "p10",
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ],
-              "tapped": false,
-            },
-            {
-              "id": "p11",
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ],
-              "tapped": false,
-            }
-          ],
           "hand": [
-            {
-              "id": "p12",
-              "is_land": true,
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ]
-            },
-            {
-              "id": "p13",
-              "is_land": true,
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ]
-            },
-            {
-              "id": "p14",
-              "is_land": true,
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ]
-            },
-            {
-              "id": "p15",
-              "is_land": true,
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ]
-            },
-            {
-              "id": "p16",
-              "is_land": true,
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ]
-            },
             {
               "id": "p24",
               "is_land": true,
               "name": "Mountain",
+              "playable": true,
+              "rules": [
+                "{T}: Add {R}.",
+              ]
+            },
+            {
+              "id": "p25",
+              "is_land": true,
+              "name": "Mountain",
+              "playable": true,
+              "rules": [
+                "{T}: Add {R}.",
+              ]
+            },
+            {
+              "id": "p26",
+              "is_land": true,
+              "name": "Mountain",
+              "playable": true,
+              "rules": [
+                "{T}: Add {R}.",
+              ]
+            },
+            {
+              "id": "p27",
+              "is_land": true,
+              "name": "Mountain",
+              "playable": true,
+              "rules": [
+                "{T}: Add {R}.",
+              ]
+            },
+            {
+              "id": "p28",
+              "is_land": true,
+              "name": "Mountain",
+              "playable": true,
               "rules": [
                 "{T}: Add {R}.",
               ]
             },
           ],
-          "hand_size": 6,
+          "hand_size": 5,
           "is_active": true,
           "is_you": true,
-          "library_size": 52,
+          "library_size": 55,
           "life": 20,
           "name": "TestPlayer",
         },
         {
-          "battlefield": [
-            {
-              "id": "p3",
-              "name": "Mountain",
-              "rules": [
-                "{T}: Add {R}.",
-              ],
-              "tapped": false,
-            }
-          ],
           "hand_size": 7,
           "is_active": false,
           "is_you": false,
-          "library_size": 52,
+          "library_size": 53,
           "life": 20,
           "name": "Opponent",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 44738628800,
+      "snapshot_id": 979794255595,
       "stack": [],
       "step": "Precombat Main",
-      "turn": 2,
+      "turn": 1,
     },
     "role": "tool",
     "tool_call_id": "call_11",

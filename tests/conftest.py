@@ -137,12 +137,28 @@ def _golden_display() -> int:
             f"generation band and kills someone else's game rather than this test."
         )
         index = int(worker[2:])
-    display = GOLDEN_DISPLAY_BASE + index
+    base = GOLDEN_DISPLAY_BASE + index
+    # ADVANCE PAST A HELD DISPLAY, because pinning to a single number turned a
+    # race into a single point of failure. A spectator JVM orphaned by an
+    # aborted run keeps its Xvfb and its /tmp/.X<n>-lock, and with a fixed base
+    # every later golden run then dies with "display :200 is already taken" --
+    # permanently, until someone reaps it by hand. That happened, on this
+    # branch, and cost a full regen.
+    #
+    # Checking the lock and then binding is a race in principle. It is not one
+    # in practice here (tests are sequential within a worker) and the failure
+    # mode is loud rather than silent: xvfb-run -n refuses a taken number
+    # instead of quietly sharing it, which is the property --auto-servernum
+    # lacked and the reason it was replaced.
+    display = base
+    while display < GOLDEN_DISPLAY_LIMIT and Path(f"/tmp/.X{display}-lock").exists():
+        display += 1
     assert display < GOLDEN_DISPLAY_LIMIT, (
-        f"xdist worker {index} would need display {display}, past the "
-        f"{GOLDEN_DISPLAY_LIMIT} ceiling of the golden band. Raise the ceiling "
-        f"deliberately -- do not let it run on into 90-160, which is where "
-        f"corpus generation lives."
+        f"xdist worker {index} starting at {base} found no free display below "
+        f"{GOLDEN_DISPLAY_LIMIT}, the ceiling of the golden band. Either the band "
+        f"is full of orphaned Xvfb locks -- reap them -- or raise the ceiling "
+        f"deliberately. Do NOT let it run on into 90-160, which is where corpus "
+        f"generation lives."
     )
     return display
 

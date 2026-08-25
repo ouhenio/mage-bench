@@ -106,6 +106,18 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "tool_call_id": "call_1",
   },
   {
+    "content": "## Decision\n\
+\n\
+[Decision 1, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+    "role": "user",
+  },
+  {
     "content": null,
     "role": "assistant",
     "tool_calls": [
@@ -122,11 +134,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 1, snapshot=0] Turn 1 () - TestPlayer\n\
+[Decision 2, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Message: Mulligan down to 6 cards?\n\
-  Choices (0): \n\
-  Respond: choice=yes or choice=no",
+  Land drops remaining: 1\n\
+  Message: Play spells and abilities\n\
+  Choices (5): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
+  Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
     "role": "tool",
     "tool_call_id": "call_2",
   },
@@ -149,13 +163,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 2, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (5): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+[Decision 3, snapshot=0] Turn 1 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=52\n\
+  Stack: [Black Lotus]\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)",
     "role": "tool",
     "tool_call_id": "call_3",
   },
@@ -174,15 +187,21 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Decision\n\
+    "content": "## Card Reference\n\
+- Air Elemental {3}{U}{U} 4/4: Flying\n\
+- Divination: Draw two cards.\n\
 \n\
-[Decision 3, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=53 | Opponent: 20hp hand=7 lib=53\n\
+## Decision\n\
+\n\
+[Decision 4, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Island, Mana Drain] lib=52 | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Land drops remaining: 1\n\
   Message: Play spells and abilities\n\
   Choices (5): Black Lotus [id=p10, cast, {0}], Island [id=p12, land], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.",
+  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_4",
   },
@@ -205,13 +224,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 4, snapshot=0] Turn 1 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=53 bf=[Island] | Opponent: 20hp hand=7 lib=53\n\
+[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
   Choices (1): Black Lotus [id=p10, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.",
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
+\n\
+[It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
     "tool_call_id": "call_5",
   },
@@ -230,19 +251,15 @@ Call get_action_choices to see your options, then choose_action to decide.",
     ],
   },
   {
-    "content": "## Card Reference\n\
-- Air Elemental {3}{U}{U} 4/4: Flying\n\
-- Divination: Draw two cards.\n\
+    "content": "## Decision\n\
 \n\
-## Decision\n\
-\n\
-[Decision 5, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 6, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (4): Black Lotus [id=p10, cast, {0}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
+  Choices (1): Black Lotus [id=p10, cast, {0}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -267,9 +284,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 6, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 7, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
   Choices (1): Cast Black Lotus\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -295,9 +312,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 7, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 8, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Black Lotus, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Choose spell or ability to play: Black Lotus\n\
   Choices (1): Cast Black Lotus\n\
   Respond: choice=0, choice=1, etc. (not yes/no)\n\
@@ -325,10 +342,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 8, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 9, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Black Lotus]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -354,13 +371,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 9, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+[Decision 10, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
   Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
+  Untapped lands: 1, Land drops remaining: 0\n\
   Message: Play spells and abilities\n\
-  Choices (4): Fact or Fiction [id=p11, cast, {3}{U}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
+  Choices (1): Fact or Fiction [id=p11, cast, {3}{U}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -385,12 +402,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 10, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
+[Decision 11, snapshot=0] Turn 2 PRECOMBAT_MAIN - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
   Untapped lands: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (1): Fact or Fiction [id=p11, cast, {3}{U}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
+  REMINDER: rule 3 — passing your own main phase is almost always wrong. Every spell listed here is one the server has already confirmed you can pay for. Cast something rather than answering choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -413,13 +431,12 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 11, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Untapped lands: 1, Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (4): Fact or Fiction [id=p11, cast, {3}{U}], Island [id=p13, land], Island [id=p14, land], Island [id=p15, land]\n\
+[Decision 12, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Fact or Fiction, Island, Island, Island, Mana Drain] lib=52 bf=[Black Lotus, Island] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
+  Untapped lands: 1\n\
+  Message: Play instants and activated abilities\n\
+  Choices (1): Fact or Fiction [id=p11, cast, {3}{U}]\n\
   Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -444,10 +461,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 12, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
+[Decision 13, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
-  Land drops remaining: 1\n\
   Message: Play instants and activated abilities\n\
   Choices (0): \n\
   Respond: choice=yes (confirm) or choice=no (pass)\n\
@@ -475,10 +491,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 13, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
+[Decision 14, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
-  Land drops remaining: 1\n\
   Message: Choose a pile to put into hand.\n\
   Choices (0): \n\
   Respond: pile=1 or pile=2\n\
@@ -506,10 +521,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 14, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
+[Decision 15, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
-  Land drops remaining: 1\n\
   Message: Choose a pile to put into hand.\n\
   Choices (0): \n\
   Respond: pile=1 or pile=2\n\
@@ -539,7 +553,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
     "content": {
       "error": "Integer 'pile' (1 or 2) required for GAME_CHOOSE_PILE",
       "error_code": "missing_param",
-      "game_seq": 71,
+      "game_seq": 80,
       "retryable": true,
       "success": false,
     },
@@ -563,10 +577,9 @@ Call get_action_choices to see your options, then choose_action to decide.",
   {
     "content": "## Decision\n\
 \n\
-[Decision 15, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
+[Decision 16, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Island, Island, Island, Mana Drain] lib=52 bf=[Island (tapped)] gy=[Black Lotus] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
   Stack: [Fact or Fiction]\n\
-  Land drops remaining: 1\n\
   Message: Choose a pile to put into hand.\n\
   Choices (0): \n\
   Respond: pile=1 or pile=2\n\
@@ -600,13 +613,11 @@ Call get_action_choices to see your options, then choose_action to decide.",
 \n\
 ## Decision\n\
 \n\
-[Decision 16, snapshot=0] Turn 2 POSTCOMBAT_MAIN - TestPlayer\n\
-  Board: TestPlayer: 20hp hand=[Air Elemental, Djinn of Wishes, Island, Island, Island, Island, Mana Drain] lib=47 bf=[Island (tapped)] gy=[Black Lotus, Fact or Fiction, Mind Control, Serra Angel, Shivan Dragon] | Opponent: 20hp hand=7 lib=50 bf=[Plains] gy=[Black Lotus, Divination]\n\
-  Land drops remaining: 1\n\
-  Message: Play spells and abilities\n\
-  Choices (4): Island [id=p13, land], Island [id=p14, land], Island [id=p15, land], Island [id=p32, land]\n\
-  Respond: choice=pN to play, or choice=no to pass\n\
-  REMINDER: rule 1 — play a land every turn, before anything else. You have a land drop remaining. Respond with choice=pN, not choice=no.\n\
+[Decision 17, snapshot=0] Turn 2 COMBAT - TestPlayer\n\
+  Board: TestPlayer: 20hp hand=[Air Elemental, Djinn of Wishes, Island, Island, Island, Mana Drain] lib=47 bf=[Island (tapped)] gy=[Black Lotus, Fact or Fiction, Island, Mind Control, Serra Angel, Shivan Dragon] | Opponent: 20hp hand=7 lib=49 bf=[Plains, Plains] gy=[Black Lotus, Divination]\n\
+  Message: Play instants and activated abilities\n\
+  Choices (0): \n\
+  Respond: choice=yes (confirm) or choice=no (pass)\n\
 \n\
 [It's been 2 turns since you last chatted — send a message to your opponent!]",
     "role": "tool",
@@ -628,10 +639,10 @@ Call get_action_choices to see your options, then choose_action to decide.",
   },
   {
     "content": {
-      "active_player": "TestPlayer",
+      "active_player": "Opponent",
       "available": true,
-      "game_seq": 80,
-      "phase": "Postcombat Main",
+      "game_seq": 90,
+      "phase": "Combat",
       "players": [
         {
           "battlefield": [
@@ -661,6 +672,13 @@ Call get_action_choices to see your options, then choose_action to decide.",
             },
             {
               "id": "p33",
+              "name": "Island",
+              "rules": [
+                "{T}: Add {U}.",
+              ]
+            },
+            {
+              "id": "p34",
               "name": "Mind Control",
               "rules": [
                 "Enchant creature",
@@ -668,7 +686,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p34",
+              "id": "p35",
               "name": "Serra Angel",
               "rules": [
                 "Flying",
@@ -676,7 +694,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
             {
-              "id": "p35",
+              "id": "p36",
               "name": "Shivan Dragon",
               "rules": [
                 "Flying",
@@ -696,7 +714,7 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "toughness": 4,
             },
             {
-              "id": "p31",
+              "id": "p32",
               "mana_cost": "{3}{U}{U}",
               "name": "Djinn of Wishes",
               "power": 4,
@@ -711,7 +729,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p13",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -720,7 +737,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p14",
               "is_land": true,
               "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -729,16 +745,6 @@ Call get_action_choices to see your options, then choose_action to decide.",
               "id": "p15",
               "is_land": true,
               "name": "Island",
-              "playable": true,
-              "rules": [
-                "{T}: Add {U}.",
-              ]
-            },
-            {
-              "id": "p32",
-              "is_land": true,
-              "name": "Island",
-              "playable": true,
               "rules": [
                 "{T}: Add {U}.",
               ]
@@ -752,8 +758,8 @@ Call get_action_choices to see your options, then choose_action to decide.",
               ]
             },
           ],
-          "hand_size": 7,
-          "is_active": true,
+          "hand_size": 6,
+          "is_active": false,
           "is_you": true,
           "library_size": 47,
           "life": 20,
@@ -763,6 +769,14 @@ Call get_action_choices to see your options, then choose_action to decide.",
           "battlefield": [
             {
               "id": "p5",
+              "name": "Plains",
+              "rules": [
+                "{T}: Add {W}.",
+              ],
+              "tapped": false,
+            },
+            {
+              "id": "p6",
               "name": "Plains",
               "rules": [
                 "{T}: Add {W}.",
@@ -787,17 +801,17 @@ Call get_action_choices to see your options, then choose_action to decide.",
             },
           ],
           "hand_size": 7,
-          "is_active": false,
+          "is_active": true,
           "is_you": false,
-          "library_size": 50,
+          "library_size": 49,
           "life": 20,
           "name": "Opponent",
         }
       ],
       "priority_player": "TestPlayer",
-      "snapshot_id": 597385116241,
+      "snapshot_id": 593216247331,
       "stack": [],
-      "step": "Postcombat Main",
+      "step": "Declare Attackers",
       "turn": 2,
     },
     "role": "tool",
