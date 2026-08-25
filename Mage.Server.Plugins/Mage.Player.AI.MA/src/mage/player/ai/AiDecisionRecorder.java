@@ -202,9 +202,20 @@ public final class AiDecisionRecorder {
                 // are stable and strictly more informative; pN aliases are a RENDERING
                 // concern and belong to whatever renders the prompt, which can assign them
                 // deterministically from encounter order.
+                // Same empty name as the combat serialisation above, and the same
+                // reason: a face-down permanent has none. The board listing is where
+                // a defender READS what is on the table, so an unnamed 2/2 there is
+                // not cosmetic -- it is the row a morph decision is made from.
+                // karn-ranokau's renderer resolves face-down attackers from these
+                // nameless permanents, so the phrasing must agree with theirs and
+                // with the engine's own log: "face down creature".
+                String pName = p.getName();
+                if (pName == null || pName.isEmpty()) {
+                    pName = "face down creature";
+                }
                 sb.append("{\"id\":\"")
                         .append(esc(p.getId().toString()))
-                        .append("\",\"name\":\"").append(esc(p.getName()))
+                        .append("\",\"name\":\"").append(esc(pName))
                         .append("\",\"controller\":\"").append(esc(nameOf(game, p.getControllerId())))
                         .append("\",\"tapped\":").append(p.isTapped())
                         .append(",\"power\":").append(p.getPower().getValue())
