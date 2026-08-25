@@ -1,0 +1,62 @@
+{
+  "title": "game_end was emitted before winnerId is assigned, so its winner was a reconstruction and drawn games got a fabricated one",
+  "description": "UPSTREAM DEFECT, present identically in origin/master -- not introduced by \
+this fork. Filed here because we found it, we fixed it here, and the corpus this \
+repo produces carries the consequence. MECHANISM. \
+ServerGameEventLogCollector.onGameEnd was called from GameImpl.end(), and end() is \
+invoked by checkIfGameIsOver() DURING the play loop -- for two players, \
+`numLosers >= size - 1` means the game ends as soon as ONE player has lost. \
+GameImpl assigns `winnerId = findWinnersAndLosers()` only AFTER the loop \
+(GameImpl:1135). So the collector ran before any verdict existed and could not read \
+one; it reconstructed a winner instead: take hasWon() if set, otherwise `if exactly \
+one player has not lost, they won`. The comment above that code says so plainly. \
+WHY IT IS USUALLY RIGHT AND EXACTLY WHEN IT IS WRONG. In the ordinary case the \
+collector sees one loser and one survivor, names the survivor, and the engine then \
+marks that survivor as the winner -- the reconstruction and the verdict agree. When \
+the two losses are NOT simultaneous, the first loss ends the game, the collector \
+snapshots the other player as a survivor and names them winner, the SECOND loss \
+lands, and findWinnersAndLosers then finds nobody who has won and records a DRAW. \
+The event says one thing, the engine says another, and the event is the one that \
+reaches the corpus. Note a GENUINELY simultaneous double loss does NOT produce this: \
+survivorCount is 0 and the field is null. It is specifically the non-simultaneous \
+case. EVIDENCE, measured. Flag dumps captured with DEBUG on mage.game.GameImpl over \
+1,932 games (karn-ranokau): 4 anomalies, all dumping `[A => L] - [B => L]` -- both \
+players lost, no W, no Q, no T -- which is a draw by GameImpl.isADraw(), literally \
+`hasEnded() && winnerId == null`. All four carry a winner in game_end, and in two of \
+the four that named winner holds LESS LIFE than the player it calls the loser \
+(winner=Skill1 with life {Skill1: 20, Skill8: 38}; winner=Skill1 with {Skill8: 18, \
+Skill1: 14}). CONSEQUENCE FOR TRAINING DATA: seat_won is derived from this field, so \
+on drawn games the training label is not missing but WRONG, and nothing downstream \
+can detect it -- the row is well-formed and names a plausible player. Rate is ~0.2% \
+of games. The wider statement is that the `winner` field was never authoritative for \
+ANY game; it agreed with the verdict 99.8% of the time. FIX (mage-bench \
+fix/game-end-verdict): the onGameEnd call moved to immediately after \
+winnerId is assigned, where hasWon() IS the verdict -- findWinnersAndLosers sets it \
+on the winner and, in a draw, on nobody. `winner` is now the verdict or null, `draw` \
+comes from isADraw(), and the old reconstruction is kept under the NEW name \
+`survivor` so anything keying on the old meaning of `winner` fails to find it rather \
+than silently reading a different quantity. THE TRADE, TAKEN DELIBERATELY: moving \
+the emit narrows game_end to games that reach GameImpl:1135, so a game thread dying \
+between end() and there now writes NO event where it previously wrote a wrong one. \
+A missing game_end is detectable -- pipelines/synth/audit_step1.py reports it as \
+no_game_end_and_stale -- and a fabricated winner is not. Both known end paths do \
+reach 1135, including the critical-error end() in playPriority, which returns into \
+play() whose END-game block runs on state.isGameOver(). WHAT IS NOT ESTABLISHED: \
+what marks the second player lost inside the window between end() returning and \
+findWinnersAndLosers running. player.won() does call lostForced on opponents, so a \
+recursive path is plausible; it was not traced, and the fix does not depend on it \
+because it reads the verdict after everything has settled rather than reasoning \
+about the order.",
+  "status": "closed",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "upstream",
+    "measured",
+    "provenance",
+    "silent-failure",
+    "training-data",
+  ],
+  "created_at": "2026-08-25T16:30:00.000-04:00",
+  "updated_at": "2026-08-25T16:30:00.000-04:00",
+}
