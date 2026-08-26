@@ -1,0 +1,47 @@
+{
+  "title": "magebench.cli does not exit after game_end, so a concurrency gate \
+that waits on the launch deadlocks",
+  "description": "A single-game launch (`python -m magebench.cli --config X \
+--games 1`) writes a `game_end` event to server_game_events.jsonl and then does \
+not return. The JVMs it spawned stay up and the process keeps running.\n\n\
+MEASURED: six concurrent launches, each `--games 1`. Three of the six \
+(g00, g01, g03) had written a game_end event. ZERO of the six had exited. The \
+state was stable across several minutes, not a teardown in progress.\n\n\
+Why this is worse than a slow exit. Any harness that runs N games at a \
+concurrency of K by waiting for a launch to finish before starting the next one \
+will DEADLOCK once K games have ended: no slot ever reopens. Our 25-game eval \
+suite would have played its first 6 games and then waited out a 6-hour deadline, \
+and — this is the part that makes it a P1 rather than a nuisance — it would then \
+have written a results row. A partial suite that still looks like a suite is \
+worse than one that visibly fails, because the number is comparable-looking and \
+wrong.\n\n\
+It also inverts the usual reliability signal. The exit is prompt after a game \
+that FAILS and late or never after a game that SUCCEEDS, so waiting on the \
+process waits longest on exactly the outcome you want. Anyone using the launch's \
+exit as 'the game is done' has a check that is fastest in the failure case.\n\n\
+Repro: launch one game with --games 1, poll for a game_end line in \
+server_game_events.jsonl, then check whether the process is still alive. It is.\n\n\
+Workaround in use (pipelines/eval/run_suite.sh in the mtg repo): run each launch \
+under setsid so it gets its own process group, poll for game_end, then kill the \
+group. This works, but every consumer has to reinvent it, and one that does not \
+know to will silently under-run its batch.\n\n\
+NOT A NEW FINDING -- this is a re-derivation. bitacora \
+projects/research/mtg-rl/findings/the-orchestrator-never-exits-after-a-game-it-wins.md \
+(2026-08-19, established) has the mechanism on the GUI-client path: \
+`wait_for_all_games` waits on the spectator PROCESS, and `Mage.Client` has no \
+self-terminating path — `doClientShutdownAndExit` is reachable only from \
+user-initiated exits — while `mvn exec:java` runs the client in maven's JVM whose \
+Swing EDT is non-daemon. Measured there at 104 of 104 completed games stuck, and \
+326 of 361 across mixed provenance. That finding also names the same remedy this \
+issue adopts: wait for game_end, then kill deliberately.\n\n\
+What this issue adds is that the pilot `--games 1` path shows the SAME behaviour, \
+and that the consequence for a fixed-concurrency batch is a deadlock rather than \
+resource leak — the earlier finding traced port exhaustion, a mis-reading \
+concurrency governor and hundreds of idle processes to this one cause, all \
+separately misdiagnosed. Add \"a suite that silently under-runs and still writes a \
+results row\" to that list.\n\n\
+Not diagnosed here: whether the non-exit is the bridge client, the spectator, or \
+a non-daemon thread in the CLI holding the interpreter open. Recording the \
+behaviour and its consequence rather than guessing the cause.",
+  "labels": ["p1", "orchestration", "cli"],
+}

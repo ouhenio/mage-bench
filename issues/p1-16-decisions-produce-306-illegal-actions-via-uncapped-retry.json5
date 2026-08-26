@@ -1,0 +1,38 @@
+{
+  "title": "16 unanswerable decisions produce 306 illegal actions: the pilot \
+retries a rejected answer ~20 times with no cap and no fallback",
+  "description": "When a pilot cannot answer a decision, it answers, is \
+rejected, and answers the same way again — a median of 20 times per decision, \
+max 23 — until something else stops it. There is no retry cap and no fallback.\n\n\
+MEASURED on one 25-game eval suite (SFT checkpoint 1000, Qwen3.5-4B):\n\
+  - the engine presented GAME_GET_AMOUNT 15 times and GAME_GET_MULTI_AMOUNT once\n\
+  - those 16 decisions produced exactly 16 failure episodes\n\
+  - episode lengths: 14 14 15 16 17 17 19 20 20 20 20 22 23 23 23 23\n\
+  - total 306 failed tool calls, which is 60.6% of ALL 505 illegal actions in the run\n\n\
+So 0.3% of presented decisions generated three fifths of the run's illegal \
+actions. Every rejection returns the same message (`Integer 'amount' required for \
+GAME_GET_AMOUNT`) and the model, having no idea what shape is wanted, repeats \
+itself.\n\n\
+WHY THIS IS A HARNESS DEFECT AND NOT A TRAINING ONE. It is true that our corpus \
+does not contain amount decisions, and we are fixing that separately. But the \
+harness behaviour is wrong regardless of the model: a client that cannot answer \
+should fail ONCE and the decision should resolve by a defined fallback. A model \
+that is merely confused should not be able to consume 20 round trips on one \
+decision. It costs correctness, latency and inference spend at the same time, \
+and it does so in a way that looks like a model quality problem in every \
+aggregate metric.\n\n\
+It also corrupts measurement, which is how we found it. The 306 calls made \
+legal-action% read 90.2% when the rate on decision types the model could answer \
+was 95.7%; they produced an apparent archetype effect (ramp decks 2.3x worse, \
+because ramp meets X-cost decisions most); and they produced a heavy-tailed \
+per-game distribution that looked like a policy change. Decontaminating the \
+metric flattened all of it — every checkpoint-to-checkpoint delta became \
+non-significant.\n\n\
+SUGGESTED FIX: a retry cap per decision (small, 2-3), and on exhaustion a defined \
+fallback — a default amount, or forfeiting the decision — logged as such so it is \
+visible in the artefacts rather than silent. The cap matters more than the choice \
+of fallback: any bounded behaviour is better than 20 identical rejections.\n\n\
+Repro: play any game with a client that cannot produce the `amount` field and \
+count consecutive failures on a single GAME_GET_AMOUNT query.",
+  "labels": ["p1", "pilot", "robustness"],
+}
