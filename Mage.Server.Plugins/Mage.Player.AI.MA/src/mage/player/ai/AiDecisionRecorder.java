@@ -292,6 +292,24 @@ public final class AiDecisionRecorder {
      */
     public static void record(Game game, Player player, Ability chosen,
                               List<ActivatedAbility> options, String searchOutcome) {
+        record(game, player, chosen, options, searchOutcome, null);
+    }
+
+    /**
+     * @param noActionReason why there was no action, when {@code chosen == null}.
+     *                       `chosen: null` and a recorded PassAbility are DIFFERENT
+     *                       OUTCOMES -- the first means the search returned no action,
+     *                       the second that it returned a pass -- and a consumer that
+     *                       equates them reads real divergence as noise. That is not
+     *                       hypothetical: an analysis script comparing `chosen.text`
+     *                       across replicate games did exactly this and scored seven
+     *                       genuine disagreements as a recording artifact. This field
+     *                       exists so `null` stops carrying two meanings; it never
+     *                       merges the two representations.
+     */
+    public static void record(Game game, Player player, Ability chosen,
+                              List<ActivatedAbility> options, String searchOutcome,
+                              String noActionReason) {
         if (!isEnabled()) {
             return;
         }
@@ -343,6 +361,9 @@ public final class AiDecisionRecorder {
             // conflict with that. See the TODO item.
             if (searchOutcome != null) {
                 kv(sb, "search", searchOutcome).append(',');
+            }
+            if (chosen == null && noActionReason != null) {
+                kv(sb, "no_action_reason", noActionReason).append(',');
             }
             sb.append("\"chosen\":");
             if (chosen == null) {

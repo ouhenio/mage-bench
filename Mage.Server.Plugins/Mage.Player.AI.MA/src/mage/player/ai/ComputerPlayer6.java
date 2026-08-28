@@ -235,7 +235,12 @@ public class ComputerPlayer6 extends ComputerPlayer {
         }
         if (actions == null
                 || actions.isEmpty()) {
-            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome);
+            // WHICH of the two, not just that there was no action. "unset" means no
+            // search ever populated the field; "empty" means a search ran and returned
+            // nothing. Collapsed together they read as one event and cannot be told
+            // apart afterwards.
+            String noActionReason = (actions == null) ? "actions_unset" : "actions_empty";
+            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome, noActionReason);
             pass(game);
         } else {
             boolean usedStack = false;
@@ -530,10 +535,87 @@ public class ComputerPlayer6 extends ComputerPlayer {
      */
     private final Map<UUID, String> lastSearchOutcome = new ConcurrentHashMap<>();
 
+    /**
+     * DETERMINISTIC TIE-BREAK, OFF BY DEFAULT.
+     *
+     * The root comparison below breaks equal-score ties with a coin -- see the
+     * `finalScore == alpha && tiebreakCoin()` disjunct and its original comment,
+     * "Adding random for equal value to get change sometimes". That coin came from
+     * RandomUtil's process-global Random, and the search drawing it runs on the
+     * shared static threadPoolSimulations, so the draw ORDER interleaves with every
+     * other consumer in the JVM. Seeding the game does not fix that: setSeed fixes
+     * which values the stream yields, not which thread takes which one.
+     *
+     * Measured on 40 replicate pairs (seeds 940301-940340): replaying a seed
+     * reproduces most decisions and diverges on ~1%, and the divergences land
+     * exactly where this predicts. Six of twelve differing plays were land-vs-land
+     * at equal value, two of those fetchland-vs-fetchland. Seven more pairs
+     * differed over whether ANY action existed -- PASSIVITY_PENALTY (see below)
+     * manufactures Pass ties constantly, so the coin decides whether bestNode is
+     * assigned at all. Both sides recorded searchOutcome="complete"; the coin is
+     * inside a completed search, which is why the search budget was never the
+     * explanation.
+     *
+     * With -Dxmage.ai.deterministicTiebreak=true the coin instead comes from a
+     * Random owned by THIS player, re-seeded at the start of every search from
+     * (game seed, search ordinal). The draws inside one search are single-threaded,
+     * so they cannot interleave, and no other RandomUtil consumer changes at all.
+     * Variety across seeds is kept; reproducibility within a seed is gained.
+     *
+     * Default OFF deliberately: this changes AI play, so every corpus already
+     * measured keeps its meaning and stays comparable to itself.
+     */
+    private static final boolean DETERMINISTIC_TIEBREAK
+            = Boolean.getBoolean("xmage.ai.deterministicTiebreak");
+    private Random tiebreakRandom;
+    private int tiebreakSearchOrdinal;
+
+    /**
+     * Re-seed the tie-break coin for one search. Called once per search, from the
+     * thread that owns the search, before any root comparison can run.
+     */
+    private void beginTiebreakSequence(Game searchGame) {
+        if (!DETERMINISTIC_TIEBREAK) {
+            return;
+        }
+        Long seed = searchGame.getOptions().gameSeed;
+        if (seed == null) {
+            String property = System.getProperty("xmage.game.seed");
+            if (property != null && !property.trim().isEmpty()) {
+                // Same two sources, same order, as GameImpl.resolveGameSeed().
+                seed = Long.parseLong(property.trim());
+            }
+        }
+        if (seed == null) {
+            // LOUD. Falling back to the shared RNG here would run exactly the
+            // nondeterminism this flag exists to remove, while the operator believes
+            // it is gone -- and it would look like success, because the games still
+            // run and only a replay reveals it.
+            throw new IllegalStateException(
+                    "xmage.ai.deterministicTiebreak=true but this game carries no seed: "
+                            + "set GameOptions.gameSeed or -Dxmage.game.seed");
+        }
+        tiebreakRandom = new Random(seed * 1_000_003L + tiebreakSearchOrdinal);
+        tiebreakSearchOrdinal++;
+    }
+
+    private boolean tiebreakCoin() {
+        if (!DETERMINISTIC_TIEBREAK) {
+            return RandomUtil.nextBoolean();
+        }
+        if (tiebreakRandom == null) {
+            throw new IllegalStateException(
+                    "tie-break coin drawn before beginTiebreakSequence(): a search path "
+                            + "reaches the root comparison without seeding it first");
+        }
+        return tiebreakRandom.nextBoolean();
+    }
+
 
 
     protected Integer addActionsTimed() {
         lastSearchOutcome.put(root.game.getId(), "complete");
+        beginTiebreakSequence(root.game);
         // TODO: all actions added and calculated one by one,
         //  multithreading do not supported here
         // run new game simulation in parallel thread
@@ -776,7 +858,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                     if (finalScore > alpha
                             || (depth == maxDepth
                             && finalScore == alpha
-                            && RandomUtil.nextBoolean())) { // Adding random for equal value to get change sometimes
+                            && tiebreakCoin())) { // Adding random for equal value to get change sometimes
                         alpha = finalScore;
                         bestNode = newNode;
                         bestNode.setScore(finalScore);
