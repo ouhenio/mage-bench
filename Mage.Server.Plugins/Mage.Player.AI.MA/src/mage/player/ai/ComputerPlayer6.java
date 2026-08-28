@@ -235,13 +235,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
         }
         if (actions == null
                 || actions.isEmpty()) {
-            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome);
+            // WHICH of the two, not just that there was no action. "unset" means no
+            // search ever populated the field; "empty" means a search ran and returned
+            // nothing. Collapsed together they read as one event and cannot be told
+            // apart afterwards.
+            String noActionReason = (actions == null) ? "actions_unset" : "actions_empty";
+            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome, noActionReason,
+                    nodesAtSearchStart.remove(game.getId()), SimulationNode2.getCount());
             pass(game);
         } else {
             boolean usedStack = false;
             while (actions.peek() != null) {
                 Ability ability = actions.poll();
-                AiDecisionRecorder.record(game, this, ability, recordedOptions, searchOutcome);
+                AiDecisionRecorder.record(game, this, ability, recordedOptions, searchOutcome, null,
+                        nodesAtSearchStart.remove(game.getId()), SimulationNode2.getCount());
                 // example: ===> SELECTED ACTION for PlayerA: Play Swamp
                 logger.info(String.format("===> SELECTED ACTION for %s: %s",
                         getName(),
@@ -530,10 +537,136 @@ public class ComputerPlayer6 extends ComputerPlayer {
      */
     private final Map<UUID, String> lastSearchOutcome = new ConcurrentHashMap<>();
 
+    /**
+     * DETERMINISTIC TIE-BREAK, OFF BY DEFAULT.
+     *
+     * The root comparison below breaks equal-score ties with a coin -- see the
+     * `finalScore == alpha && tiebreakCoin()` disjunct and its original comment,
+     * "Adding random for equal value to get change sometimes". That coin came from
+     * RandomUtil's process-global Random, and the search drawing it runs on the
+     * shared static threadPoolSimulations, so the draw ORDER interleaves with every
+     * other consumer in the JVM. Seeding the game does not fix that: setSeed fixes
+     * which values the stream yields, not which thread takes which one.
+     *
+     * Measured on 40 replicate pairs (seeds 940301-940340): replaying a seed
+     * reproduces most decisions and diverges on ~1%, and the divergences land
+     * exactly where this predicts. Six of twelve differing plays were land-vs-land
+     * at equal value, two of those fetchland-vs-fetchland. Seven more pairs
+     * differed over whether ANY action existed -- PASSIVITY_PENALTY (see below)
+     * manufactures Pass ties constantly, so the coin decides whether bestNode is
+     * assigned at all. Both sides recorded searchOutcome="complete"; the coin is
+     * inside a completed search, which is why the search budget was never the
+     * explanation.
+     *
+     * With -Dxmage.ai.deterministicTiebreak=true the coin instead comes from a
+     * Random owned by THIS player, re-seeded at the start of every search from
+     * (game seed, search ordinal). The draws inside one search are single-threaded,
+     * so they cannot interleave, and no other RandomUtil consumer changes at all.
+     * Variety across seeds is kept; reproducibility within a seed is gained.
+     *
+     * Default OFF deliberately: this changes AI play, so every corpus already
+     * measured keeps its meaning and stays comparable to itself.
+     */
+    private static final boolean DETERMINISTIC_TIEBREAK
+            = Boolean.getBoolean("xmage.ai.deterministicTiebreak");
+    private Random tiebreakRandom;
+    /**
+     * Search ordinal PER GAME, not per player instance. The comment on
+     * lastSearchOutcome above notes that AI instances may be reused and games may
+     * run sequentially in one JVM, and this counter has to survive both: the
+     * sequential runner plays a seed's two replicates back to back in ONE server,
+     * so a per-instance counter would hand replicate 1 the ordinals 0..N and
+     * replicate 2 the ordinals N+1..2N. Same seed, different draws, and the flag
+     * would silently fail to make the two replicates agree -- which is exactly the
+     * result it produced before this was keyed by game.
+     */
+    private final Map<UUID, Integer> tiebreakOrdinal = new ConcurrentHashMap<>();
+
+    /**
+     * NODE COUNT AT SEARCH START, per game. SimulationNode2.nodeCount is a
+     * non-volatile static int shared by every AI instance in the JVM, incremented in
+     * the node constructor, and the search prunes on `nodeCount > maxNodes` and
+     * THROWS above MAX_SIMULATED_NODES_PER_ERROR. The sequential runner puts both
+     * seats and twenty games in ONE server process, so anything that leaves the
+     * counter elevated -- an abandoned task, an unwound error, an overlapping search
+     * -- makes the next search prune earlier while still recording "complete".
+     *
+     * That is the surviving signature after the tie-break coin was made
+     * deterministic and changed nothing (16/40 vs 13/40 divergent pairs, p=0.64):
+     * two COMPLETED searches disagreeing about whether any action exists at all.
+     *
+     * A value other than 0 here is the specific finding: it means the counter was
+     * not at zero immediately after resetCount(), which can only happen if another
+     * search was running concurrently on the shared static. That distinguishes an
+     * overlap from a merely elevated budget, and the two want different fixes.
+     */
+    private final Map<UUID, Integer> nodesAtSearchStart = new ConcurrentHashMap<>();
+
+    /** Called immediately after SimulationNode2.resetCount(), by the searching player. */
+    protected void noteSearchStart(Game game) {
+        nodesAtSearchStart.put(game.getId(), SimulationNode2.getCount());
+    }
+
+    /**
+     * Re-seed the tie-break coin for one search. Called once per search, from the
+     * thread that owns the search, before any root comparison can run.
+     */
+    private void beginTiebreakSequence(Game searchGame) {
+        if (!DETERMINISTIC_TIEBREAK) {
+            return;
+        }
+        Long seed = searchGame.getOptions().gameSeed;
+        if (seed == null) {
+            String property = System.getProperty("xmage.game.seed");
+            if (property != null && !property.trim().isEmpty()) {
+                // Same two sources, same order, as GameImpl.resolveGameSeed().
+                seed = Long.parseLong(property.trim());
+            }
+        }
+        if (seed == null) {
+            // LOUD. Falling back to the shared RNG here would run exactly the
+            // nondeterminism this flag exists to remove, while the operator believes
+            // it is gone -- and it would look like success, because the games still
+            // run and only a replay reveals it.
+            throw new IllegalStateException(
+                    "xmage.ai.deterministicTiebreak=true but this game carries no seed: "
+                            + "set GameOptions.gameSeed or -Dxmage.game.seed");
+        }
+        UUID gameId = searchGame.getId();
+        int ordinal = tiebreakOrdinal.merge(gameId, 1, Integer::sum) - 1;
+        tiebreakRandom = new Random(seed * 1_000_003L + ordinal);
+    }
+
+    /**
+     * Which coin the root tie-break is actually using, for the RECORD rather than a
+     * log. The first attempt at this control was a logger.info, and it reported
+     * nothing -- because INFO from this class reaches no sink the runner collects.
+     * "SELECTED ACTION", which fires on every single decision, is equally absent.
+     * So the log-based control could not return the healthy answer either, and its
+     * silence proved nothing about the flag. This goes in the decision record, which
+     * is the artifact the analysis actually reads.
+     */
+    public static String tiebreakMode() {
+        return DETERMINISTIC_TIEBREAK ? "deterministic" : "global";
+    }
+
+    private boolean tiebreakCoin() {
+        if (!DETERMINISTIC_TIEBREAK) {
+            return RandomUtil.nextBoolean();
+        }
+        if (tiebreakRandom == null) {
+            throw new IllegalStateException(
+                    "tie-break coin drawn before beginTiebreakSequence(): a search path "
+                            + "reaches the root comparison without seeding it first");
+        }
+        return tiebreakRandom.nextBoolean();
+    }
+
 
 
     protected Integer addActionsTimed() {
         lastSearchOutcome.put(root.game.getId(), "complete");
+        beginTiebreakSequence(root.game);
         // TODO: all actions added and calculated one by one,
         //  multithreading do not supported here
         // run new game simulation in parallel thread
@@ -776,7 +909,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                     if (finalScore > alpha
                             || (depth == maxDepth
                             && finalScore == alpha
-                            && RandomUtil.nextBoolean())) { // Adding random for equal value to get change sometimes
+                            && tiebreakCoin())) { // Adding random for equal value to get change sometimes
                         alpha = finalScore;
                         bestNode = newNode;
                         bestNode.setScore(finalScore);
@@ -1097,8 +1230,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 // above), and a record of a block the engine rejected would be a label
                 // the game never contained. Same rule as selectAttackers, which reads
                 // game.getCombat() rather than its own candidate list.
-                StringBuilder picked = new StringBuilder();
-                StringBuilder pickedIds = new StringBuilder();
+                List<String[]> blockerEntries = new ArrayList<>();
                 Combat built = game.getCombat();
                 if (built != null) {
                     for (CombatGroup g : built.getGroups()) {
@@ -1133,19 +1265,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
                                 // an unparseable id is the part that breaks training.
                                 // A UUID is never empty, so pickedIds always grows and
                                 // is the only reliable guard for both.
-                                if (pickedIds.length() > 0) {
-                                    picked.append(", ");
-                                    pickedIds.append(",");
-                                }
+                                // Collected and sorted below rather than appended
+                                // here, for the same reason as the attackers: the
+                                // enclosing iteration walks g.getAttackers(), a
+                                // HashSet over per-game UUIDs, so two runs making the
+                                // identical block emit the pairs in different orders.
                                 // ">" is the ENGINE-side pair separator, the same one
                                 // AiHintProvider uses. The model-facing grammar is
                                 // `blockers=p5:p1`; records_to_sft maps uuids to aliases
                                 // and joins with ":" there. Two layers, not two grammars
                                 // -- the recorder is raw material for the schema, not an
                                 // instance of it (SCHEMA.md).
-                                picked.append(describeObject(game, blockerId)).append('>')
-                                        .append(describeObject(game, attackerId));
-                                pickedIds.append(blockerId).append('>').append(attackerId);
+                                blockerEntries.add(new String[]{
+                                        describeObject(game, blockerId) + ">" + describeObject(game, attackerId),
+                                        blockerId + ">" + attackerId});
                             }
                         }
                     }
@@ -1157,9 +1290,15 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 // always blocks. The three returns above are the real non-decisions
                 // (no attackers / nothing that can block / nothing blockable) and they
                 // record nothing, which is why this one must record.
+                // Sorted by the pair's DISPLAY string, so two runs that made the
+                // identical block emit the identical label. See the attackers site
+                // for why the id is not the key: it is the thing that differs.
+                blockerEntries.sort(Comparator.<String[], String>comparing(e -> e[0]).thenComparing(e -> e[1]));
+                String blkPicked = String.join(", ", blockerEntries.stream().map(e -> e[0]).toList());
+                String blkPickedIds = String.join(",", blockerEntries.stream().map(e -> e[1]).toList());
                 AiDecisionRecorder.recordChoice(game, this, "declare_blockers",
-                        "Declare blockers", blkIds, blkTexts, pickedIds.toString(),
-                        picked.length() == 0 ? "none" : picked.toString());
+                        "Declare blockers", blkIds, blkTexts, blkPickedIds,
+                        blkPicked.isEmpty() ? "none" : blkPicked);
             }
         }
     }
@@ -1399,20 +1538,35 @@ public class ComputerPlayer6 extends ComputerPlayer {
         if (recAtk) {
             // Same as targets: an attack is a SET of creatures, and all of them are
             // the label. The prompt interface takes them as a list too.
-            StringBuilder picked = new StringBuilder();
-            StringBuilder pickedIds = new StringBuilder();
+            // SORTED BY NAME, and the sort key is the whole point.
+            //
+            // Combat.getAttackers() returns a HashSet<UUID> (Combat.java:131) over
+            // permanent UUIDs that are MINTED FRESH EACH GAME, so iteration order
+            // varies between two runs that made the IDENTICAL attack. Measured on 40
+            // seeds x 2 replicates at one pin in one JVM: 9 of 9 diverging attack
+            // labels were the same creatures in a different order, and 1 of 1
+            // diverging block labels likewise. It read as engine nondeterminism and
+            // it was this.
+            //
+            // SORTING BY ID WOULD NOT FIX IT -- the ids are exactly the thing that
+            // differs between runs. The name is the only key stable across them.
+            // Ties (two "Golem Token") are harmless: the rendered label is identical
+            // either way, which is what the comparison reads.
+            //
+            // String.join also retires the separator guard below: an empty name can
+            // no longer fuse two ids, because the entries are joined rather than
+            // appended.
+            List<String[]> attackerEntries = new ArrayList<>();
             if (game.getCombat() != null) {
                 for (UUID aid : game.getCombat().getAttackers()) {
-                    // See the note at declareBlockers: guard on the ID builder. This
-                    // is the site the corpus caught it at.
-                    if (pickedIds.length() > 0) {
-                        picked.append(", ");
-                        pickedIds.append(",");
-                    }
-                    picked.append(describeObject(game, aid));
-                    pickedIds.append(aid);
+                    attackerEntries.add(new String[]{describeObject(game, aid), aid.toString()});
                 }
             }
+            attackerEntries.sort(Comparator.<String[], String>comparing(e -> e[0]).thenComparing(e -> e[1]));
+            StringBuilder picked = new StringBuilder(
+                    String.join(", ", attackerEntries.stream().map(e -> e[0]).toList()));
+            StringBuilder pickedIds = new StringBuilder(
+                    String.join(",", attackerEntries.stream().map(e -> e[1]).toList()));
             AiDecisionRecorder.recordChoice(game, this, "select_attackers", "Select attackers",
                     ids, texts, pickedIds.toString(),
                     picked.length() == 0 ? "none" : picked.toString());

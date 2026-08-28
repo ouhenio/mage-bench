@@ -55,6 +55,21 @@ def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
     a 3.10s baseline -- a knob that changed nothing, which is the only symptom this
     has. Nothing errors when a property lands on the wrong process.
 
+    AND THEN IT HAPPENED AGAIN, BY POSITION RATHER THAN PROCESS. Moving these to the
+    server was necessary and not sufficient: sequential_batch appended them to an
+    ALREADY-BUILT java command with cmd.extend(), which puts them after the main
+    class, where java hands them to main() as arguments. Correct process, wrong
+    position, same silence. Caught 2026-08-28 only because a different property
+    (xmage.ai.deterministicTiebreak) had a recorded consequence to check, and the
+    engine reported it absent while /proc showed it on that pid's command line;
+    sun.java.command read "mage.server.Main -Dxmage.ai.nodes.8=5000".
+
+    So: these must be passed INTO build_java_cmd's system_props, never appended to
+    its output. The test below asserts POSITION, because the older test asserted
+    only membership ("-Dxmage.ai.nodes.1=1000" in argv) and passes either way --
+    which is exactly why this survived. Third inertness of the same knob, counting
+    the engine's own flat-5000 skill bug.
+
     Keyed by skill number rather than seat order, matching the engine.
     """
     props: list[str] = []
@@ -65,6 +80,39 @@ def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
             skill, value = pair.split(":", 1)
             props.append(f"-Dxmage.ai.{name}.{skill.strip()}={value.strip()}")
     return props
+
+
+def ai_tiebreak_props(deterministic: str | None) -> list[str]:
+    """The deterministic tie-break switch, as a -D property FOR THE SERVER JVM.
+
+    ComputerPlayer6 breaks equal-score ties at the ROOT with a coin drawn from
+    RandomUtil's process-global Random, by a search running on the shared static
+    simulation pool. Seeding the game does not make that reproducible -- setSeed
+    fixes which values the stream yields, not which thread takes which one -- and
+    it is why replaying a seed reproduces the deal and most of the play while
+    diverging on about 1% of decisions. Setting this true swaps that coin for a
+    Random owned by the player and re-seeded per search from (game seed, search
+    ordinal), whose draws are single-threaded and cannot interleave.
+
+    Same process as the budgets above, for the same reason: a server plugin reads
+    it with Boolean.getBoolean, so it must be set on the JVM that runs the game.
+    Anywhere else it is ignored in silence.
+
+    NOT coerced to a bool by truthiness. Unset must mean "leave the engine
+    default" and an explicit "false" must mean "off", and those stop being
+    distinguishable the moment the string is coerced. Anything else raises: a
+    typo'd "ture" read as false would silently run the nondeterministic arm of an
+    experiment whose entire question is whether the arm is deterministic.
+    """
+    if deterministic is None:
+        return []
+    value = deterministic.strip().lower()
+    if value not in ("true", "false"):
+        raise ValueError(
+            "MAGEBENCH_AI_DETERMINISTIC_TIEBREAK must be 'true' or 'false', got "
+            f"{deterministic!r}"
+        )
+    return [f"-Dxmage.ai.deterministicTiebreak={value}"]
 
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
 _SPECTATOR_GAME_STARTED = "AI Puppeteer: all players joined"

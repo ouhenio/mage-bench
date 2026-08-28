@@ -238,6 +238,23 @@ public final class AiDecisionRecorder {
                 sb.append('"').append(esc(pl.getName())).append("\":{")
                         .append("\"hand_size\":").append(pl.getHand().size())
                         .append(",\"library\":").append(pl.getLibrary().size())
+                        // HIDDEN ZONES, as order-sensitive hashes. The recorded state
+                        // carries the seat's own hand and the shared board, so two
+                        // replicates can look identical here while differing in library
+                        // ORDER or in the opponent's hand -- neither of which any field
+                        // has ever captured. Across three arms, 15/16/12 pairs diverged
+                        // in POSITION before any choice did, unchanged by the tie-break
+                        // fix and unexplained by the node budget, so the untouched
+                        // signal is upstream of the search entirely.
+                        //
+                        // A HASH, not the contents: the library is hidden information and
+                        // writing it out would leak the deck order into a training corpus
+                        // that a policy could otherwise never see. Equality is the only
+                        // question being asked of it, and a hash answers exactly that.
+                        // Order-sensitive on purpose -- a shuffle that permutes without
+                        // changing membership is precisely the divergence being hunted.
+                        .append(",\"lib_hash\":").append(zoneHash(namesInOrder(pl.getLibrary().getCards(game))))
+                        .append(",\"hand_hash\":").append(zoneHash(namesInOrder(pl.getHand().getCards(game))))
                         .append(",\"graveyard\":[");
                 boolean g1 = true;
                 for (Card c : pl.getGraveyard().getCards(game)) {
@@ -292,6 +309,41 @@ public final class AiDecisionRecorder {
      */
     public static void record(Game game, Player player, Ability chosen,
                               List<ActivatedAbility> options, String searchOutcome) {
+        record(game, player, chosen, options, searchOutcome, null);
+    }
+
+    /**
+     * @param noActionReason why there was no action, when {@code chosen == null}.
+     *                       `chosen: null` and a recorded PassAbility are DIFFERENT
+     *                       OUTCOMES -- the first means the search returned no action,
+     *                       the second that it returned a pass -- and a consumer that
+     *                       equates them reads real divergence as noise. That is not
+     *                       hypothetical: an analysis script comparing `chosen.text`
+     *                       across replicate games did exactly this and scored seven
+     *                       genuine disagreements as a recording artifact. This field
+     *                       exists so `null` stops carrying two meanings; it never
+     *                       merges the two representations.
+     */
+    public static void record(Game game, Player player, Ability chosen,
+                              List<ActivatedAbility> options, String searchOutcome,
+                              String noActionReason) {
+        record(game, player, chosen, options, searchOutcome, noActionReason, null, null);
+    }
+
+    /**
+     * @param nodesAtSearchStart SimulationNode2.getCount() immediately after
+     *                           resetCount(). ANY VALUE BUT 0 means another search was
+     *                           running on the shared static counter at the moment this
+     *                           one started -- an overlap, not merely a large budget.
+     * @param nodesAtDecision    the same counter when the decision was recorded. Two
+     *                           replicate games whose searches saw different node
+     *                           counts pruned at different depths, which is the
+     *                           candidate mechanism for completed searches disagreeing.
+     */
+    public static void record(Game game, Player player, Ability chosen,
+                              List<ActivatedAbility> options, String searchOutcome,
+                              String noActionReason, Integer nodesAtSearchStart,
+                              Integer nodesAtDecision) {
         if (!isEnabled()) {
             return;
         }
@@ -343,6 +395,44 @@ public final class AiDecisionRecorder {
             // conflict with that. See the TODO item.
             if (searchOutcome != null) {
                 kv(sb, "search", searchOutcome).append(',');
+            }
+            // PROVENANCE ON EVERY RECORD: which tie-break coin produced this decision.
+            // The flag that selects it is read with Boolean.getBoolean in the server
+            // process and ignored in silence anywhere else, so a run cannot otherwise
+            // be told apart from one where the flag never arrived -- which is exactly
+            // what happened, and cost a 160-game A/B that could not be interpreted.
+            kv(sb, "tiebreak", ComputerPlayer6.tiebreakMode()).append(',');
+            // DIAGNOSTIC, paired with the line above so the two can disagree. `tiebreak`
+            // is what the static final read at CLASS LOAD; `tb_prop` is what the system
+            // property says right now, in this process, at record time. If tb_prop is
+            // "true" while tiebreak is "global", the property is present and the class
+            // read it wrong or is stale. If tb_prop is "null", the property is simply
+            // not in this JVM and the -D is landing on a different process. One field
+            // cannot tell those apart; two can.
+            kv(sb, "tb_prop", String.valueOf(System.getProperty("xmage.ai.deterministicTiebreak"))).append(',');
+            // WHICH PROCESS WROTE THIS. Both mage.server.Main and
+            // mage.client.observer.ObserverMain were verified to carry the -D (read
+            // from /proc across a whole run), and the record still reported the
+            // property absent. At that point every remaining explanation is an
+            // inference about which JVM is running this code, so the record says so
+            // itself instead.
+            kv(sb, "jvm_cmd", String.valueOf(System.getProperty("sun.java.command"))).append(',');
+            // SEED ECHO FROM THE ENGINE, not from the runner's intent. game_meta.json
+            // records the seed that was ASKED for; this is the one the game object
+            // actually carries. The two being equal is an assumption that has already
+            // failed once tonight for a different property, where the runner's own
+            // header was the only evidence a flag had been applied and it had not been.
+            sb.append("\"game_seed\":").append(
+                    game.getOptions().gameSeed == null ? "null" : game.getOptions().gameSeed.toString()
+            ).append(',');
+            if (nodesAtSearchStart != null) {
+                sb.append("\"nodes_at_search_start\":").append(nodesAtSearchStart).append(',');
+            }
+            if (nodesAtDecision != null) {
+                sb.append("\"nodes_at_decision\":").append(nodesAtDecision).append(',');
+            }
+            if (chosen == null && noActionReason != null) {
+                kv(sb, "no_action_reason", noActionReason).append(',');
             }
             sb.append("\"chosen\":");
             if (chosen == null) {
@@ -566,6 +656,30 @@ public final class AiDecisionRecorder {
             }
         }
         sb.append(']');
+    }
+
+    /** Card names in ZONE ORDER. Order is the whole point; a set would hide a shuffle. */
+    private static String namesInOrder(java.util.Collection<Card> cards) {
+        StringBuilder b = new StringBuilder();
+        for (Card c : cards) {
+            b.append(c.getName()).append('\u001f');
+        }
+        return b.toString();
+    }
+
+    /**
+     * FNV-1a over the zone string. Not String.hashCode(): that is a 32-bit value with
+     * poor avalanche on short similar strings, and every library here is a permutation
+     * of the same 60 names -- exactly the input class it collides on. A collision would
+     * read as "the libraries match", which is the answer this field exists to doubt.
+     */
+    private static String zoneHash(String zone) {
+        long h = 0xcbf29ce484222325L;
+        for (int i = 0; i < zone.length(); i++) {
+            h ^= zone.charAt(i);
+            h *= 0x100000001b3L;
+        }
+        return "\"" + Long.toHexString(h) + "\"";
     }
 
     private static String describe(Game game, Ability a) {
