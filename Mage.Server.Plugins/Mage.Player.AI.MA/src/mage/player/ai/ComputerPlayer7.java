@@ -115,6 +115,7 @@ public class ComputerPlayer7 extends ComputerPlayer6 {
             currentScore = GameStateEvaluator2.evaluate(playerId, game).getTotalScore();
             Game sim = createSimulation(game);
             SimulationNode2.resetCount();
+            noteSearchStart(game);
             root = new SimulationNode2(null, sim, maxDepth, playerId);
             addActionsTimed(); // TODO: root can be null again after addActionsTimed O_o need to research (it's a CPU AI problem?)
             if (root != null && root.children != null && !root.children.isEmpty()) {

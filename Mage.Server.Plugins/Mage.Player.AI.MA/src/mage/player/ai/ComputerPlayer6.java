@@ -240,13 +240,15 @@ public class ComputerPlayer6 extends ComputerPlayer {
             // nothing. Collapsed together they read as one event and cannot be told
             // apart afterwards.
             String noActionReason = (actions == null) ? "actions_unset" : "actions_empty";
-            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome, noActionReason);
+            AiDecisionRecorder.record(game, this, null, recordedOptions, searchOutcome, noActionReason,
+                    nodesAtSearchStart.remove(game.getId()), SimulationNode2.getCount());
             pass(game);
         } else {
             boolean usedStack = false;
             while (actions.peek() != null) {
                 Ability ability = actions.poll();
-                AiDecisionRecorder.record(game, this, ability, recordedOptions, searchOutcome);
+                AiDecisionRecorder.record(game, this, ability, recordedOptions, searchOutcome, null,
+                        nodesAtSearchStart.remove(game.getId()), SimulationNode2.getCount());
                 // example: ===> SELECTED ACTION for PlayerA: Play Swamp
                 logger.info(String.format("===> SELECTED ACTION for %s: %s",
                         getName(),
@@ -579,6 +581,31 @@ public class ComputerPlayer6 extends ComputerPlayer {
      * result it produced before this was keyed by game.
      */
     private final Map<UUID, Integer> tiebreakOrdinal = new ConcurrentHashMap<>();
+
+    /**
+     * NODE COUNT AT SEARCH START, per game. SimulationNode2.nodeCount is a
+     * non-volatile static int shared by every AI instance in the JVM, incremented in
+     * the node constructor, and the search prunes on `nodeCount > maxNodes` and
+     * THROWS above MAX_SIMULATED_NODES_PER_ERROR. The sequential runner puts both
+     * seats and twenty games in ONE server process, so anything that leaves the
+     * counter elevated -- an abandoned task, an unwound error, an overlapping search
+     * -- makes the next search prune earlier while still recording "complete".
+     *
+     * That is the surviving signature after the tie-break coin was made
+     * deterministic and changed nothing (16/40 vs 13/40 divergent pairs, p=0.64):
+     * two COMPLETED searches disagreeing about whether any action exists at all.
+     *
+     * A value other than 0 here is the specific finding: it means the counter was
+     * not at zero immediately after resetCount(), which can only happen if another
+     * search was running concurrently on the shared static. That distinguishes an
+     * overlap from a merely elevated budget, and the two want different fixes.
+     */
+    private final Map<UUID, Integer> nodesAtSearchStart = new ConcurrentHashMap<>();
+
+    /** Called immediately after SimulationNode2.resetCount(), by the searching player. */
+    protected void noteSearchStart(Game game) {
+        nodesAtSearchStart.put(game.getId(), SimulationNode2.getCount());
+    }
 
     /**
      * Re-seed the tie-break coin for one search. Called once per search, from the

@@ -310,6 +310,23 @@ public final class AiDecisionRecorder {
     public static void record(Game game, Player player, Ability chosen,
                               List<ActivatedAbility> options, String searchOutcome,
                               String noActionReason) {
+        record(game, player, chosen, options, searchOutcome, noActionReason, null, null);
+    }
+
+    /**
+     * @param nodesAtSearchStart SimulationNode2.getCount() immediately after
+     *                           resetCount(). ANY VALUE BUT 0 means another search was
+     *                           running on the shared static counter at the moment this
+     *                           one started -- an overlap, not merely a large budget.
+     * @param nodesAtDecision    the same counter when the decision was recorded. Two
+     *                           replicate games whose searches saw different node
+     *                           counts pruned at different depths, which is the
+     *                           candidate mechanism for completed searches disagreeing.
+     */
+    public static void record(Game game, Player player, Ability chosen,
+                              List<ActivatedAbility> options, String searchOutcome,
+                              String noActionReason, Integer nodesAtSearchStart,
+                              Integer nodesAtDecision) {
         if (!isEnabled()) {
             return;
         }
@@ -383,6 +400,12 @@ public final class AiDecisionRecorder {
             // inference about which JVM is running this code, so the record says so
             // itself instead.
             kv(sb, "jvm_cmd", String.valueOf(System.getProperty("sun.java.command"))).append(',');
+            if (nodesAtSearchStart != null) {
+                sb.append("\"nodes_at_search_start\":").append(nodesAtSearchStart).append(',');
+            }
+            if (nodesAtDecision != null) {
+                sb.append("\"nodes_at_decision\":").append(nodesAtDecision).append(',');
+            }
             if (chosen == null && noActionReason != null) {
                 kv(sb, "no_action_reason", noActionReason).append(',');
             }
