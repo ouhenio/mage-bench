@@ -1097,8 +1097,7 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 // above), and a record of a block the engine rejected would be a label
                 // the game never contained. Same rule as selectAttackers, which reads
                 // game.getCombat() rather than its own candidate list.
-                StringBuilder picked = new StringBuilder();
-                StringBuilder pickedIds = new StringBuilder();
+                List<String[]> blockerEntries = new ArrayList<>();
                 Combat built = game.getCombat();
                 if (built != null) {
                     for (CombatGroup g : built.getGroups()) {
@@ -1133,19 +1132,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
                                 // an unparseable id is the part that breaks training.
                                 // A UUID is never empty, so pickedIds always grows and
                                 // is the only reliable guard for both.
-                                if (pickedIds.length() > 0) {
-                                    picked.append(", ");
-                                    pickedIds.append(",");
-                                }
+                                // Collected and sorted below rather than appended
+                                // here, for the same reason as the attackers: the
+                                // enclosing iteration walks g.getAttackers(), a
+                                // HashSet over per-game UUIDs, so two runs making the
+                                // identical block emit the pairs in different orders.
                                 // ">" is the ENGINE-side pair separator, the same one
                                 // AiHintProvider uses. The model-facing grammar is
                                 // `blockers=p5:p1`; records_to_sft maps uuids to aliases
                                 // and joins with ":" there. Two layers, not two grammars
                                 // -- the recorder is raw material for the schema, not an
                                 // instance of it (SCHEMA.md).
-                                picked.append(describeObject(game, blockerId)).append('>')
-                                        .append(describeObject(game, attackerId));
-                                pickedIds.append(blockerId).append('>').append(attackerId);
+                                blockerEntries.add(new String[]{
+                                        describeObject(game, blockerId) + ">" + describeObject(game, attackerId),
+                                        blockerId + ">" + attackerId});
                             }
                         }
                     }
@@ -1157,9 +1157,15 @@ public class ComputerPlayer6 extends ComputerPlayer {
                 // always blocks. The three returns above are the real non-decisions
                 // (no attackers / nothing that can block / nothing blockable) and they
                 // record nothing, which is why this one must record.
+                // Sorted by the pair's DISPLAY string, so two runs that made the
+                // identical block emit the identical label. See the attackers site
+                // for why the id is not the key: it is the thing that differs.
+                blockerEntries.sort(Comparator.<String[], String>comparing(e -> e[0]).thenComparing(e -> e[1]));
+                String blkPicked = String.join(", ", blockerEntries.stream().map(e -> e[0]).toList());
+                String blkPickedIds = String.join(",", blockerEntries.stream().map(e -> e[1]).toList());
                 AiDecisionRecorder.recordChoice(game, this, "declare_blockers",
-                        "Declare blockers", blkIds, blkTexts, pickedIds.toString(),
-                        picked.length() == 0 ? "none" : picked.toString());
+                        "Declare blockers", blkIds, blkTexts, blkPickedIds,
+                        blkPicked.isEmpty() ? "none" : blkPicked);
             }
         }
     }
@@ -1399,20 +1405,35 @@ public class ComputerPlayer6 extends ComputerPlayer {
         if (recAtk) {
             // Same as targets: an attack is a SET of creatures, and all of them are
             // the label. The prompt interface takes them as a list too.
-            StringBuilder picked = new StringBuilder();
-            StringBuilder pickedIds = new StringBuilder();
+            // SORTED BY NAME, and the sort key is the whole point.
+            //
+            // Combat.getAttackers() returns a HashSet<UUID> (Combat.java:131) over
+            // permanent UUIDs that are MINTED FRESH EACH GAME, so iteration order
+            // varies between two runs that made the IDENTICAL attack. Measured on 40
+            // seeds x 2 replicates at one pin in one JVM: 9 of 9 diverging attack
+            // labels were the same creatures in a different order, and 1 of 1
+            // diverging block labels likewise. It read as engine nondeterminism and
+            // it was this.
+            //
+            // SORTING BY ID WOULD NOT FIX IT -- the ids are exactly the thing that
+            // differs between runs. The name is the only key stable across them.
+            // Ties (two "Golem Token") are harmless: the rendered label is identical
+            // either way, which is what the comparison reads.
+            //
+            // String.join also retires the separator guard below: an empty name can
+            // no longer fuse two ids, because the entries are joined rather than
+            // appended.
+            List<String[]> attackerEntries = new ArrayList<>();
             if (game.getCombat() != null) {
                 for (UUID aid : game.getCombat().getAttackers()) {
-                    // See the note at declareBlockers: guard on the ID builder. This
-                    // is the site the corpus caught it at.
-                    if (pickedIds.length() > 0) {
-                        picked.append(", ");
-                        pickedIds.append(",");
-                    }
-                    picked.append(describeObject(game, aid));
-                    pickedIds.append(aid);
+                    attackerEntries.add(new String[]{describeObject(game, aid), aid.toString()});
                 }
             }
+            attackerEntries.sort(Comparator.<String[], String>comparing(e -> e[0]).thenComparing(e -> e[1]));
+            StringBuilder picked = new StringBuilder(
+                    String.join(", ", attackerEntries.stream().map(e -> e[0]).toList()));
+            StringBuilder pickedIds = new StringBuilder(
+                    String.join(",", attackerEntries.stream().map(e -> e[1]).toList()));
             AiDecisionRecorder.recordChoice(game, this, "select_attackers", "Select attackers",
                     ids, texts, pickedIds.toString(),
                     picked.length() == 0 ? "none" : picked.toString());
