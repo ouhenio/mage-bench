@@ -568,7 +568,17 @@ public class ComputerPlayer6 extends ComputerPlayer {
     private static final boolean DETERMINISTIC_TIEBREAK
             = Boolean.getBoolean("xmage.ai.deterministicTiebreak");
     private Random tiebreakRandom;
-    private int tiebreakSearchOrdinal;
+    /**
+     * Search ordinal PER GAME, not per player instance. The comment on
+     * lastSearchOutcome above notes that AI instances may be reused and games may
+     * run sequentially in one JVM, and this counter has to survive both: the
+     * sequential runner plays a seed's two replicates back to back in ONE server,
+     * so a per-instance counter would hand replicate 1 the ordinals 0..N and
+     * replicate 2 the ordinals N+1..2N. Same seed, different draws, and the flag
+     * would silently fail to make the two replicates agree -- which is exactly the
+     * result it produced before this was keyed by game.
+     */
+    private final Map<UUID, Integer> tiebreakOrdinal = new ConcurrentHashMap<>();
 
     /**
      * Re-seed the tie-break coin for one search. Called once per search, from the
@@ -595,8 +605,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
                     "xmage.ai.deterministicTiebreak=true but this game carries no seed: "
                             + "set GameOptions.gameSeed or -Dxmage.game.seed");
         }
-        tiebreakRandom = new Random(seed * 1_000_003L + tiebreakSearchOrdinal);
-        tiebreakSearchOrdinal++;
+        UUID gameId = searchGame.getId();
+        int ordinal = tiebreakOrdinal.merge(gameId, 1, Integer::sum) - 1;
+        if (ordinal == 0) {
+            // THE POSITIVE CONTROL FOR THE FLAG ITSELF, and it is not optional.
+            // xmage.ai.deterministicTiebreak is read by Boolean.getBoolean in THIS
+            // process; set on any other process it is ignored without erroring. The
+            // search budgets had exactly that defect and it went unnoticed across a
+            // 4,624-game corpus, because a knob that changes nothing looks identical
+            // to a knob that is working on a run whose result you cannot predict.
+            // With this line, one server log says which mode actually ran.
+            logger.info("AI tie-break: DETERMINISTIC, game " + gameId + " seed " + seed
+                    + " (xmage.ai.deterministicTiebreak=true)");
+        }
+        tiebreakRandom = new Random(seed * 1_000_003L + ordinal);
     }
 
     private boolean tiebreakCoin() {
