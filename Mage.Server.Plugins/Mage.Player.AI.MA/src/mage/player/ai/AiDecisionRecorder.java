@@ -368,6 +368,14 @@ public final class AiDecisionRecorder {
             // be told apart from one where the flag never arrived -- which is exactly
             // what happened, and cost a 160-game A/B that could not be interpreted.
             kv(sb, "tiebreak", ComputerPlayer6.tiebreakMode()).append(',');
+            // DIAGNOSTIC, paired with the line above so the two can disagree. `tiebreak`
+            // is what the static final read at CLASS LOAD; `tb_prop` is what the system
+            // property says right now, in this process, at record time. If tb_prop is
+            // "true" while tiebreak is "global", the property is present and the class
+            // read it wrong or is stale. If tb_prop is "null", the property is simply
+            // not in this JVM and the -D is landing on a different process. One field
+            // cannot tell those apart; two can.
+            kv(sb, "tb_prop", String.valueOf(System.getProperty("xmage.ai.deterministicTiebreak"))).append(',');
             if (chosen == null && noActionReason != null) {
                 kv(sb, "no_action_reason", noActionReason).append(',');
             }
