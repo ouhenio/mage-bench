@@ -1,0 +1,47 @@
+{
+  "title": "Bridge auto-payment cannot produce sacrifice-cost mana, silently disabling whole deck archetypes",
+  "description": "The bridge's automatic mana payment considers only mana ABILITIES it \
+can tap. It cannot produce mana whose activation cost is SACRIFICING a permanent. On a \
+deck whose mana engine IS sacrifice-for-mana -- Krark-Clan Ironworks: sacrifice an \
+artifact, add {C}{C} -- auto-payment taps as far as it can and then dies mid-payment. \
+From ClaudeSeat_bridge.log on the 2004 Myr Incubator Combo deck, one cast of Myr \
+Incubator ({6}): 'Pay {6} ... -> tapping a56bbaa0', 'Pay {5} ... -> tapping 1f20ab87', \
+'Pay {4} ... -> tapping c14e8df2', then 'Pay {3} ... -> no mana source'. Same shape on \
+Ironworks itself: 'Pay {2} ... Krark-Clan Ironworks -> no mana source'. The client sees \
+only a generic MCP result, 'not enough mana to complete payment.' (x3 in that game's \
+transcript); nothing names the real cause. WHY THIS IS WORSE THAN A WRONG ACTION: it \
+fails silently and at ARCHETYPE scope. Any policy relying on auto-payment simply cannot \
+cast the key spells of any sacrifice-mana deck, and the game record shows only a loss, \
+never a reason -- a per-deck win-rate table would show the deck underperforming with no \
+indication it was never actually playable. THE CAPABILITY EXISTS; ONLY THE KNOWLEDGE IS \
+MISSING: explicit choose_action with mana_plan CAN pay the cost. Each p18 entry is one \
+Ironworks sacrifice yielding {C}{C}, and the engine then prompts for which artifact to \
+sacrifice. Working payments observed in the same game: mana_plan='p17,p29,p18,p18', \
+'p18,p18,p18', 'p17,p6,p29,p18,p18,p18'. So the fix is teachable rather than \
+structural: either make auto-payment consider sacrifice-cost mana sources, or at \
+minimum make the failure message name the cause so a client can route around it. \
+DISCOVERY RECORD: found by the model itself, mid-game, and written to its scratchpad \
+before anyone looked -- 'NOTE: bridge auto-payment CANNOT use KCI sacrifice mana (cast \
+cancelled \"not enough mana\"). Must test mana_plan with p18 (KCI).' and 'KEY: KCI \
+sac-mana IS usable via choose_action mana_plan=\"...,p18,p18\" (each p18 entry = one sac \
+= {C}{C}); engine prompts which artifact to sac.' The model's assertion was treated as a \
+HYPOTHESIS and verified against two logs the model does not write -- the transcript's \
+error strings and the bridge log's step-by-step auto-tapper failure above -- before \
+being believed. Found in arm B game 01 of the mcp-play A/B, 2026-08-28. CORPUS \
+IMPLICATION: the corpus teacher leans on auto-payment, so the corpus can never contain \
+the workaround. This is sharper than the known untrained-decision-type gap: there the \
+decision type is never presented at all, whereas here the capability exists in the tool \
+surface and only knowledge of its use is absent. Imitation of the engine cannot carry \
+it; distillation from traces like this one can.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "bridge",
+    "mana-payment",
+    "silent-failure",
+    "archetype-scoped",
+  ],
+  "created_at": "2026-08-28T11:20:00.000-04:00",
+  "updated_at": "2026-08-28T11:20:00.000-04:00",
+}
