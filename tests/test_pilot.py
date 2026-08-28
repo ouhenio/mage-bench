@@ -81,6 +81,11 @@ def test_main_accepts_explicit_api_key_for_non_default_provider():
                 "sk-test",
                 "--provider",
                 "openai",
+                # This test is about the api key, not the deck. Without a deck the
+                # pilot now refuses, because a seat served without its own-deck card
+                # text gets a different prompt from the one training rendered. Said
+                # explicitly here rather than by omission.
+                "--no-deck-block",
             ],
         ),
         patch("magebench.pilot.pilot.setup_logging"),
