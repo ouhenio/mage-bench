@@ -66,6 +66,25 @@ from magebench.orchestration.batch_coordination import (
 from magebench.common.env import env_or_none
 from magebench.orchestration.config import Config
 from magebench.orchestration.game_processes import ai_budget_props, ai_tiebreak_props
+
+
+def _props_to_dict(flags: list[str]) -> dict[str, str]:
+    """Turn ["-Dk=v", ...] into {"k": "v"} so they can go where -D actually works.
+
+    JVM options are only options BEFORE the main class. Appended to a finished
+    command they land after it and java hands them to main() as program arguments,
+    where nothing reads them and nothing errors -- `sun.java.command` then reads
+    "mage.server.Main -Dxmage.ai.nodes.8=5000", which is what this looked like.
+    """
+    out: dict[str, str] = {}
+    for flag in flags:
+        if not flag.startswith("-D"):
+            raise ValueError(f"not a -D flag: {flag!r}")
+        key, sep, value = flag[2:].partition("=")
+        if not sep:
+            raise ValueError(f"-D flag without a value: {flag!r}")
+        out[key] = value
+    return out
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
     MAIN_CLASS_OBSERVER,
@@ -129,6 +148,18 @@ def _start_server(
             # the fallback, and in a session it would collect every game's
             # records in one file.
             **({"xmage.ai.recordDir": str(ai_record_dir)} if ai_record_dir else {}),
+            # THESE MUST BE HERE, not appended to the finished command. They used to
+            # be `cmd.extend(...)` after build_java_cmd, which puts them AFTER the
+            # main class, where java treats them as arguments to main() rather than
+            # as system properties. Verified by the engine recording the property as
+            # absent while /proc showed "-Dxmage.ai.deterministicTiebreak=true" on
+            # that exact pid -- present on the command line, invisible to
+            # System.getProperty, because position is what makes a -D a -D. The
+            # budgets had been silently inert the same way since they were moved here.
+            **_props_to_dict(
+                ai_budget_props(env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME"))
+                + ai_tiebreak_props(env_or_none("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK"))
+            ),
         },
         max_heap="1024m",
     )
@@ -138,12 +169,6 @@ def _start_server(
     # process. Passing them to the observer, or to the GUI client as the older path
     # did, sets them where nothing reads them -- and nothing errors, so every run
     # used the engine defaults while its metadata recorded what the caller asked.
-    cmd.extend(
-        ai_budget_props(env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME"))
-    )
-    # Same placement rule as the budgets: read by a server plugin, so it has to be
-    # on the server JVM. Default absent = engine default = the historical coin.
-    cmd.extend(ai_tiebreak_props(env_or_none("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK")))
     env = os.environ.copy()
     env.update(
         {
@@ -209,16 +234,9 @@ def _start_observer(
     # Without this, eight sessions starting together race for one server number
     # and most of them die before they draw anything.
     display = _DISPLAY_BASE + (port - _PORT_BASE)
-    observer_cmd = build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m")
-    # ALSO on the observer, until it is established which JVM instantiates the AI.
-    # The property was verified present on mage.server.Main (-D on the command line,
-    # read from /proc) while the engine still recorded tiebreak="global", so the
-    # class reading it with Boolean.getBoolean is NOT in the server process -- or not
-    # only there. This observer is the AI puppeteer, which makes it the candidate.
-    # Setting it on both is diagnostic, not a fix: whichever JVM is right, the other
-    # ignores it silently, and that silence is what made this expensive to find.
-    observer_cmd.extend(ai_tiebreak_props(env_or_none("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK")))
-    cmd = wrap_with_xvfb(observer_cmd, display)
+    cmd = wrap_with_xvfb(
+        build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"), display
+    )
     env = os.environ.copy()
     env.update(
         {
