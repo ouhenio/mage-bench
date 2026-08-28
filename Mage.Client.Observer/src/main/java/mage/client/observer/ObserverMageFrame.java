@@ -47,6 +47,13 @@ public class ObserverMageFrame extends MageFrame {
      * the next one starts. A game ending is not a match ending -- see
      * quitPreviousMatch -- and without this the server keeps playing the old match
      * into the old game's directory.
+     *
+     * IT STILL DOES, SOMETIMES, WITH THIS. Measured after the fix shipped: 3 of
+     * 1,680 directories still received two games, against 10 of 3,964 before it
+     * (Fisher one-sided p = 0.428, i.e. no evidence of a change). The quit is right
+     * in kind and roughly 109 ms too late -- it fires on the next keepAlive command,
+     * while the server starts the next game of an unfinished match the instant the
+     * previous one ends. Keep the harness-side detector; this is not a closed hole.
      */
     private volatile UUID watchedGameId;
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
