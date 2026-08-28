@@ -103,17 +103,28 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
 
 # X DISPLAY BAND FOR GOLDEN SPECTATORS.
 #
-# Corpus generation pins its displays by deriving them from each worker's port,
-# which lands them in 90-160 on both nodes. The golden suite used to take
-# --auto-servernum, which PICKS A FREE NUMBER WITHOUT HOLDING IT -- so a golden
-# run and a generation run could choose the same number in the gap between the
-# pick and the bind, and one of them dies with "No X11 DISPLAY variable was set".
-# Measured under 8-way launching: 15 of 24 games lost.
+# THE NUMBER IS NOT THE FIX; THE DERIVATION IS. Corpus generation does not own a
+# band someone wrote down -- it computes one:
 #
-# 200 and up is outside that band by construction rather than by hoping the
-# generation run has finished.
-GOLDEN_DISPLAY_BASE = 200
-GOLDEN_DISPLAY_LIMIT = 260
+#     sequential_batch.py:208    display = 200 + (port - 17171)
+#
+# with ports allocated upward from 17171, so generation owns 200 upward, one
+# display per port it may ever use. Block 2 reached port 17235, i.e. display 264.
+# There is no ceiling on it: a wider run takes a wider band.
+#
+# This band was previously 200-259, chosen to be "outside 90-160" -- a range
+# nobody had read the allocator to check, and which generation has never used.
+# It sat directly on top of generation's band instead. A golden run concurrent
+# with generation could take a display a worker needed, and because generation's
+# display is DERIVED rather than reserved, one orphaned Xvfb poisons that port
+# for the rest of the run: measured on block 2, port 17206 -> display 235, eight
+# workers, eight failures, while every sibling port in the same window was fine.
+#
+# 400 is clear of any plausible generation band rather than of a remembered one.
+# If generation's derivation ever changes, THIS COMMENT is what must be re-read;
+# a number alone would just move the collision.
+GOLDEN_DISPLAY_BASE = 400
+GOLDEN_DISPLAY_LIMIT = 460
 
 
 def _golden_display() -> int:
@@ -157,8 +168,8 @@ def _golden_display() -> int:
         f"xdist worker {index} starting at {base} found no free display below "
         f"{GOLDEN_DISPLAY_LIMIT}, the ceiling of the golden band. Either the band "
         f"is full of orphaned Xvfb locks -- reap them -- or raise the ceiling "
-        f"deliberately. Do NOT let it run on into 90-160, which is where corpus "
-        f"generation lives."
+        f"deliberately -- upward, away from generation, which derives its own "
+        f"displays as 200 + (port - 17171) and owns 200 upward without a ceiling."
     )
     return display
 

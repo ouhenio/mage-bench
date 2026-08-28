@@ -1,6 +1,7 @@
 """The golden suite must not take a display that corpus generation is using.
 
-Generation derives its displays from each worker's port and lands in 90-160.
+Generation derives its displays as 200 + (port - 17171), so it owns 200
+upward with no ceiling -- see the band comment in conftest.
 The golden suite used to take `--auto-servernum`, which picks a free number
 WITHOUT holding it -- so the two could choose the same number in the gap
 between the pick and the bind. This pins the golden band above it.
@@ -27,12 +28,24 @@ def _display(monkeypatch, worker: str | None) -> int:
     return conftest._golden_display()
 
 
-def test_the_display_is_outside_the_generation_band(monkeypatch):
+# Generation COMPUTES its display rather than owning a written-down band:
+#   sequential_batch.py:208   display = 200 + (port - 17171),  ports from 17171 up
+# so it owns 200 upward without a ceiling. Asserted against the derivation, not
+# against a remembered range -- the previous version of this test asserted
+# "outside 90-160", a band generation has never used, while the golden band sat
+# on top of the one it does use.
+_GENERATION_DISPLAY_BASE = 200
+
+
+def test_the_display_is_clear_of_the_generation_derivation(monkeypatch):
     # The property that matters, stated over every worker the ceiling allows
     # rather than over the one case that happens to run today.
     for i in range(conftest.GOLDEN_DISPLAY_LIMIT - conftest.GOLDEN_DISPLAY_BASE):
         display = _display(monkeypatch, f"gw{i}")
-        assert not 90 <= display <= 160, f"worker gw{i} would take display {display}"
+        assert display >= _GENERATION_DISPLAY_BASE + 100, (
+            f"worker gw{i} would take display {display}, inside the range "
+            f"generation derives from its ports (200 + port - 17171)"
+        )
 
 
 def test_workers_never_share_a_display(monkeypatch):
@@ -95,8 +108,10 @@ def test_a_held_display_is_stepped_over(monkeypatch, tmp_path):
 
 
 def test_a_full_band_is_refused_rather_than_wrapping(monkeypatch):
-    # The control: stepping must not walk on into 90-160, where corpus
-    # generation lives. Refusing is the only safe answer at the ceiling.
+    # The control: stepping must not walk on indefinitely. Refusing at the
+    # ceiling is the only safe answer -- the band is finite on purpose so a
+    # full band is a loud error rather than a quiet wander into someone else's
+    # displays.
     monkeypatch.delenv("PYTEST_XDIST_WORKER", raising=False)
     monkeypatch.setattr(conftest.Path, "exists", lambda self: True)
     with pytest.raises(AssertionError, match="no free display"):
