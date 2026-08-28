@@ -24,6 +24,7 @@ from magebench.common.llm_cost import (
 )
 from magebench.common.log import get_logger, log_error, setup_logging
 from magebench.game.game_log import GameLogWriter
+from magebench.pilot.deck_text import build_deck_block
 from magebench.pilot.auto_pass import auto_pass_loop
 from magebench.pilot.bridge_transport import build_bridge_launch_args, spawn_bridge_http
 from magebench.pilot.pilot_bridge import (
@@ -275,6 +276,22 @@ async def _handle_timeout(
 # Tools that are purely informational (don't advance game state).
 # Used by stall detection to classify LLM turns.
 INFO_ONLY_TOOLS = {"get_game_state", "get_oracle_text", "send_chat_message"}
+
+
+def assemble_system_prompt(base: str, deck_path) -> str:
+    """Join the base prompt to the own-deck card text THE WAY TRAINING JOINS THEM.
+
+    render_conversations.py:369-371 builds `f"{system}\n\n{block}"` and leaves the
+    system prompt alone when the block is empty. Both halves matter: a different
+    separator, or emitting an empty block as a trailing blank line, makes every
+    served prompt differ from every rendered one by characters no reader would
+    notice and no comparison would forgive.
+
+    Extracted from main() so the join can be tested without starting a game -- the
+    byte-identity gate is on this function.
+    """
+    block, _covered = build_deck_block(deck_path)
+    return f"{base}\n\n{block}" if block else base
 
 
 def _load_default_system_prompt() -> str:
@@ -1496,6 +1513,11 @@ def main() -> int:
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model (default: {DEFAULT_MODEL})")
     parser.add_argument("--provider", choices=SUPPORTED_LLM_PROVIDERS, default=DEFAULT_LLM_PROVIDER)
     parser.add_argument("--system-prompt", default="", help="Custom system prompt")
+    parser.add_argument(
+        "--no-deck-block",
+        action="store_true",
+        help="Run without the own-deck card text. Diverges from the training prompt on purpose.",
+    )
     parser.add_argument("--game-dir", type=Path, help="Game directory for cost file output")
     parser.add_argument(
         "--table-id",
@@ -1558,17 +1580,28 @@ def main() -> int:
     logger.debug("[pilot] Project root: %s", project_root)
 
     system_prompt = args.system_prompt or _load_default_system_prompt()
-    # THE OWN-DECK BLOCK IS NOT WIRED HERE YET, deliberately, and the reason is
-    # worth leaving: the block must come from the SEAT'S DECK IN THE GAME CONFIG,
-    # not from a --deck flag. Every production invocation passes --config and
-    # none passes --deck (rollout_games.sh:368, mtg_agent_loop.py:468), so a
-    # version that required the flag would refuse to start every rollout.
+    # OWN-DECK CARD TEXT, assembled exactly as training assembles it.
     #
-    # magebench.pilot.deck_text.build_deck_block is written and verified
-    # byte-identical to the training renderer on 400 real decks; what is missing
-    # is resolving this pilot's own seat within the config. Until then the pilot
-    # emits no block and TRAINING DOES -- the train/inference gap karn-research
-    # found is still open, and this comment is where the next person picks it up.
+    # THE SEAT IS ALREADY RESOLVED BY THE LAUNCHER, and the comment that used to sit
+    # here said otherwise. It claimed the block could not be wired because every
+    # production invocation passes --config and none passes --deck. That conflated
+    # two layers: the shell and mtg_agent_loop pass --config to the ORCHESTRATOR,
+    # which reads the seat out of it and passes --deck <root>/<player.deck> to THIS
+    # process (game_processes.py:482). All 56 pilot seats in configs/ carry a deck,
+    # so --deck is what a pilot receives and it IS the seat's own deck.
+    if args.deck:
+        system_prompt = assemble_system_prompt(system_prompt, args.deck)
+    elif not args.no_deck_block:
+        # LOUD. A pilot without its deck block is served a strictly different prompt
+        # from the one training rendered -- the exact train/serve gap this closes --
+        # and it would run perfectly, just measuring something else. The opt-out
+        # exists for ad-hoc play and has to be typed on purpose.
+        logger.error(
+            "[pilot] no --deck, so no own-deck card text, but training always "
+            "renders it: the served prompt would differ from the trained one. "
+            "Pass --deck, or --no-deck-block to say you meant it."
+        )
+        return 2
     pilot_tools = set(args.tools.split(",")) if args.tools else None
     ignore_providers = args.ignore_providers.split(",") if args.ignore_providers else None
     provider_order = args.provider_order.split(",") if args.provider_order else None
