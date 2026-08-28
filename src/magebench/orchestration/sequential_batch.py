@@ -65,7 +65,7 @@ from magebench.orchestration.batch_coordination import (
 )
 from magebench.common.env import env_or_none
 from magebench.orchestration.config import Config
-from magebench.orchestration.game_processes import ai_budget_props
+from magebench.orchestration.game_processes import ai_budget_props, ai_tiebreak_props
 from magebench.orchestration.game_finalization import write_game_meta
 from magebench.orchestration.observer_session import (
     MAIN_CLASS_OBSERVER,
@@ -141,6 +141,9 @@ def _start_server(
     cmd.extend(
         ai_budget_props(env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME"))
     )
+    # Same placement rule as the budgets: read by a server plugin, so it has to be
+    # on the server JVM. Default absent = engine default = the historical coin.
+    cmd.extend(ai_tiebreak_props(env_or_none("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK")))
     env = os.environ.copy()
     env.update(
         {

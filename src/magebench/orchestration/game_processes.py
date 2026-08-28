@@ -66,6 +66,39 @@ def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
             props.append(f"-Dxmage.ai.{name}.{skill.strip()}={value.strip()}")
     return props
 
+
+def ai_tiebreak_props(deterministic: str | None) -> list[str]:
+    """The deterministic tie-break switch, as a -D property FOR THE SERVER JVM.
+
+    ComputerPlayer6 breaks equal-score ties at the ROOT with a coin drawn from
+    RandomUtil's process-global Random, by a search running on the shared static
+    simulation pool. Seeding the game does not make that reproducible -- setSeed
+    fixes which values the stream yields, not which thread takes which one -- and
+    it is why replaying a seed reproduces the deal and most of the play while
+    diverging on about 1% of decisions. Setting this true swaps that coin for a
+    Random owned by the player and re-seeded per search from (game seed, search
+    ordinal), whose draws are single-threaded and cannot interleave.
+
+    Same process as the budgets above, for the same reason: a server plugin reads
+    it with Boolean.getBoolean, so it must be set on the JVM that runs the game.
+    Anywhere else it is ignored in silence.
+
+    NOT coerced to a bool by truthiness. Unset must mean "leave the engine
+    default" and an explicit "false" must mean "off", and those stop being
+    distinguishable the moment the string is coerced. Anything else raises: a
+    typo'd "ture" read as false would silently run the nondeterministic arm of an
+    experiment whose entire question is whether the arm is deterministic.
+    """
+    if deterministic is None:
+        return []
+    value = deterministic.strip().lower()
+    if value not in ("true", "false"):
+        raise ValueError(
+            "MAGEBENCH_AI_DETERMINISTIC_TIEBREAK must be 'true' or 'false', got "
+            f"{deterministic!r}"
+        )
+    return [f"-Dxmage.ai.deterministicTiebreak={value}"]
+
 _SPECTATOR_TABLE_READY = "AI Puppeteer: waiting for"
 _SPECTATOR_GAME_STARTED = "AI Puppeteer: all players joined"
 # Matches the spectator's table announcement, which carries the table uuid.
