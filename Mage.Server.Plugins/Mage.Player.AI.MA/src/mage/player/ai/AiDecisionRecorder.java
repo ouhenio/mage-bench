@@ -238,6 +238,23 @@ public final class AiDecisionRecorder {
                 sb.append('"').append(esc(pl.getName())).append("\":{")
                         .append("\"hand_size\":").append(pl.getHand().size())
                         .append(",\"library\":").append(pl.getLibrary().size())
+                        // HIDDEN ZONES, as order-sensitive hashes. The recorded state
+                        // carries the seat's own hand and the shared board, so two
+                        // replicates can look identical here while differing in library
+                        // ORDER or in the opponent's hand -- neither of which any field
+                        // has ever captured. Across three arms, 15/16/12 pairs diverged
+                        // in POSITION before any choice did, unchanged by the tie-break
+                        // fix and unexplained by the node budget, so the untouched
+                        // signal is upstream of the search entirely.
+                        //
+                        // A HASH, not the contents: the library is hidden information and
+                        // writing it out would leak the deck order into a training corpus
+                        // that a policy could otherwise never see. Equality is the only
+                        // question being asked of it, and a hash answers exactly that.
+                        // Order-sensitive on purpose -- a shuffle that permutes without
+                        // changing membership is precisely the divergence being hunted.
+                        .append(",\"lib_hash\":").append(zoneHash(namesInOrder(pl.getLibrary().getCards(game))))
+                        .append(",\"hand_hash\":").append(zoneHash(namesInOrder(pl.getHand().getCards(game))))
                         .append(",\"graveyard\":[");
                 boolean g1 = true;
                 for (Card c : pl.getGraveyard().getCards(game)) {
@@ -400,6 +417,14 @@ public final class AiDecisionRecorder {
             // inference about which JVM is running this code, so the record says so
             // itself instead.
             kv(sb, "jvm_cmd", String.valueOf(System.getProperty("sun.java.command"))).append(',');
+            // SEED ECHO FROM THE ENGINE, not from the runner's intent. game_meta.json
+            // records the seed that was ASKED for; this is the one the game object
+            // actually carries. The two being equal is an assumption that has already
+            // failed once tonight for a different property, where the runner's own
+            // header was the only evidence a flag had been applied and it had not been.
+            sb.append("\"game_seed\":").append(
+                    game.getOptions().gameSeed == null ? "null" : game.getOptions().gameSeed.toString()
+            ).append(',');
             if (nodesAtSearchStart != null) {
                 sb.append("\"nodes_at_search_start\":").append(nodesAtSearchStart).append(',');
             }
@@ -631,6 +656,30 @@ public final class AiDecisionRecorder {
             }
         }
         sb.append(']');
+    }
+
+    /** Card names in ZONE ORDER. Order is the whole point; a set would hide a shuffle. */
+    private static String namesInOrder(java.util.Collection<Card> cards) {
+        StringBuilder b = new StringBuilder();
+        for (Card c : cards) {
+            b.append(c.getName()).append('\u001f');
+        }
+        return b.toString();
+    }
+
+    /**
+     * FNV-1a over the zone string. Not String.hashCode(): that is a 32-bit value with
+     * poor avalanche on short similar strings, and every library here is a permutation
+     * of the same 60 names -- exactly the input class it collides on. A collision would
+     * read as "the libraries match", which is the answer this field exists to doubt.
+     */
+    private static String zoneHash(String zone) {
+        long h = 0xcbf29ce484222325L;
+        for (int i = 0; i < zone.length(); i++) {
+            h ^= zone.charAt(i);
+            h *= 0x100000001b3L;
+        }
+        return "\"" + Long.toHexString(h) + "\"";
     }
 
     private static String describe(Game game, Ability a) {
