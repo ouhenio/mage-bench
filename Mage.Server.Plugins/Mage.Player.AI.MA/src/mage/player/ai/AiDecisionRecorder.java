@@ -362,6 +362,12 @@ public final class AiDecisionRecorder {
             if (searchOutcome != null) {
                 kv(sb, "search", searchOutcome).append(',');
             }
+            // PROVENANCE ON EVERY RECORD: which tie-break coin produced this decision.
+            // The flag that selects it is read with Boolean.getBoolean in the server
+            // process and ignored in silence anywhere else, so a run cannot otherwise
+            // be told apart from one where the flag never arrived -- which is exactly
+            // what happened, and cost a 160-game A/B that could not be interpreted.
+            kv(sb, "tiebreak", ComputerPlayer6.tiebreakMode()).append(',');
             if (chosen == null && noActionReason != null) {
                 kv(sb, "no_action_reason", noActionReason).append(',');
             }

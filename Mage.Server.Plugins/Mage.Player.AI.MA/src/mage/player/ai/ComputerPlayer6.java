@@ -607,18 +607,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
         }
         UUID gameId = searchGame.getId();
         int ordinal = tiebreakOrdinal.merge(gameId, 1, Integer::sum) - 1;
-        if (ordinal == 0) {
-            // THE POSITIVE CONTROL FOR THE FLAG ITSELF, and it is not optional.
-            // xmage.ai.deterministicTiebreak is read by Boolean.getBoolean in THIS
-            // process; set on any other process it is ignored without erroring. The
-            // search budgets had exactly that defect and it went unnoticed across a
-            // 4,624-game corpus, because a knob that changes nothing looks identical
-            // to a knob that is working on a run whose result you cannot predict.
-            // With this line, one server log says which mode actually ran.
-            logger.info("AI tie-break: DETERMINISTIC, game " + gameId + " seed " + seed
-                    + " (xmage.ai.deterministicTiebreak=true)");
-        }
         tiebreakRandom = new Random(seed * 1_000_003L + ordinal);
+    }
+
+    /**
+     * Which coin the root tie-break is actually using, for the RECORD rather than a
+     * log. The first attempt at this control was a logger.info, and it reported
+     * nothing -- because INFO from this class reaches no sink the runner collects.
+     * "SELECTED ACTION", which fires on every single decision, is equally absent.
+     * So the log-based control could not return the healthy answer either, and its
+     * silence proved nothing about the flag. This goes in the decision record, which
+     * is the artifact the analysis actually reads.
+     */
+    public static String tiebreakMode() {
+        return DETERMINISTIC_TIEBREAK ? "deterministic" : "global";
     }
 
     private boolean tiebreakCoin() {
