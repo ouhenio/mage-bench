@@ -1580,28 +1580,6 @@ def main() -> int:
     logger.debug("[pilot] Project root: %s", project_root)
 
     system_prompt = args.system_prompt or _load_default_system_prompt()
-    # OWN-DECK CARD TEXT, assembled exactly as training assembles it.
-    #
-    # THE SEAT IS ALREADY RESOLVED BY THE LAUNCHER, and the comment that used to sit
-    # here said otherwise. It claimed the block could not be wired because every
-    # production invocation passes --config and none passes --deck. That conflated
-    # two layers: the shell and mtg_agent_loop pass --config to the ORCHESTRATOR,
-    # which reads the seat out of it and passes --deck <root>/<player.deck> to THIS
-    # process (game_processes.py:482). All 56 pilot seats in configs/ carry a deck,
-    # so --deck is what a pilot receives and it IS the seat's own deck.
-    if args.deck:
-        system_prompt = assemble_system_prompt(system_prompt, args.deck)
-    elif not args.no_deck_block:
-        # LOUD. A pilot without its deck block is served a strictly different prompt
-        # from the one training rendered -- the exact train/serve gap this closes --
-        # and it would run perfectly, just measuring something else. The opt-out
-        # exists for ad-hoc play and has to be typed on purpose.
-        logger.error(
-            "[pilot] no --deck, so no own-deck card text, but training always "
-            "renders it: the served prompt would differ from the trained one. "
-            "Pass --deck, or --no-deck-block to say you meant it."
-        )
-        return 2
     pilot_tools = set(args.tools.split(",")) if args.tools else None
     ignore_providers = args.ignore_providers.split(",") if args.ignore_providers else None
     provider_order = args.provider_order.split(",") if args.provider_order else None
@@ -1628,6 +1606,34 @@ def main() -> int:
         if provider_order:
             logger.error("[pilot] --provider-order requires --provider=%s", DEFAULT_LLM_PROVIDER)
             return 2
+
+    # OWN-DECK CARD TEXT, assembled exactly as training assembles it.
+    #
+    # LAST of the startup checks on purpose. Placed earlier it pre-empted the
+    # provider and decision-identity guards, so a run misconfigured in two ways
+    # reported the deck first and the operator fixed the wrong thing -- and a test
+    # asserting the decision-identity message got this one instead.
+    #
+    # THE SEAT IS ALREADY RESOLVED BY THE LAUNCHER, and the comment that used to sit
+    # here said otherwise. It claimed the block could not be wired because every
+    # production invocation passes --config and none passes --deck. That conflated
+    # two layers: the shell and mtg_agent_loop pass --config to the ORCHESTRATOR,
+    # which reads the seat out of it and passes --deck <root>/<player.deck> to THIS
+    # process (game_processes.py:482). All 56 pilot seats in configs/ carry a deck,
+    # so --deck is what a pilot receives and it IS the seat's own deck.
+    if args.deck:
+        system_prompt = assemble_system_prompt(system_prompt, args.deck)
+    elif not args.no_deck_block:
+        # LOUD. A pilot without its deck block is served a strictly different prompt
+        # from the one training rendered -- the exact train/serve gap this closes --
+        # and it would run perfectly, just measuring something else. The opt-out
+        # exists for ad-hoc play and has to be typed on purpose.
+        logger.error(
+            "[pilot] no --deck, so no own-deck card text, but training always "
+            "renders it: the served prompt would differ from the trained one. "
+            "Pass --deck, or --no-deck-block to say you meant it."
+        )
+        return 2
 
     try:
         asyncio.run(
