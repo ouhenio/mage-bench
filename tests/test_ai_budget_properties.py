@@ -106,3 +106,74 @@ class TestTheBudgetsReachTheServerProcess:
         )
 
         assert "-Dxmage.ai.nodes" not in captured["env"]["MAVEN_OPTS"]
+
+
+class TestPropertiesLandBeforeTheMainClass:
+    """A -D is only a -D before the main class. Membership is not enough.
+
+    The other tests here assert `"-Dxmage.ai.nodes.1=1000" in argv`, which passes
+    whether the flag is a JVM option or an argument to main(). It passed for weeks
+    while every sequential run used engine defaults, because cmd.extend() appended
+    the flags after the main class and java forwarded them to the program.
+    """
+
+    def test_ai_properties_precede_the_main_class_on_the_server(self, monkeypatch, tmp_path):
+        from magebench.orchestration import sequential_batch
+        from magebench.orchestration.config import Config
+
+        monkeypatch.setenv("MAGEBENCH_AI_NODES", "8:5000")
+        monkeypatch.setenv("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK", "true")
+        monkeypatch.setattr(
+            sequential_batch, "compute_module_classpath", lambda root, module: "/cp"
+        )
+        captured: dict = {}
+
+        class _Pm:
+            def start_jvm_process(self, **kwargs):
+                captured.update(kwargs)
+                return object()
+
+        sequential_batch._start_server(
+            _Pm(), tmp_path, Config(), tmp_path / "sc.xml", tmp_path / "s.log", 17171, None
+        )
+        argv = captured["args"]
+        main_class = sequential_batch.MAIN_CLASS_SERVER
+        assert main_class in argv, f"main class not in argv: {argv}"
+        main_at = argv.index(main_class)
+        for flag in ("-Dxmage.ai.nodes.8=5000", "-Dxmage.ai.deterministicTiebreak=true"):
+            positions = [i for i, a in enumerate(argv) if a == flag]
+            assert positions, f"{flag} missing from argv: {argv}"
+            # EVERY occurrence, not argv.index(). index() returns the first, so a
+            # duplicate appended after the main class is invisible to it -- checked
+            # by injecting the regression, which passed the index() version.
+            late = [i for i in positions if i > main_at]
+            assert not late, (
+                f"{flag} also appears at {late}, AFTER the main class at {main_at}. "
+                "java passes those to main() as arguments and nothing reads them."
+            )
+
+    def test_no_D_flag_follows_the_main_class(self, monkeypatch, tmp_path):
+        """The general form, so a future append of any property is caught too."""
+        from magebench.orchestration import sequential_batch
+        from magebench.orchestration.config import Config
+
+        monkeypatch.setenv("MAGEBENCH_AI_NODES", "1:1000,8:5000")
+        monkeypatch.setenv("MAGEBENCH_AI_TIME", "8:24")
+        monkeypatch.setenv("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK", "true")
+        monkeypatch.setattr(
+            sequential_batch, "compute_module_classpath", lambda root, module: "/cp"
+        )
+        captured: dict = {}
+
+        class _Pm:
+            def start_jvm_process(self, **kwargs):
+                captured.update(kwargs)
+                return object()
+
+        sequential_batch._start_server(
+            _Pm(), tmp_path, Config(), tmp_path / "sc.xml", tmp_path / "s.log", 17171, None
+        )
+        argv = captured["args"]
+        main_at = argv.index(sequential_batch.MAIN_CLASS_SERVER)
+        stragglers = [a for a in argv[main_at + 1:] if a.startswith("-D")]
+        assert not stragglers, f"-D flags after the main class are inert: {stragglers}"

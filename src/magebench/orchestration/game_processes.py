@@ -55,6 +55,21 @@ def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
     a 3.10s baseline -- a knob that changed nothing, which is the only symptom this
     has. Nothing errors when a property lands on the wrong process.
 
+    AND THEN IT HAPPENED AGAIN, BY POSITION RATHER THAN PROCESS. Moving these to the
+    server was necessary and not sufficient: sequential_batch appended them to an
+    ALREADY-BUILT java command with cmd.extend(), which puts them after the main
+    class, where java hands them to main() as arguments. Correct process, wrong
+    position, same silence. Caught 2026-08-28 only because a different property
+    (xmage.ai.deterministicTiebreak) had a recorded consequence to check, and the
+    engine reported it absent while /proc showed it on that pid's command line;
+    sun.java.command read "mage.server.Main -Dxmage.ai.nodes.8=5000".
+
+    So: these must be passed INTO build_java_cmd's system_props, never appended to
+    its output. The test below asserts POSITION, because the older test asserted
+    only membership ("-Dxmage.ai.nodes.1=1000" in argv) and passes either way --
+    which is exactly why this survived. Third inertness of the same knob, counting
+    the engine's own flat-5000 skill bug.
+
     Keyed by skill number rather than seat order, matching the engine.
     """
     props: list[str] = []
