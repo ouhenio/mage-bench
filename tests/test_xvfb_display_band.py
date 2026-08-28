@@ -116,3 +116,45 @@ def test_a_full_band_is_refused_rather_than_wrapping(monkeypatch):
     monkeypatch.setattr(conftest.Path, "exists", lambda self: True)
     with pytest.raises(AssertionError, match="no free display"):
         conftest._golden_display()
+
+
+# ------------------------------------------------- the generation reservation
+
+
+def test_a_reserved_display_is_not_handed_out_twice(tmp_path, monkeypatch):
+    """The property generation lacked: the display is RESERVED, not just derived.
+
+    Deriving it gave two sessions different numbers, which is what it was for,
+    but the number was used unchecked -- so one orphaned Xvfb failed every later
+    worker that drew the same port. Block 2: port 17206 -> display 235, eight
+    workers, eight failures, sibling ports all fine.
+    """
+    from magebench.common import port as port_mod
+
+    monkeypatch.setattr(port_mod.tempfile, "gettempdir", lambda: str(tmp_path))
+    # No real X servers in the way for this assertion.
+    monkeypatch.setattr(port_mod.os.path, "exists", lambda p: False)
+
+    first = port_mod.reserve_display(900)
+    second = port_mod.reserve_display(900)
+    try:
+        assert first.port == 900
+        assert second.port == 901, "a held display must be stepped past, not reused"
+    finally:
+        first.release()
+        second.release()
+
+
+def test_a_live_x_server_counts_as_taken_even_unreserved(tmp_path, monkeypatch):
+    """The flock is ours; /tmp/.X<n>-lock is X's. Only checking both covers an
+    Xvfb started outside this mechanism -- which, until now, was all of them."""
+    from magebench.common import port as port_mod
+
+    monkeypatch.setattr(port_mod.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(port_mod.os.path, "exists", lambda p: p == "/tmp/.X900-lock")
+
+    got = port_mod.reserve_display(900)
+    try:
+        assert got.port == 901
+    finally:
+        got.release()

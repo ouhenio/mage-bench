@@ -64,6 +64,7 @@ from magebench.orchestration.batch_coordination import (
     claim_session_dir,
 )
 from magebench.common.env import env_or_none
+from magebench.common.port import reserve_display
 from magebench.orchestration.config import Config
 from magebench.orchestration.game_processes import ai_budget_props
 from magebench.orchestration.game_finalization import write_game_meta
@@ -201,13 +202,26 @@ def _start_observer(
         props["xmage.ai.skills"] = ai_skills
     (observer_log.parent / "prefs").mkdir(parents=True, exist_ok=True)
 
-    # Display derived from the port, because the port came from a flock-held
-    # reservation and the display allocator has no reservation of its own.
-    # Without this, eight sessions starting together race for one server number
-    # and most of them die before they draw anything.
-    display = _DISPLAY_BASE + (port - _PORT_BASE)
+    # Display derived from the port AND THEN RESERVED. The derivation alone was
+    # the bug: it gave two sessions different numbers, which is what it was for,
+    # but it used the number unchecked. A single orphaned Xvfb on that display
+    # then failed every later worker that drew the same port -- measured on block
+    # 2, port 17206 maps to display 235, and eight workers between 08:28 and 09:02
+    # all died in read_health_port_file while every sibling port in the same
+    # window finished 5/5. The server bound its port fine; the port was free; the
+    # display was not, and nothing checked.
+    #
+    # reserve_display holds the SAME flock the port already uses, steps past a
+    # held display, and logs the skip. The step is what makes an orphan cost one
+    # log line instead of a run; the log is what makes the orphan findable.
+    # HELD FOR THE PROCESS LIFETIME, not released like the port. A port is handed
+    # off once the server binds it; an Xvfb runs for the whole session, so the
+    # reservation must outlive this function. One observer per session means one
+    # fd, and it goes when the worker exits.
+    display_reservation = reserve_display(_DISPLAY_BASE + (port - _PORT_BASE))
     cmd = wrap_with_xvfb(
-        build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"), display
+        build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"),
+        display_reservation.port,
     )
     env = os.environ.copy()
     env.update(
