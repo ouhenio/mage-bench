@@ -284,10 +284,21 @@ def dirs_holding_more_than_one_game(game_dirs: list[Path]) -> list[Path]:
     the same match into the same gameLogDir. Measured on the step-1 corpus at 10 of
     3,907 directories, nine of which ended with no player at or below 0 life.
 
-    The observer now quits the previous match before creating the next table, which
-    should make this list empty. It is checked rather than assumed, at the end of
-    the session where the second game has had time to appear -- checking right after
-    game_end would pass, because the second game starts about 1.1 s later.
+    The observer quits the previous match before creating the next table. I wrote
+    here that this "should make this list empty". IT DOES NOT, and the claim is
+    withdrawn: block 2 ran with the fix and still doubled, 3 of 1,680 directories
+    against 10 of 3,964 without it, Fisher one-sided p = 0.428. Rates up to 0.46%
+    remain consistent with 3/1,680, so there is no evidence the fix changed
+    anything -- unproven, not partial. It is right in kind and about 109 ms late:
+    the quit fires when the next keepAlive command arrives, and the server starts
+    the next game of an unfinished match the instant the previous one ends
+    (measured: game 2 initialised at 09:05:31.700, the quit landed 09:05:31.809).
+
+    So this detector is not a formality that should return empty. It is the only
+    thing standing between a doubled directory and a corpus row whose provenance
+    fields are right for one of the two games it describes. Checked at the END of
+    the session, where the second game has had time to appear -- right after
+    game_end it would pass, because the second game starts about 1.1 s later.
     """
     doubled = []
     for game_dir in game_dirs:
