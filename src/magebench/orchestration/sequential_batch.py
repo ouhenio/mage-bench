@@ -209,9 +209,16 @@ def _start_observer(
     # Without this, eight sessions starting together race for one server number
     # and most of them die before they draw anything.
     display = _DISPLAY_BASE + (port - _PORT_BASE)
-    cmd = wrap_with_xvfb(
-        build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m"), display
-    )
+    observer_cmd = build_java_cmd(classpath, MAIN_CLASS_OBSERVER, props, max_heap="1536m")
+    # ALSO on the observer, until it is established which JVM instantiates the AI.
+    # The property was verified present on mage.server.Main (-D on the command line,
+    # read from /proc) while the engine still recorded tiebreak="global", so the
+    # class reading it with Boolean.getBoolean is NOT in the server process -- or not
+    # only there. This observer is the AI puppeteer, which makes it the candidate.
+    # Setting it on both is diagnostic, not a fix: whichever JVM is right, the other
+    # ignores it silently, and that silence is what made this expensive to find.
+    observer_cmd.extend(ai_tiebreak_props(env_or_none("MAGEBENCH_AI_DETERMINISTIC_TIEBREAK")))
+    cmd = wrap_with_xvfb(observer_cmd, display)
     env = os.environ.copy()
     env.update(
         {
