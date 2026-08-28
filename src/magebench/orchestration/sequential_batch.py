@@ -57,6 +57,7 @@ from pathlib import Path
 
 from magebench.common.log import get_logger
 from magebench.common.port import find_available_port, wait_for_port
+from magebench.orchestration.batch_coordination import start_policy_clients
 from magebench.common.process_manager import ProcessManager, jvm_oom_preexec_fn, kill_tree
 from magebench.orchestration.batch_coordination import (
     claim_game_dir,
@@ -442,9 +443,40 @@ def run_sequential_batch(
                     game_seed=seed,
                     skip_init_shuffling=game_config.skip_init_shuffling,
                 )
-                observer.wait_for_ready(game_dir)
-                observer.wait_for_watching(game_dir)
-                observer.wait_for_game_end(game_dir, timeout=game_timeout)
+                # THE TABLE ID WAS ALREADY HERE AND WAS BEING THROWN AWAY.
+                # wait_for_ready returns it from the observer's own health endpoint,
+                # so pinning on this path needs no log scraping -- which matters,
+                # because one observer serves every game in the session and its log
+                # accumulates every table it has ever created. A log-based lookup
+                # would hand game 2 the id of game 1.
+                table_id = observer.wait_for_ready(game_dir)
+                # POLICY SEATS. This path never started bridge clients, so a pilot
+                # or sleepwalker seat was never filled: nothing joined, the server
+                # closed the connection, and the run died with "Remote end closed
+                # connection" -- which reads as a flaky network, not a missing
+                # feature. Corpus games are two cpu seats, so nothing noticed until
+                # an eval arm needed a policy.
+                #
+                # Started AFTER the table exists and BEFORE wait_for_watching,
+                # because the game only starts once every seat is filled: start them
+                # later and the wait below times out waiting for a game that is
+                # waiting for them.
+                policy_procs = start_policy_clients(
+                    pm, project_root, game_config, game_dir, table_id,
+                    f"Game {index + 1}/{len(seeds)}: ",
+                )
+                try:
+                    observer.wait_for_watching(game_dir)
+                    observer.wait_for_game_end(game_dir, timeout=game_timeout)
+                finally:
+                    # PER GAME, unlike the batch path. The next game reuses this
+                    # server and observer, so a bridge left running would still be
+                    # holding a seat -- and would join the next table as a second
+                    # copy of a player that is already seated.
+                    for name, proc in policy_procs:
+                        if proc.poll() is None:
+                            kill_tree(proc.pid)
+                            logger.debug("Game %d: stopped bridge client %s", index + 1, name)
             except (RuntimeError, OSError) as exc:
                 # One bad game must not cost the session. The server and the
                 # observer are both still up, and the card load they represent

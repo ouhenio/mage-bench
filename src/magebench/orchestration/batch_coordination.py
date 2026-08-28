@@ -239,6 +239,69 @@ def _terminate_session(session: GameSession) -> None:
             kill_tree(proc.pid)
 
 
+def start_policy_clients(
+    pm: ProcessManager,
+    project_root: Path,
+    game_config: Config,
+    game_dir: Path,
+    table_id: str | None,
+    game_label: str = "",
+) -> list[tuple[str, subprocess.Popen]]:
+    """Start every bridge client for one game, pinned to its table.
+
+    Factored out of attach_game so the SEQUENTIAL path can start policy seats too.
+    That path never called attach_game, so a pilot or sleepwalker seat was simply
+    never filled: nothing joined the table, the server closed the connection, and
+    the run died with "Remote end closed connection" -- a failure that reads like a
+    flaky network rather than an unimplemented feature. Every corpus game has two
+    cpu seats, so the gap went unnoticed until an eval arm needed a policy.
+
+    Returns the handles rather than storing them, because the two callers own their
+    processes differently: a batch keeps them for the session's lifetime, and the
+    sequential path must tear them down after each game since the next game reuses
+    the same server and observer.
+    """
+    procs: list[tuple[str, subprocess.Popen]] = []
+    for sleepwalker_player in game_config.sleepwalker_players:
+        log_path = game_dir / f"{sleepwalker_player.name}_mcp.log"
+        logger.info("%sSleepwalker (%s) log: %s", game_label, sleepwalker_player.name, log_path)
+        procs.append((
+            sleepwalker_player.name,
+            start_sleepwalker_client(
+                pm,
+                project_root,
+                game_config,
+                sleepwalker_player.name,
+                sleepwalker_player.deck,
+                log_path,
+                table_id=table_id,
+            ),
+        ))
+
+    for pilot_player in game_config.pilot_players:
+        log_path = game_dir / f"{pilot_player.name}_pilot.log"
+        logger.info("%sPilot (%s) log: %s", game_label, pilot_player.name, log_path)
+        procs.append((
+            pilot_player.name,
+            start_pilot_client(
+                pm, project_root, game_config, pilot_player, log_path,
+                game_dir=game_dir, table_id=table_id,
+            ),
+        ))
+
+    for replay_player in game_config.replay_players:
+        log_path = game_dir / f"{replay_player.name}_replay.log"
+        logger.info("%sReplay (%s) log: %s", game_label, replay_player.name, log_path)
+        procs.append((
+            replay_player.name,
+            start_replay_client(
+                pm, project_root, game_config, replay_player.name, replay_player.deck,
+                replay_player.script, log_path, game_dir=game_dir, table_id=table_id,
+            ),
+        ))
+    return procs
+
+
 def attach_game(
     session: GameSession,
     num_games: int,
@@ -281,60 +344,11 @@ def attach_game(
             "batch setup requires a pinned table id; an unpinned bridge cross-wires games"
         )
 
-        for sleepwalker_player in game_config.sleepwalker_players:
-            log_path = game_dir / f"{sleepwalker_player.name}_mcp.log"
-            logger.info(
-                "%sSleepwalker (%s) log: %s",
-                game_label,
-                sleepwalker_player.name,
-                log_path,
+        session.pilot_procs.extend(
+            start_policy_clients(
+                pm, project_root, game_config, game_dir, table_id, game_label
             )
-            # Record the handle. It used to be discarded, which left the sleepwalker bridge
-            # invisible to _terminate_session and to wait_for_all_games -- a game that failed
-            # setup leaked its bridge JVM. Harmless while one game ran at a time; not once a
-            # batch has several in flight.
-            session.pilot_procs.append((
-                sleepwalker_player.name,
-                start_sleepwalker_client(
-                    pm,
-                    project_root,
-                    game_config,
-                    sleepwalker_player.name,
-                    sleepwalker_player.deck,
-                    log_path,
-                    table_id=table_id,
-                ),
-            ))
-
-        for pilot_player in game_config.pilot_players:
-            log_path = game_dir / f"{pilot_player.name}_pilot.log"
-            logger.info("%sPilot (%s) log: %s", game_label, pilot_player.name, log_path)
-            proc = start_pilot_client(
-                pm,
-                project_root,
-                game_config,
-                pilot_player,
-                log_path,
-                game_dir=game_dir,
-                table_id=table_id,
-            )
-            session.pilot_procs.append((pilot_player.name, proc))
-
-        for replay_player in game_config.replay_players:
-            log_path = game_dir / f"{replay_player.name}_replay.log"
-            logger.info("%sReplay (%s) log: %s", game_label, replay_player.name, log_path)
-            proc = start_replay_client(
-                pm,
-                project_root,
-                game_config,
-                replay_player.name,
-                replay_player.deck,
-                replay_player.script,
-                log_path,
-                game_dir=game_dir,
-                table_id=table_id,
-            )
-            session.pilot_procs.append((replay_player.name, proc))
+        )
     except (TimeoutError, RuntimeError):
         _terminate_session(session)
         raise
