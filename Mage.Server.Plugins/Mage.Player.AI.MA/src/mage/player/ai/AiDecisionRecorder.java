@@ -376,6 +376,13 @@ public final class AiDecisionRecorder {
             // not in this JVM and the -D is landing on a different process. One field
             // cannot tell those apart; two can.
             kv(sb, "tb_prop", String.valueOf(System.getProperty("xmage.ai.deterministicTiebreak"))).append(',');
+            // WHICH PROCESS WROTE THIS. Both mage.server.Main and
+            // mage.client.observer.ObserverMain were verified to carry the -D (read
+            // from /proc across a whole run), and the record still reported the
+            // property absent. At that point every remaining explanation is an
+            // inference about which JVM is running this code, so the record says so
+            // itself instead.
+            kv(sb, "jvm_cmd", String.valueOf(System.getProperty("sun.java.command"))).append(',');
             if (chosen == null && noActionReason != null) {
                 kv(sb, "no_action_reason", noActionReason).append(',');
             }
