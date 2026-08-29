@@ -532,6 +532,17 @@
       "_notes": "Locally served via vLLM on this host. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes."
     },
     {
+      "id": "Qwen/Qwen3.5-35B-A3B",
+      "name": "Qwen3.5 35B-A3B",
+      "name_part": "Q3535B",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 143,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "Locally served via vLLM on ranokau (TP2), seated at a 143360-token window. Free. Same family as Qwen3.5-4B, so the same qwen3_xml tool-call parser applies. Stock multimodal Instruct chosen for reproducible-by-name; the vision tower rides along UNUSED and contributes nothing to play. name_part is 6 chars, which with the longest personality name_part (7) makes exactly the 14-char username limit -- no headroom, unlike the 4B's 5-char Q354B."
+    },
+    {
       "id": "Qwen/Qwen3-4B",
       "name": "Qwen3 4B",
       "name_part": "Q34B",
