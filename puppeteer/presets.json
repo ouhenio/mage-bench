@@ -308,6 +308,12 @@
       "system_prompt": "notalk-strategy",
       "toolset": "notalk"
     },
+    "q35-35b-a3b-local-strategy": {
+      "model": "Qwen/Qwen3.5-35B-A3B",
+      "status": "inactive",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
+    },
     "q3-4b-local-strategy": {
       "model": "Qwen/Qwen3-4B",
       "status": "active",
