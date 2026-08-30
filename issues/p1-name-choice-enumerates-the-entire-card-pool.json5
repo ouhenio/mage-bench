@@ -1,0 +1,49 @@
+{
+  "title": "A 'choose a card name' effect enumerates the whole card pool: 31,505 options, 1.5 MB in one tool result",
+  "description": "A card whose text asks the player to name a card -- Pithing Needle, \
+Runed Halo, Meddling Mage and 50 others in the training oracle -- produces a \
+GAME_CHOOSE_CHOICE whose option list is the ENTIRE card pool. Measured on one real game: \
+31,505 options, each with an index and a description, in a SINGLE tool result of 1,562,166 \
+characters. That is roughly 500,000 tokens for one decision, about five times the whole \
+316,539-character segment budget and 3.5x the 143,360-token serving window. \
+\
+FOUND: step-2 corpus generation, game seed 950018, both decks Mystic-Forge-Combo.dck \
+containing '1 [2X2:312] Pithing Needle'. The game ran 528 calls with segment cuts firing \
+normally, then aborted: 'append-only prompt ~193220 tokens exceeds 142336'. \
+\
+NO CONTEXT MECHANISM CAN FIX THIS, and the harness's own code says so. \
+should_close_segment refuses to close an empty segment specifically because 'a single \
+decision larger than the whole budget would cut forever and make no progress'. This is \
+exactly that case: cutting leaves the 500k-token decision alone in a fresh segment where it \
+still does not fit. The abort was CORRECT behaviour by the guard, not a failure of it. \
+Widening the serving window is also wrong: it would produce a training row the 4B student \
+cannot fit at max_seq 131,072, which is the train/serve divergence the segment design \
+exists to prevent. \
+\
+SCOPE: 53 cards in the training oracle ask for a card name; they appear in 64 of 952 \
+decks, putting 133 of 1000 corpus games at risk. Whether an at-risk game actually aborts \
+depends on the card being drawn and cast, so the realized rate is lower and is being \
+measured. \
+\
+THE FIX DIRECTION, and the response format already supports it: respond_with for this \
+decision reads 'choice=0, choice=1, etc. or text=Name (not yes/no)'. The free-text path \
+exists. So the option list can be bounded to something a player could plausibly name -- \
+cards already seen this game, the opponent's graveyard and battlefield, cards revealed \
+from hand -- or dropped entirely in favour of the text= form, with the enumeration \
+reserved for cases where the legal set is genuinely small. Enumerating every printed card \
+is not a usable prompt for any model at any context size, so this is not a tuning question. \
+\
+COST WHEN IT FIRES: the whole game is lost after arbitrarily much work -- 528 calls in the \
+observed case, roughly 171 seconds of GPU each at generation width 2.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "pilot",
+    "context",
+    "unbounded-options",
+    "game-loss",
+  ],
+  "created_at": "2026-08-29T23:40:00.000-04:00",
+  "updated_at": "2026-08-29T23:40:00.000-04:00",
+}
