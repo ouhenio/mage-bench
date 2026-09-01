@@ -91,29 +91,55 @@ def _has_action(choices: list, action: str) -> bool:
     return False
 
 
-def select_section(action_type: str | None, choices: list, phase: str | None) -> str | None:
+def select_section(
+    action_type: str | None, choices: list, phase: str | None, message: str | None
+) -> str | None:
     """Which section this decision triggers, or None.
 
-    The map is the one registered in harness/prompts/meta-strategy-v1.md before any
-    data. Kept as a function of (kind, choices, phase) only -- everything it reads is
-    already on the decision being rendered, so the trigger cannot depend on history
-    and cannot drift between two games that reach the same decision.
+    THE FIRST VERSION OF THIS MAP COULD NEVER FIRE, and it is worth saying why in
+    the code rather than only in a ledger. I keyed it on `select_attackers`,
+    `declare_blockers`, `priority_action` -- the vocabulary of the ENGINE-side
+    recorder (`kind` in ai_decisions.jsonl), which is the artifact I had been
+    reading all week. But this function is handed a PILOT-side Decision, whose
+    `action_type` comes straight off the bridge blob and uses the client callback
+    vocabulary: GAME_SELECT, GAME_TARGET, GAME_PLAY_MANA, and so on
+    (ClientCallbackMethod.java:47-66). Two vocabularies for one concept, and I wrote
+    triggers in the one my code does not see. karn-ranokau-stable caught it by
+    rendering 400 real corpus decisions and finding zero injections.
+
+    ATTACKERS AND BLOCKERS ARE BOTH GAME_SELECT and `message` is what separates
+    them, from HumanPlayer.java where the events are fired:
+        :1889  fireSelectEvent(playerId, "Select attackers", options)
+        :2162  fireSelectEvent(playerId, "Select blockers", options)
+    So the role/race split is a message test, not an action_type test. Checked in
+    the Java rather than inferred from a sample, because a sample that happens to
+    contain no blocker decisions would agree with any guess.
     """
-    if action_type in ("select_attackers", "declare_attackers"):
-        return "role"
-    if action_type in ("declare_blockers", "select_blockers"):
-        return "race"
-    if action_type is None or action_type == "priority_action":
-        # priority in a main phase is the sequencing class; priority elsewhere is not
-        # claimed by any section, and an unclaimed decision gets nothing rather than
-        # a nearest match.
-        if phase in _MAIN_PHASES and _has_action(choices, "cast"):
-            return "sequencing"
+    msg = message or ""
+    if action_type == "GAME_SELECT":
+        # Prefix match, not equality: the engine appends context to some select
+        # messages, and an equality test would silently stop firing the first time
+        # it did -- the same failure as the map this replaces.
+        if msg.startswith("Select attackers"):
+            return "role"
+        if msg.startswith("Select blockers"):
+            return "race"
         return None
+    if action_type in ("GAME_PLAY_MANA", "GAME_PLAY_XMANA"):
+        # The harness section's registered class: payment collisions.
+        return "harness"
+    if phase in _MAIN_PHASES and _has_action(choices, "cast"):
+        # Sequencing: a sorcery-speed decision with something castable on the table.
+        # Deliberately NOT gated on action_type -- the previous gate was the bug, and
+        # this predicate is the one that survived because it reads the choices the
+        # decision actually offers.
+        return "sequencing"
     return None
 
 
-def inject_near_decision(action_type: str | None, choices: list, phase: str | None) -> list[str]:
+def inject_near_decision(
+    action_type: str | None, choices: list, phase: str | None, message: str | None = None
+) -> list[str]:
     """Zero or one section, as rendered lines. EMPTY when unconfigured.
 
     Returning [] rather than None so the caller's `lines.extend(...)` is a no-op on
@@ -124,7 +150,7 @@ def inject_near_decision(action_type: str | None, choices: list, phase: str | No
     path = content_path()
     if path is None:
         return INERT
-    name = select_section(action_type, choices, phase)
+    name = select_section(action_type, choices, phase, message)
     if name is None:
         return INERT
     section = parse_sections(path.read_text(encoding="utf-8")).get(name)

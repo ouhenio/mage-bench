@@ -240,7 +240,11 @@ def render_for_pilot(
     # document, so on the control build this extend adds nothing and the rendered
     # decision is byte-identical to the build without the seam -- which is the
     # registered condition that lets arm C be reused rather than re-run.
-    lines.extend(inject_near_decision(decision.action_type, decision.choices, decision.phase))
+    lines.extend(
+        inject_near_decision(
+            decision.action_type, decision.choices, decision.phase, decision.message
+        )
+    )
 
     mana_pool = data.get("mana_pool")
     if mana_pool and any(v > 0 for v in mana_pool.values()):

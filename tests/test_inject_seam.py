@@ -29,14 +29,14 @@ class _Choice:
 class TestInertWhenUnconfigured:
     def test_returns_the_inert_singleton_by_identity(self, monkeypatch):
         monkeypatch.delenv("MAGEBENCH_INJECT_CONTENT", raising=False)
-        for at, choices, phase in [
-            ("select_attackers", [], "Declare Attackers"),
-            ("declare_blockers", [], "Declare Blockers"),
-            ("priority_action", [_Choice("cast")], "Precombat Main"),
-            (None, [_Choice("land")], "Precombat Main"),
-            ("mulligan", [], None),
+        for at, choices, phase, msg in [
+            ("GAME_SELECT", [], "COMBAT", "Select attackers"),
+            ("GAME_SELECT", [], "COMBAT", "Select blockers"),
+            ("GAME_PLAY_MANA", [], "PRECOMBAT_MAIN", "Pay"),
+            ("GAME_TARGET", [_Choice("cast")], "PRECOMBAT_MAIN", "x"),
+            ("GAME_ASK", [], "UPKEEP", "Use it?"),
         ]:
-            got = inject_near_decision(at, choices, phase)
+            got = inject_near_decision(at, choices, phase, msg)
             # IDENTITY, not equality: a different empty list would compare equal and
             # would not prove the unconfigured path never built anything.
             assert got is INERT, f"{at} returned a non-singleton empty result"
@@ -45,7 +45,7 @@ class TestInertWhenUnconfigured:
         monkeypatch.delenv("MAGEBENCH_INJECT_CONTENT", raising=False)
         lines = ["a", "b"]
         before = list(lines)
-        lines.extend(inject_near_decision("select_attackers", [], "Declare Attackers"))
+        lines.extend(inject_near_decision("GAME_SELECT", [], "COMBAT", "Select attackers"))
         assert lines == before
 
     def test_empty_string_is_treated_as_unconfigured(self, monkeypatch):
@@ -66,38 +66,66 @@ class TestConfiguredButWrong:
         """
         monkeypatch.setenv("MAGEBENCH_INJECT_CONTENT", "/nonexistent/content.md")
         with pytest.raises(FileNotFoundError):
-            inject_near_decision("select_attackers", [], "Declare Attackers")
+            inject_near_decision("GAME_SELECT", [], "COMBAT", "Select attackers")
 
     def test_a_trigger_naming_an_absent_section_raises(self, monkeypatch, tmp_path):
         doc = tmp_path / "c.md"
         doc.write_text("## race — only this one\nbody\n")
         monkeypatch.setenv("MAGEBENCH_INJECT_CONTENT", str(doc))
         with pytest.raises(KeyError):
-            inject_near_decision("select_attackers", [], "Declare Attackers")   # wants 'role'
+            inject_near_decision("GAME_SELECT", [], "COMBAT", "Select attackers")   # wants 'role'
 
 
 class TestTriggerMap:
-    """The map registered in meta-strategy-v1.md before any data."""
+    """The registered map, keyed on the vocabulary the PILOT decision actually uses.
+
+    The first version keyed on the ENGINE recorder's `kind` (select_attackers,
+    declare_blockers, priority_action) and could never fire: this code is handed a
+    pilot-side Decision whose action_type is the client-callback vocabulary
+    (GAME_SELECT, GAME_PLAY_MANA, ...). Two vocabularies for one concept. Caught by
+    rendering 400 real corpus decisions and getting zero injections.
+    """
 
     def test_attackers_trigger_role(self):
-        assert select_section("select_attackers", [], "Declare Attackers") == "role"
+        assert select_section("GAME_SELECT", [], "COMBAT", "Select attackers") == "role"
 
     def test_blockers_trigger_race(self):
-        assert select_section("declare_blockers", [], "Declare Blockers") == "race"
+        assert select_section("GAME_SELECT", [], "COMBAT", "Select blockers") == "race"
 
-    def test_priority_in_a_main_phase_with_a_cast_triggers_sequencing(self):
-        assert select_section("priority_action", [_Choice("cast")], "Precombat Main") == "sequencing"
+    def test_role_and_race_are_separated_by_message_not_action_type(self):
+        """Both arrive as GAME_SELECT; only the message distinguishes them.
 
-    def test_priority_outside_a_main_phase_triggers_nothing(self):
-        """An unclaimed decision gets NOTHING, never a nearest match.
-
-        The specificity control asks which section moved which class; a fallback
-        would make that unanswerable.
+        HumanPlayer.java:1889 fires "Select attackers", :2162 "Select blockers".
+        If this ever collapses, one of the two registered classes silently stops
+        being treated while the other doubles -- and the specificity control would
+        read that as a section moving a class it does not own.
         """
-        assert select_section("priority_action", [_Choice("cast")], "Upkeep") is None
+        a = select_section("GAME_SELECT", [], "COMBAT", "Select attackers")
+        b = select_section("GAME_SELECT", [], "COMBAT", "Select blockers")
+        assert a != b and a and b
 
-    def test_mulligan_triggers_nothing(self):
-        assert select_section("mulligan", [], None) is None
+    def test_mana_payment_triggers_harness(self):
+        assert select_section("GAME_PLAY_MANA", [], "PRECOMBAT_MAIN", "Pay") == "harness"
+        assert select_section("GAME_PLAY_XMANA", [], "PRECOMBAT_MAIN", "Pay") == "harness"
+
+    def test_main_phase_with_a_cast_triggers_sequencing(self):
+        assert select_section("GAME_TARGET", [_Choice("cast")], "PRECOMBAT_MAIN", "x") == "sequencing"
+
+    def test_an_unnamed_select_triggers_nothing(self):
+        """A GAME_SELECT that is neither attackers nor blockers gets NOTHING.
+
+        Never a nearest match: the specificity control asks which section moved
+        which class, and a fallback makes that unanswerable.
+        """
+        assert select_section("GAME_SELECT", [], "COMBAT", "Select a card") is None
+
+    def test_a_decision_outside_every_class_triggers_nothing(self):
+        assert select_section("GAME_ASK", [], "UPKEEP", "Use it?") is None
+
+    def test_the_old_engine_vocabulary_no_longer_appears(self):
+        """The exact strings that could never fire. A regression here is silent."""
+        for dead in ("select_attackers", "declare_blockers", "priority_action"):
+            assert select_section(dead, [_Choice("cast")], "COMBAT", "") is None
 
 
 @pytest.mark.skipif(not CONTENT.exists(), reason="content document not present")
@@ -116,7 +144,7 @@ class TestAgainstTheRealDocument:
 
     def test_one_section_at_most(self, monkeypatch):
         monkeypatch.setenv("MAGEBENCH_INJECT_CONTENT", str(CONTENT))
-        lines = inject_near_decision("select_attackers", [], "Declare Attackers")
+        lines = inject_near_decision("GAME_SELECT", [], "COMBAT", "Select attackers")
         assert lines, "expected the role section"
         headings = [l for l in lines if l.startswith("## ")]
         assert len(headings) == 1, f"expected exactly one section, got {headings}"
