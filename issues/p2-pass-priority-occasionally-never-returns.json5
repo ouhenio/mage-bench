@@ -1,0 +1,45 @@
+{
+  "title": "pass_priority occasionally never returns, hanging the game until a timeout",
+  "description": "About one game in a hundred, a `pass_priority` call is issued by the pilot \
+and the engine never answers. The pilot logs the call and then nothing: no error, no \
+exception, no traceback. The only evidence is a trace file whose mtime stops advancing. \
+Without a watchdog the launch sits until run_suite's 3600s timeout kills it, costing a full \
+worker-hour for a game that died in the first minutes of its silence. \
+\
+EVIDENCE, from the 1,006-game step-2 corpus generation (~13 occurrences, 8 audited): \
+  g162 seed 950180  pass_priority({\"board_cursor\":168})  146 records then silence \
+  g344 seed 950364  pass_priority({\"board_cursor\":317})  661 records then silence \
+  g387 seed 950407  pass_priority({\"board_cursor\":131}) \
+  g113 seed 950496  pass_priority({\"board_cursor\":47}) \
+In every audited case the last line is the pass_priority call and no result ever arrives. \
+\
+IT IS NOT A PARTICULAR BOARD STATE. Board cursors span 47 to 317, across different decks, \
+different turn counts, and different phases -- one hung right after declaring blockers, \
+another passing priority to let a Saga trigger resolve. The hypothesis that a specific engine \
+state hangs is refuted by that spread. \
+\
+WHAT IT LOOKS LIKE INSTEAD: pass_priority is the most-called path in the harness, issued \
+thousands of times per game, and it fails to return roughly 1 game in 100. That is the \
+signature of a race in the blocking request/response wait rather than a reproducible state -- \
+races live where the traffic is. A reproduction attempt on the two named seeds is the obvious \
+next step and is cheap (~3 minutes each); if neither reproduces, that is itself evidence for \
+the race reading and the issue should say so. \
+\
+MITIGATION SHIPPED ON THE MTG SIDE, not in the harness: pipelines/eval/stall_watchdog.py \
+kills a launch whose LLM trace has not been written for N minutes (10 in the corpus run), \
+turning a lost worker-hour into a lost 10 minutes. It identifies processes by reading \
+MAGEBENCH_LOG_DIR from /proc/<pid>/environ rather than by matching command-line text, so it \
+cannot match itself or an observer. It fired 6+ times during generation and every kill was \
+audited as a genuine hang. That is a mitigation, not a fix: the game is still lost.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "bridge",
+    "hang",
+    "race",
+    "silent-failure",
+  ],
+  "created_at": "2026-09-01T02:00:00.000-04:00",
+  "updated_at": "2026-09-01T02:00:00.000-04:00",
+}

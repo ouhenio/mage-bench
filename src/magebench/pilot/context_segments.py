@@ -163,6 +163,27 @@ def segment_budget_chars(max_tokens: int | None = None) -> float:
     is applied to training renders, where 0.931 governs and the constant is
     conservative by ~24%.
 
+    A THIRD POPULATION, measured 2026-08-30 on the step-2 corpus, that neither of
+    the two above covers: a 35B pilot playing with a DECK BLOCK in the system
+    prompt.
+
+        step-2 corpus (35B + deck block)  n=1,199   min 0.752   p50 0.984
+        ladder        (35B, no block)     n=1,015   min 0.633   p50 0.978
+
+    Both minima are BELOW the 0.805 constant and both medians are ABOVE the two
+    documented populations -- so this content is not uniformly denser or sparser,
+    it is WIDER IN VARIANCE than either sample the constant was drawn from. The
+    warning above still stands and is if anything stronger: do not "correct" the
+    constant toward any measured median, because the constant is a floor for the
+    serving side and a third population widening the spread is a reason to keep it
+    conservative, not to move it.
+
+    Recorded because a calibration constant carries an invisible scope condition --
+    the population it was measured on. This one is not "the worst chars-per-token
+    ratio"; it is "the worst observed over 4B inference prompts". Change the model,
+    add a deck block, or let the model narrate, and the population changed without
+    anything in the code saying so.
+
     So the constant is safe in both directions but for different reasons, and
     the cost on the training side is rows rather than correctness -- segments
     close earlier than the token cap requires. DO NOT 'CORRECT' IT TOWARD EITHER

@@ -1,0 +1,50 @@
+{
+  "title": "A hallucinated tool NAME kills the game; a hallucinated ARGUMENT is recoverable",
+  "description": "When the model calls a tool that does not exist, the pilot raises \
+\"Fatal tool error: MCP tool <name> failed: Unknown tool: <name>\", prints a traceback and \
+exits. The game is lost on the FIRST occurrence, with no rejection the model could read and \
+no chance to correct. \
+\
+OCCURRENCES in the 1,006-game step-2 corpus, all the same invented name `choose` in place of \
+`choose_action`: \
+  g82   seed 950465  died after 204 tool calls \
+  g335  seed 950719  died after 32 \
+  g337  seed 950721  died after 80 \
+A structural search over the field the log actually uses established that `choose` is the ONLY \
+invalid tool name anywhere in the corpus across 136,919 calls, so this is rare and specific. \
+\
+>>> THE ARGUMENT IS THE ASYMMETRY, NOT THE 0.3% RATE. <<< \
+The same model, in the same corpus, RECOVERS from wrong arguments whenever the harness lets \
+it: \
+  - g160 sent {\"choice\": \"amounts=[0,2,0,0,0]\"} -- the right numbers in the wrong field. \
+    The engine rejected it with a message. The model then called get_action_choices to read \
+    the schema, and resubmitted correctly as {\"amounts\": [0,2,0,0,0]}. Accepted. \
+  - conc4/g16 sent [0,5,0,0], rejected as \"amounts[0]=0 is outside item range 1-5\". The \
+    model reasoned \"each target must receive at least 1 damage\" and answered [1,2,1,1]. \
+    Accepted. \
+So the model reads error text and corrects. Nothing about the game makes a wrong tool NAME \
+less correctable than a wrong field NAME. Returning \"Unknown tool: choose; available: ...\" \
+costs one string and would have saved three games, one of them 204 calls deep. \
+\
+>>> THE DESIGN PRINCIPLE, which is why this is worth more than its rate. <<< \
+In a harness whose output is TRAINING DATA, the error surface is curriculum design. A \
+recoverable error produces a training example of RECOVERY -- a model diagnosing its own \
+mistake from an error message and fixing it, which is exactly the behaviour a student needs \
+and which is hard to synthesise. A fatal error produces a truncated game and a lost row. \
+Making tool-name errors recoverable would both save the games and generate the traces. \
+\
+This is NOT an argument for swallowing errors -- the opposite. The valuable case is the loud, \
+informative, SURVIVABLE one, because the message is what the model reads and learns from. A \
+silent retry teaches nothing and a crash teaches nothing.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "pilot",
+    "error-surface",
+    "game-loss",
+    "corpus-quality",
+  ],
+  "created_at": "2026-09-01T02:00:00.000-04:00",
+  "updated_at": "2026-09-01T02:00:00.000-04:00",
+}

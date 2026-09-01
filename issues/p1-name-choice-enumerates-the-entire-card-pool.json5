@@ -20,8 +20,14 @@ Widening the serving window is also wrong: it would produce a training row the 4
 cannot fit at max_seq 131,072, which is the train/serve divergence the segment design \
 exists to prevent. \
 \
-SCOPE: 53 cards in the training oracle ask for a card name; they appear in 64 of 952 \
-decks, putting 133 of 1000 corpus games at risk. Whether an at-risk game actually aborts \
+SCOPE (CORRECTED): 92 cards in the training oracle ask for a card name; they appear in \
+decks covering 272 of 1000 corpus games. An earlier figure of 53 cards / 133 games was \
+produced by a pattern requiring 'choose a card name' ADJACENT, which misses every \
+qualified form -- 'choose a NONLAND card name' (Cabal Therapy, Cranial Extraction, \
+Alpine Moon, +38 others). MEASURED OUTCOME over the completed 1,006-game corpus: 8 seeds \
+actually hit the overflow, a ~5% conditional rate given an at-risk deck, because the card \
+must be drawn and cast. Excluding all at-risk seeds would have discarded ~19 good games \
+per abort avoided, so they were left to fail loudly and are named instead. Whether an at-risk game actually aborts \
 depends on the card being drawn and cast, so the realized rate is lower and is being \
 measured. \
 \
