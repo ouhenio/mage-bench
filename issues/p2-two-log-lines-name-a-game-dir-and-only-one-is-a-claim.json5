@@ -1,0 +1,59 @@
+{
+  "title": "Two log lines name a game directory and only one of them is a claim; a consumer that reads the first attributes a dead game to a live game's directory",
+  "description": "REPORTED AS A COLLISION IN THE HARNESS; IT IS NOT ONE. karn-90's \
+autoresearch loop aborted two runs on its own assert -- \"9 distinct dirs for 10 games\" -- \
+naming game_20260822_113440 and game_20260822_114113 twice, 2026-08-22, under load average \
+22-27, at mtg commit 0697340. Escalated on the reasonable theory that claim_game_dir had \
+failed under load after the fix.\n\n\
+IT HAD NOT, AND THE DISK SAYS SO. `_claim` (batch_coordination.py:53) creates with \
+`mkdir(parents=True)` and NO exist_ok, so FileExistsError is the win/lose signal and the \
+loser takes `-1`. Checked in the real log root: the directories are DISTINCT, each holds \
+exactly ONE game_start, the servers came up in all of them, and there is NO `-N` suffixed \
+directory anywhere from either run -- so the claim never even fired a conflict. It is also \
+not the match-continuation doubling (issues/p1-match-continues-after-a-game-with-no-winner), \
+which presents as TWO game_start in one directory.\n\n\
+THE ACTUAL MECHANISM, established by karn-90 from the surviving run directories. Two games \
+of ten never started: they printed `Server log: .../game_<ts>/server.log` and then died at \
+the 240s server-start timeout. The consumer's regex takes the FIRST `game_[0-9_]+` match in \
+the process log and attributes the dead game to that path -- which is the directory the \
+sibling that DID start went on to own. One startup failure under load, reported as a \
+directory collision, and the run discarded on that basis. Ports were allocated distinctly; \
+that layer worked too.\n\n\
+WHAT MAKES IT A HARNESS ISSUE RATHER THAN ONLY A CONSUMER BUG. The name of a game directory \
+IS the game id downstream -- exports, brackets, uploads -- so log lines carrying it are read \
+as identity by things outside this repo. There are two such lines and they carry DIFFERENT \
+guarantees: an early one, and the later `Game logs:` line emitted after the atomic claim, \
+which is authoritative. Nothing in the output distinguishes them, and a consumer cannot tell \
+by looking which one it has.\n\n\
+NOT REPRODUCED ON CURRENT MASTER, and this is the part someone should close rather than \
+assume. On master the non-batch path claims FIRST -- orchestrator.py:389 `claim_game_dir`, \
+then :399 `logger.info(\"Server log: %s\", server_log)` -- so a process that dies at server \
+start should leave a claimed directory behind. The 2026-08-22 runs left NO such directory, \
+which is why the dead game's path pointed at a sibling's. So either the ordering changed \
+after that pin, or another path prints the name before claiming. I did not establish which, \
+and the fix is not \"reorder\" until someone does.\n\n\
+WANTED: (a) confirm whether any path still emits a directory name before claiming it, and \
+if so make the early line non-identifying or emit it only after the claim; (b) a regression \
+test that a process dying at server start leaves a directory it owns, so a consumer reading \
+either line gets an answer that is either right or absent, never another game's.\n\n\
+CONSUMER-SIDE, recorded here because the trap outlives the instance and is NOT what bit \
+here: a regex of `game_[0-9_]+` cannot match the `-1` suffix `_claim` hands a collision \
+loser, so on a genuine collision it truncates to the winner's name and reports two games in \
+one directory -- a false collision report blaming the harness for a collision it resolved \
+correctly. Consumers should match `game_[0-9_]+(?:-[0-9]+)?` and should prefer the \
+`Game logs:` line.\n\n\
+The reporting detector is worth keeping either way, but as written it cannot distinguish \
+\"two games in one directory\" from \"one game never got a directory\", and those want \
+opposite responses -- discard the run versus retry the game.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "orchestration",
+    "silent-failure",
+    "provenance",
+    "measured",
+  ],
+  "created_at": "2026-09-01T02:10:00.000-04:00",
+  "updated_at": "2026-09-01T02:10:00.000-04:00",
+}
