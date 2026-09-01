@@ -129,7 +129,13 @@ def select_section(
             return "role"
         if message.startswith("Select blockers"):
             return "race"
-        return None
+        # FALL THROUGH, do not return None. Priority decisions also arrive as
+        # GAME_SELECT -- "Play spells and abilities", "Play instants and activated
+        # abilities" are 482 of 600 in ranokau's stratified sample -- so returning
+        # here claimed every priority decision for the combat branch and then
+        # refused it, which is why `sequencing` fired ZERO times in a stratum
+        # built to contain it. GAME_SELECT names the DIALOG, not the decision
+        # class; only the message and the offered choices name the class.
     if action_type in ("GAME_PLAY_MANA", "GAME_PLAY_XMANA"):
         # The harness section's registered class: payment collisions.
         return "harness"
