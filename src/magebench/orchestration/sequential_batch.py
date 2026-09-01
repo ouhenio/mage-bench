@@ -472,6 +472,15 @@ def run_sequential_batch(
                 # because the game only starts once every seat is filled: start them
                 # later and the wait below times out waiting for a game that is
                 # waiting for them.
+                # THE PER-GAME CONFIG DOES NOT KNOW THE PORT. game_configs are built
+                # at :357 with port=config.port, which is BEFORE find_available_port
+                # assigns it at :377 -- so game_config.port is still the default and a
+                # bridge client built from it dials port 0. Harmless while this path
+                # carried no policy; the moment it did, every pilot logged
+                # "Unable connect to server. Server is likely offline", the seat stayed
+                # empty, and the game still wrote a game_meta.json -- so the run looked
+                # complete and the policy had never played.
+                game_config.port = port
                 policy_procs = start_policy_clients(
                     pm, project_root, game_config, game_dir, table_id,
                     f"Game {index + 1}/{len(seeds)}: ",
