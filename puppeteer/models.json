@@ -10,7 +10,7 @@
       "_context_k": 1000,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "Best bang for buck. Produces reasoning text with tool calls ~57% of the time. Already tested \u2014 works well, good at trash talk. Thinking mode available via effort param."
+      "_notes": "Best bang for buck. Produces reasoning text with tool calls ~57% of the time. Already tested — works well, good at trash talk. Thinking mode available via effort param."
     },
     {
       "id": "google/gemini-3-flash-preview",
@@ -21,7 +21,7 @@
       "_context_k": 1000,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "Slightly pricier than 2.5 Flash but newer. Already tested \u2014 rarely produces reasoning text (4/346 responses). May improve with thinking mode enabled."
+      "_notes": "Slightly pricier than 2.5 Flash but newer. Already tested — rarely produces reasoning text (4/346 responses). May improve with thinking mode enabled."
     },
     {
       "id": "google/gemini-2.5-pro",
@@ -57,7 +57,7 @@
       "cache_control": {
         "type": "ephemeral"
       },
-      "_notes": "Cheapest Claude with extended thinking (min 1024 tokens, max 128K). Good tool use. Likely solid at Magic \u2014 Claude models understand complex rules well. Extended thinking should help with combat math."
+      "_notes": "Cheapest Claude with extended thinking (min 1024 tokens, max 128K). Good tool use. Likely solid at Magic — Claude models understand complex rules well. Extended thinking should help with combat math."
     },
     {
       "id": "anthropic/claude-sonnet-4.5",
@@ -85,7 +85,7 @@
       "cache_control": {
         "type": "ephemeral"
       },
-      "_notes": "Most capable Claude. Extended thinking up to 128K tokens. Likely best strategic play but very expensive \u2014 a full Commander game could cost $5-10+. Use for showcase matches, not bulk testing."
+      "_notes": "Most capable Claude. Extended thinking up to 128K tokens. Likely best strategic play but very expensive — a full Commander game could cost $5-10+. Use for showcase matches, not bulk testing."
     },
     {
       "id": "openai/o4-mini",
@@ -96,7 +96,7 @@
       "_context_k": 200,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "OpenAI's latest small reasoning model. Internal chain-of-thought (not visible in output). Poor tool-use reliability in practice \u2014 cascading empty responses and very few meaningful game actions in testing. Removed from default rotation."
+      "_notes": "OpenAI's latest small reasoning model. Internal chain-of-thought (not visible in output). Poor tool-use reliability in practice — cascading empty responses and very few meaningful game actions in testing. Removed from default rotation."
     },
     {
       "id": "openai/o3",
@@ -107,7 +107,7 @@
       "_context_k": 200,
       "_thinking": true,
       "_tier": "mid",
-      "_notes": "Strong reasoning model but unreliable tool use \u2014 persistent empty responses and stall loops in testing (24 counted empties across 3 stall cycles in game_20260210_230611). Removed from default rotation. Internal chain-of-thought with effort levels (low/medium/high). Thinking is opaque \u2014 reasoning_content not exposed."
+      "_notes": "Strong reasoning model but unreliable tool use — persistent empty responses and stall loops in testing (24 counted empties across 3 stall cycles in game_20260210_230611). Removed from default rotation. Internal chain-of-thought with effort levels (low/medium/high). Thinking is opaque — reasoning_content not exposed."
     },
     {
       "id": "openai/o3-mini",
@@ -129,7 +129,7 @@
       "_context_k": 400,
       "_thinking": false,
       "_tier": "mid",
-      "_notes": "GPT-5.2 WITHOUT reasoning_effort param. Played terribly (63 major blunders in game_20260228_172012_g2). Supports optional adaptive reasoning via reasoning.effort \u2014 use gpt52-medium preset instead. Internal reasoning not exposed in response."
+      "_notes": "GPT-5.2 WITHOUT reasoning_effort param. Played terribly (63 major blunders in game_20260228_172012_g2). Supports optional adaptive reasoning via reasoning.effort — use gpt52-medium preset instead. Internal reasoning not exposed in response."
     },
     {
       "id": "openai/gpt-5.3-codex",
@@ -140,7 +140,7 @@
       "_context_k": 400,
       "_thinking": true,
       "_tier": "mid",
-      "_notes": "OpenAI's most advanced agentic coding model. Mandatory reasoning (low/medium/high/xhigh, default medium). Combines GPT-5.2-Codex SWE performance with GPT-5.2 broader reasoning. Internal reasoning only \u2014 not exposed in response."
+      "_notes": "OpenAI's most advanced agentic coding model. Mandatory reasoning (low/medium/high/xhigh, default medium). Combines GPT-5.2-Codex SWE performance with GPT-5.2 broader reasoning. Internal reasoning only — not exposed in response."
     },
     {
       "id": "openai/gpt-5",
@@ -151,7 +151,7 @@
       "_context_k": 400,
       "_thinking": true,
       "_tier": "mid",
-      "_notes": "OpenAI's flagship model. Mandatory reasoning. Strong at complex tasks, reduced hallucination. Cheaper than GPT-5.2 ($1.25/$10 vs $1.75/$14). Internal reasoning only \u2014 not exposed in response."
+      "_notes": "OpenAI's flagship model. Mandatory reasoning. Strong at complex tasks, reduced hallucination. Cheaper than GPT-5.2 ($1.25/$10 vs $1.75/$14). Internal reasoning only — not exposed in response."
     },
     {
       "id": "openai/gpt-5.1",
@@ -173,7 +173,7 @@
       "_context_k": 164,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "Very cheap reasoning model. Extended thinking with up to 32K reasoning tokens. Unclear how well it handles tool calling \u2014 DeepSeek models can be inconsistent with complex tool schemas. Worth testing."
+      "_notes": "Very cheap reasoning model. Extended thinking with up to 32K reasoning tokens. Unclear how well it handles tool calling — DeepSeek models can be inconsistent with complex tool schemas. Worth testing."
     },
     {
       "id": "deepseek/deepseek-r1-distill-qwen-32b",
@@ -207,7 +207,7 @@
       "_context_k": 262,
       "_thinking": false,
       "_tier": "cheap",
-      "_notes": "No reasoning mode. 675B total, 41B active (MoE). Apache 2.0. Devstral (smaller model) was tested and produced 0/255 reasoning text. Severe personality infection with expressive personas (villain, dramatist, valley-girl) \u2014 reasoning becomes pure roleplay with zero strategic analysis."
+      "_notes": "No reasoning mode. 675B total, 41B active (MoE). Apache 2.0. Devstral (smaller model) was tested and produced 0/255 reasoning text. Severe personality infection with expressive personas (villain, dramatist, valley-girl) — reasoning becomes pure roleplay with zero strategic analysis."
     },
     {
       "id": "x-ai/grok-4",
@@ -229,7 +229,7 @@
       "_context_k": 2000,
       "_thinking": true,
       "_tier": "dirt-cheap",
-      "_notes": "Absurdly cheap with optional reasoning. 2M context window. Untested for Magic tool calling \u2014 worth trying."
+      "_notes": "Absurdly cheap with optional reasoning. 2M context window. Untested for Magic tool calling — worth trying."
     },
     {
       "id": "x-ai/grok-4.1-fast",
@@ -262,7 +262,7 @@
       "_context_k": 196,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "Retired from gauntlet \u2014 replaced by M2.5."
+      "_notes": "Retired from gauntlet — replaced by M2.5."
     },
     {
       "id": "minimax/minimax-m2.5",
@@ -328,7 +328,7 @@
       "_context_k": 400,
       "_thinking": false,
       "_tier": "cheap",
-      "_notes": "Compact GPT-5 for lighter reasoning tasks. Actually has mandatory reasoning but currently run without reasoning_effort param. Successor to o4-mini. Internal reasoning only \u2014 not exposed in response."
+      "_notes": "Compact GPT-5 for lighter reasoning tasks. Actually has mandatory reasoning but currently run without reasoning_effort param. Successor to o4-mini. Internal reasoning only — not exposed in response."
     },
     {
       "id": "openai/gpt-5-nano",
@@ -339,7 +339,7 @@
       "_context_k": 400,
       "_thinking": true,
       "_tier": "dirt-cheap",
-      "_notes": "Cheapest OpenAI model. Very popular (300B weekly tokens). Despite the name, generates large hidden reasoning tokens by default \u2014 causes 20s+ latency and frequent timeouts without reasoning_effort=low."
+      "_notes": "Cheapest OpenAI model. Very popular (300B weekly tokens). Despite the name, generates large hidden reasoning tokens by default — causes 20s+ latency and frequent timeouts without reasoning_effort=low."
     },
     {
       "id": "openai/gpt-4.1-mini",
@@ -427,7 +427,7 @@
       "provider_order": [
         "Fireworks"
       ],
-      "_notes": "OpenAI open-weight model (Apache 2.0). 117B total, 5.1B active (MoE). Matches o4-mini on TauBench tool-use benchmark. Configurable reasoning effort. Pinned to Fireworks \u2014 they explicitly support Harmony format and agentic tool calling. DeepInfra (default) had tool call failures in game_20260302_174929_g4 and game_20260302_184350_g4."
+      "_notes": "OpenAI open-weight model (Apache 2.0). 117B total, 5.1B active (MoE). Matches o4-mini on TauBench tool-use benchmark. Configurable reasoning effort. Pinned to Fireworks — they explicitly support Harmony format and agentic tool calling. DeepInfra (default) had tool call failures in game_20260302_174929_g4 and game_20260302_184350_g4."
     },
     {
       "id": "mistralai/mistral-medium-3.1",
@@ -460,7 +460,7 @@
       "_context_k": 1000,
       "_thinking": true,
       "_tier": "expensive",
-      "_notes": "OpenAI's latest frontier model (March 2026). Unifies Codex and GPT lines. 1M context (922K input + 128K output). 33% fewer errors than GPT-5.2, improved tool use and token efficiency. Supports reasoning_effort. Internal reasoning only \u2014 not exposed in response."
+      "_notes": "OpenAI's latest frontier model (March 2026). Unifies Codex and GPT lines. 1M context (922K input + 128K output). 33% fewer errors than GPT-5.2, improved tool use and token efficiency. Supports reasoning_effort. Internal reasoning only — not exposed in response."
     },
     {
       "id": "google/gemini-3.1-flash-lite-preview",
@@ -496,7 +496,7 @@
       "_context_k": 400,
       "_thinking": true,
       "_tier": "cheap",
-      "_notes": "GPT-5.4 family small model (March 2026). 2x+ faster than GPT-5.4. Mandatory reasoning with configurable effort. Internal reasoning only \u2014 not exposed in response."
+      "_notes": "GPT-5.4 family small model (March 2026). 2x+ faster than GPT-5.4. Mandatory reasoning with configurable effort. Internal reasoning only — not exposed in response."
     },
     {
       "id": "openai/gpt-5.4-nano",
@@ -507,7 +507,7 @@
       "_context_k": 400,
       "_thinking": true,
       "_tier": "dirt-cheap",
-      "_notes": "GPT-5.4 family smallest model (March 2026). Most cost-efficient 5.4 variant. Mandatory reasoning with configurable effort. Internal reasoning only \u2014 not exposed in response."
+      "_notes": "GPT-5.4 family smallest model (March 2026). Most cost-efficient 5.4 variant. Mandatory reasoning with configurable effort. Internal reasoning only — not exposed in response."
     },
     {
       "id": "Qwen/Qwen3-8B",
@@ -552,6 +552,17 @@
       "_thinking": false,
       "_tier": "cheap",
       "_notes": "Locally served via vLLM. Free. Same generation as Qwen3-8B: hermes tool calls, 152k vocab, no vision tower."
+    },
+    {
+      "id": "Qwen/Qwen3.8-27B",
+      "name": "Qwen3.8 27B",
+      "name_part": "Q3827B",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 143,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "Locally served via vLLM at TP2, seated at 143360 (the harness floor), not the model's 262k. Dense 27B: ~9x the compute per token of the 35B-A3B rung, so ~23 min/game against that rung's ~3. Emits XML tool calls -- qwen3_xml parser. Multimodal wrapper, vision tower resident and inert on the text-only pilot path."
     }
   ],
   "_thinking_config": {
@@ -584,7 +595,7 @@
         "xhigh"
       ],
       "recommended": "medium",
-      "_notes": "Internal reasoning only \u2014 thinking tokens consumed and billed but NOT returned in response. Cannot log or display thinking trace."
+      "_notes": "Internal reasoning only — thinking tokens consumed and billed but NOT returned in response. Cannot log or display thinking trace."
     },
     "deepseek": {
       "param": "reasoning.max_tokens",
@@ -609,7 +620,7 @@
         "high"
       ],
       "recommended": "medium",
-      "_notes": "Kimi K2/K2.5 reasoning models. Thinking content exposure unknown \u2014 needs testing."
+      "_notes": "Kimi K2/K2.5 reasoning models. Thinking content exposure unknown — needs testing."
     },
     "minimax": {
       "param": "reasoning.effort",
@@ -619,7 +630,7 @@
         "high"
       ],
       "recommended": "medium",
-      "_notes": "MiniMax M2.5 reasoning. Thinking content exposure unknown \u2014 needs testing."
+      "_notes": "MiniMax M2.5 reasoning. Thinking content exposure unknown — needs testing."
     },
     "z-ai": {
       "param": "reasoning.effort",
@@ -629,7 +640,7 @@
         "high"
       ],
       "recommended": "medium",
-      "_notes": "GLM reasoning models. Thinking content exposure unknown \u2014 needs testing."
+      "_notes": "GLM reasoning models. Thinking content exposure unknown — needs testing."
     },
     "xiaomi": {
       "param": "reasoning.effort",
@@ -639,7 +650,7 @@
         "high"
       ],
       "recommended": "medium",
-      "_notes": "MiMo reasoning models. Thinking content exposure unknown \u2014 needs testing."
+      "_notes": "MiMo reasoning models. Thinking content exposure unknown — needs testing."
     },
     "qwen": {
       "param": "reasoning.effort",
@@ -649,7 +660,7 @@
         "high"
       ],
       "recommended": "low",
-      "_notes": "Qwen3 Max Thinking. Medium was too slow (45s+ timeouts in 4p games). Thinking content exposure unknown \u2014 needs testing."
+      "_notes": "Qwen3 Max Thinking. Medium was too slow (45s+ timeouts in 4p games). Thinking content exposure unknown — needs testing."
     }
   }
 }

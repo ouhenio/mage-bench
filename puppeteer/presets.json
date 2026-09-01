@@ -463,6 +463,12 @@
       "status": "active",
       "system_prompt": "notalk-strategy-reminders",
       "toolset": "notalk"
+    },
+    "q38-27b-local-strategy": {
+      "model": "Qwen/Qwen3.8-27B",
+      "status": "inactive",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
     }
   }
 }
