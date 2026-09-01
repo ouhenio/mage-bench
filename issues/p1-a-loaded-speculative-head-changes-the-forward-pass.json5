@@ -1,0 +1,48 @@
+{
+  "title": "A loaded speculative head changes the forward pass even when speculation is off",
+  "description": "Serving Qwen3.8-27B with --speculative-config '{\"method\":\"mtp\",\
+\"num_speculative_tokens\":3}' produces DIFFERENT output from the same model served plain, \
+and the difference begins at TOKEN ZERO. \
+\
+MEASURED, two servers launched from one script differing only in that flag (commands read \
+back from /proc/<pid>/cmdline and diffed -- the ONLY difference was --speculative-config and \
+its argument): \
+    both servers deterministic on ON/ON      identical text and logprobs across two calls \
+    text identical between servers           FALSE  (3,495 vs 3,359 chars) \
+    logprobs identical                       FALSE  (exact comparison) \
+    tokens agreeing to 6 decimal places      0 of 800 \
+    first differing logprob                  TOKEN 0, delta 1.56e-02 \
+    all 800 tokens differ; median |delta| 4.2e-02, max 1.77 \
+\
+>>> TOKEN ZERO IS THE POINT. <<< Speculative decoding is lossless by construction: rejection \
+sampling accepts a draft token only when it matches what the target model would have emitted. \
+That guarantee CANNOT reach the first token, because no draft has been proposed or rejected \
+yet. So the divergence is not speculation changing the sample -- it is the target model's own \
+forward pass computing differently when the MTP head is resident. Different kernels, different \
+batching, or the head perturbing execution; not diagnosed here. \
+\
+WHY IT MATTERS BEYOND THROUGHPUT, and why this is filed rather than shrugged at: someone who \
+loads the head for speed and then records `spec_decode: false` on runs where speculation did \
+not fire has recorded the WRONG FIELD. The instrument changed when the head was LOADED, not \
+when speculation was USED. Two experimental arms served from head-loaded and head-free \
+instances are not comparable, and nothing in either run's artifacts would say so. \
+\
+CONCRETE RECOMMENDATION: log the head's presence distinctly from its use, and treat \
+head-loaded/head-free as a serving-config boundary that experimental arms must not cross. \
+\
+NOT A CLAIM THAT vLLM IS WRONG. The algorithm's guarantee is about the sampling distribution \
+given a fixed forward pass; it says nothing about whether loading extra weights changes that \
+pass. The lesson is that a proof about an algorithm is not evidence about a deployment, and \
+the only way to find that out is to compare the deployment against itself.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "serving",
+    "speculative-decoding",
+    "reproducibility",
+    "silent-instrument-change",
+  ],
+  "created_at": "2026-09-01T08:30:00.000-04:00",
+  "updated_at": "2026-09-01T08:30:00.000-04:00",
+}
