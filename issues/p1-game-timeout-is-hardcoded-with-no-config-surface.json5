@@ -1,0 +1,44 @@
+{
+  "title": "The 1800s per-game timeout is hard-coded with no config surface, and it SELECTS which games survive",
+  "description": "`run_sequential_batch` takes `game_timeout: int = 1800` and the only caller \
+never passes it, so the 30-minute ceiling is unreachable from config, CLI or environment: \
+\
+  orchestration/observer_session.py:317   def wait_for_game_end(self, game_dir, timeout: int = 1800) \
+  orchestration/sequential_batch.py:324   game_timeout: int = 1800 \
+  orchestration/orchestrator.py:362       run_sequential_batch(config, project_root, log_dir, seeds, pm=pm) \
+\
+Grepped for GAME_TIMEOUT / MAGEBENCH_TIMEOUT: no env knob exists. \
+\
+WHY THIS IS MORE THAN A MISSING KNOB. A per-game deadline does not thin a sample at random -- \
+it removes exactly the LONG games and keeps the short ones. For any experiment whose treatment \
+affects game length, the survivors are then conditioned on the treatment, and no reweighting \
+fixes it because the missing outcomes were never generated. \
+\
+MEASURED OCCURRENCE, P1 on ranokau, 2026-09-01, thinking-ON: \
+  block 945003 game 1 (arm C rep1), Qwen3.8-27B, width 1 \
+  ran 30.0 minutes exactly, reached game_seq 468 and was still climbing \
+  observer returned HTTP 408 {\"done\":false,\"error\":\"timeout\"} \
+  ZERO `game_end` in server_game_events.jsonl -> mid-play casualty under the P1 taxonomy \
+The 30.0 is the fingerprint: the game did not end, the clock did. At the measured 18.1 \
+game_seq/min a typical game needs ~40 min against a 30 min ceiling. \
+\
+IT IS NOT CONCURRENCY. The width hypothesis was tested and falsified from the artifacts before \
+any relaunch: run_leg uses a blocking subprocess.call, legs run in a loop, and --sequential-games \
+plays one game at a time. Game timestamps show zero overlap (s1 06:45:20-07:15:20, s2 begins \
+07:15:30). The run was already width 1. \
+\
+SCOPE. Thinking-off games finish well inside 30 minutes, which is why this never surfaced in \
+the teacher-ladder rungs or the 977-game corpus. It appears the moment reasoning is enabled, \
+and it will appear for any slower model or longer game regardless of thinking. \
+\
+FIX: pass `game_timeout=` through from Config (or an env var) at orchestrator.py:362, keeping \
+1800 as the default so no existing run changes behaviour. \
+\
+A SEPARATE OBSERVATION, NOT ASSERTED AS THIS BUG: lascar's completed thinking-on games are \
+reported as median 19.4 min with a max of 30.1. A maximum sitting on the ceiling is what a \
+censored distribution looks like, so lascar's own mid-play casualty may already carry this \
+fingerprint. Worth checking there rather than assuming.",
+  "priority": "p1",
+  "component": "orchestration",
+  "status": "open"
+}
