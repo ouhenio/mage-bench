@@ -201,6 +201,44 @@ def _sequential_seeds(num_games: int) -> list[int | None]:
     return list(seeds)
 
 
+def _game_timeout() -> int:
+    """Seconds to wait for one game to reach `game_end`, from MAGEBENCH_GAME_TIMEOUT.
+
+    THE DEFAULT IS 1800 AND IS UNCHANGED, so no existing run moves. What changes is
+    that the ceiling is now reachable, because a hard-coded one does not merely
+    truncate a slow run -- IT SELECTS WHICH GAMES SURVIVE. A per-game deadline
+    removes the long games and keeps the short ones, so for any treatment that
+    affects game length the survivors are conditioned on the treatment, and no
+    reweighting repairs it: the missing outcomes were never generated.
+
+    Measured occurrence that produced this knob (issues/p1-game-timeout-is-
+    hardcoded-with-no-config-surface.json5): a thinking-ON P1 game ran 30.0 minutes
+    exactly, reached game_seq 468 still climbing, and died with HTTP 408 and no
+    server `game_end`. The 30.0 was the fingerprint of the cap, not of the game.
+
+    Unset means 1800. Set means the value is used and must be a positive integer --
+    a value that does not parse is an error rather than a silent fall back to the
+    default, because silently reverting to 1800 is exactly the failure this exists
+    to make visible.
+    """
+    raw = os.environ.get("MAGEBENCH_GAME_TIMEOUT")
+    if raw is None or raw == "":
+        return 1800
+    try:
+        seconds = int(raw)
+    except ValueError:
+        raise ValueError(
+            f"MAGEBENCH_GAME_TIMEOUT={raw!r} is not an integer. Give whole seconds, "
+            f"or unset it for the 1800s default."
+        ) from None
+    if seconds <= 0:
+        raise ValueError(
+            f"MAGEBENCH_GAME_TIMEOUT={seconds} must be positive; a non-positive "
+            f"timeout would kill every game instantly."
+        )
+    return seconds
+
+
 def compile_project(
     project_root: Path,
     *,
@@ -360,7 +398,8 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
             config.resolve_random_decks(project_root)
             config.validate_deck_sizes(project_root)
             result = run_sequential_batch(
-                config, project_root, log_dir, seeds, pm=pm
+                config, project_root, log_dir, seeds, pm=pm,
+                game_timeout=_game_timeout(),
             )
             if result.failed:
                 for game_dir, reason in result.failed:
