@@ -37,8 +37,21 @@ records the commit that ran -- so the failure presented as a harness bug that ha
 been fixed, and cost two people a full re-diagnosis to get back to \"the runtime was three \
 days behind\". A harness sha in game_meta.json, or refused startup when the worktree is \
 behind a recorded floor, would have answered it in one line.\n\n\
-WANTED: (a) stamp the harness commit into game_meta.json for every game; (b) consider a \
-startup check that a run's harness is not behind a known-fix floor.\n\n\
+THE FIELD ALREADY EXISTS -- IN THE WRONG LAYER, and that is the actual gap. Checked rather \
+than assumed after it was relayed to me that \"the pilot path already records it\": there is \
+NO harness_commit anywhere in this repo's source. It is stamped by mtg-side WRAPPERS -- \
+pipelines/synth/recgen.sh:47 writes harness_commit from `git -C $HARNESS rev-parse HEAD`, \
+step1_generate.sh writes harness_commit_generated, and build_dataset.py:535-539 already \
+counts off-pin games against the recorded pin. So the corpus path is covered and would have \
+caught this in one line.\n\n\
+Which means every runner must REMEMBER to stamp it, and the one that did not is the one \
+that hit the bug. That is the wrong place for the responsibility: a runner that forgets \
+produces artifacts indistinguishable from a runner on the right commit.\n\n\
+WANTED: (a) THE HARNESS STAMPS ITS OWN COMMIT into game_meta.json, so no runner can omit it \
+and the existing off-pin detection in build_dataset.py gains a source it does not depend on \
+a wrapper for; (b) optionally, a startup refusal when the harness is behind a known-fix \
+floor -- kept optional deliberately, since a refusal keyed on a maintained fix-list is \
+maintenance forever while a recorded sha is free and answers the question once.\n\n\
 WHAT SURVIVES INDEPENDENTLY, both still true and neither the cause here:\n\
   - A consumer regex of `game_[0-9_]+` cannot match the `-1` suffix `_claim` hands a \
 collision loser, so on a GENUINE post-fix collision it truncates to the winner's name and \
