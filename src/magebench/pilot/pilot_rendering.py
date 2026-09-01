@@ -13,6 +13,7 @@ from magebench.pilot.auto_resolve import (
 from mcp import ClientSession
 
 from magebench.game.decision_renderer import render_decision
+from magebench.pilot.inject import inject_near_decision
 from magebench.pilot.pilot_bridge import (
     build_pilot_decision,
     build_pilot_snapshot,
@@ -235,6 +236,15 @@ def render_for_pilot(
         lines.append(f"  Response type: {resp_type}")
 
     lines.extend(land_drop_reminder(decision.choices, decision.phase))
+    # ARM D'S SEAM. Returns [] unless MAGEBENCH_INJECT_CONTENT names a content
+    # document, so on the control build this extend adds nothing and the rendered
+    # decision is byte-identical to the build without the seam -- which is the
+    # registered condition that lets arm C be reused rather than re-run.
+    lines.extend(
+        inject_near_decision(
+            decision.action_type, decision.choices, decision.phase, decision.message
+        )
+    )
 
     mana_pool = data.get("mana_pool")
     if mana_pool and any(v > 0 for v in mana_pool.values()):

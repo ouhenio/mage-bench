@@ -1,0 +1,82 @@
+{
+  "title": "Nothing records which harness commit a run executed, so a run can be produced by a pre-fix harness and no artifact says so",
+  "description": "FILED FIRST AS A COLLISION THAT WAS NOT ONE. THAT WAS WRONG AND THIS \
+ISSUE IS THE CORRECTION. karn-90's autoresearch loop aborted two runs on its own assert -- \
+\"9 distinct dirs for 10 games\", 2026-08-22, load average 22-27. I checked the log root, \
+found the directories distinct with exactly one game_start each and a server up in every \
+one, found no `-N` suffixed directory, and concluded the atomic claim had never fired and \
+the assert was a false positive. karn-90 then retracted their own agreeing conclusion with \
+the evidence below, and they are right.\n\n\
+IT WAS A REAL SHARED DIRECTORY, and the signature is in the two files neither of us opened. \
+Each collided directory holds ONE server_config.xml and ONE server.log written by TWO \
+processes:\n\n\
+    113440  server.log:49  FATAL 14:35:11  Unable to start MAGE server - another server is already started\n\
+            server.log:54  INFO  14:35:10  Started MAGE server - listening on 0.0.0.0:17177\n\
+            server_config.xml  port=17177   (the winner's; the loser had 17176)\n\n\
+    114113  server.log:49  FATAL 14:41:44  Unable to start MAGE server - another server is already started\n\
+            server.log:54  INFO  14:41:27  Started MAGE server - listening on 0.0.0.0:17173\n\
+            server_config.xml  port=17173   (the winner's; the loser had 17172)\n\n\
+THE TIMESTAMPS RUN BACKWARDS BETWEEN CONSECUTIVE LINES -- FATAL at :11 above INFO at :10 -- \
+which is what two writers interleaving into one file looks like and is the tell we both \
+missed. The chain is causal, not coincidental: the loser's server_config.xml was overwritten \
+with the winner's port, so the loser's JVM tried to bind a port already held, got \"another \
+server is already started\", and hung until the consumer's 240s timeout. The collision \
+CAUSED the startup failure.\n\n\
+ROOT CAUSE, and it is operational rather than in this code. The consumer runs the harness \
+from a worktree (cwd=.../wt-teacher), which at the time sat at e514e818 (2026-08-21 21:40):\n\n\
+    first_game_dir = log_dir / f\"game_{config.timestamp}\"\n\
+    first_game_dir.mkdir(parents=True, exist_ok=True)\n\n\
+Second granularity, exist_ok=True, no claim -- two processes in the same second both \
+succeed and share. The fix (a6beffdb, \"Claim a game directory instead of deriving one from \
+the clock\", 2026-08-19) is TWO DAYS OLDER and `git merge-base --is-ancestor a6beffdb \
+e514e818` returns false: different lineage, so the runtime never had it. Verified directly \
+rather than inferred. Current master and the worktree today both carry the claim.\n\n\
+SO THE DEFECT WORTH FIXING IS THAT NOTHING SAYS WHICH HARNESS PRODUCED A RUN. A fix written, \
+merged and correct did not reach the process that needed it, and no artifact of those runs \
+records the commit that ran -- so the failure presented as a harness bug that had already \
+been fixed, and cost two people a full re-diagnosis to get back to \"the runtime was three \
+days behind\". A harness sha in game_meta.json, or refused startup when the worktree is \
+behind a recorded floor, would have answered it in one line.\n\n\
+THE FIELD ALREADY EXISTS -- IN THE WRONG LAYER, and that is the actual gap. Checked rather \
+than assumed after it was relayed to me that \"the pilot path already records it\": there is \
+NO harness_commit anywhere in this repo's source. It is stamped by mtg-side WRAPPERS -- \
+pipelines/synth/recgen.sh:47 writes harness_commit from `git -C $HARNESS rev-parse HEAD`, \
+step1_generate.sh writes harness_commit_generated, and build_dataset.py:535-539 already \
+counts off-pin games against the recorded pin. So the corpus path is covered and would have \
+caught this in one line.\n\n\
+Which means every runner must REMEMBER to stamp it, and the one that did not is the one \
+that hit the bug. That is the wrong place for the responsibility: a runner that forgets \
+produces artifacts indistinguishable from a runner on the right commit.\n\n\
+WANTED: (a) THE HARNESS STAMPS ITS OWN COMMIT into game_meta.json, so no runner can omit it \
+and the existing off-pin detection in build_dataset.py gains a source it does not depend on \
+a wrapper for; (b) optionally, a startup refusal when the harness is behind a known-fix \
+floor -- kept optional deliberately, since a refusal keyed on a maintained fix-list is \
+maintenance forever while a recorded sha is free and answers the question once.\n\n\
+WHAT SURVIVES INDEPENDENTLY, both still true and neither the cause here:\n\
+  - A consumer regex of `game_[0-9_]+` cannot match the `-1` suffix `_claim` hands a \
+collision loser, so on a GENUINE post-fix collision it truncates to the winner's name and \
+reports two games in one directory -- a false collision report blaming the harness for a \
+collision it resolved correctly. Consumers should match `game_[0-9_]+(?:-[0-9]+)?` and \
+prefer the authoritative `Game logs:` line over the earlier one.\n\
+  - A collision detector that counts distinct directories cannot distinguish \"two games in \
+one directory\" from \"one game never got a directory\", and those want opposite responses: \
+discard the run versus retry the game.\n\n\
+AND A NOTE ON HOW BOTH OF US CHECKED IT WRONG, because the next person will reach for the \
+same check. I asked the event stream whether A server started -- game_start counts and a \
+grep for \"Started MAGE\" -- and got a healthy answer from every directory. That check \
+cannot distinguish one healthy server from one healthy server sharing a file with a failed \
+one, because the loser produces no game events and its failure lands inside the WINNER's \
+server.log. The evidence of a shared directory is in server.log and server_config.xml, and \
+a health check that reads neither will call a collided directory clean every time.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "orchestration",
+    "provenance",
+    "silent-failure",
+    "measured",
+  ],
+  "created_at": "2026-09-01T02:10:00.000-04:00",
+  "updated_at": "2026-09-01T02:30:00.000-04:00",
+}
