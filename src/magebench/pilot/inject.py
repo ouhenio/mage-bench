@@ -115,14 +115,19 @@ def select_section(
     the Java rather than inferred from a sample, because a sample that happens to
     contain no blocker decisions would agree with any guess.
     """
-    msg = message or ""
     if action_type == "GAME_SELECT":
+        # An explicit test, not `message or ""`. The repo's own no-fallback lint
+        # catches that idiom and is right to: a GAME_SELECT with no message is a
+        # decision this map cannot classify, and coercing it to "" would silently
+        # sort it into neither class while looking like a considered answer.
+        if message is None:
+            return None
         # Prefix match, not equality: the engine appends context to some select
         # messages, and an equality test would silently stop firing the first time
         # it did -- the same failure as the map this replaces.
-        if msg.startswith("Select attackers"):
+        if message.startswith("Select attackers"):
             return "role"
-        if msg.startswith("Select blockers"):
+        if message.startswith("Select blockers"):
             return "race"
         return None
     if action_type in ("GAME_PLAY_MANA", "GAME_PLAY_XMANA"):
