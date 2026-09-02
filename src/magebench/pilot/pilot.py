@@ -1621,7 +1621,7 @@ def main() -> int:
     # which reads the seat out of it and passes --deck <root>/<player.deck> to THIS
     # process (game_processes.py:482). All 56 pilot seats in configs/ carry a deck,
     # so --deck is what a pilot receives and it IS the seat's own deck.
-    if args.deck:
+    if args.deck and not args.no_deck_block:
         system_prompt = assemble_system_prompt(system_prompt, args.deck)
     elif not args.no_deck_block:
         # LOUD. A pilot without its deck block is served a strictly different prompt
