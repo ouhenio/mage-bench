@@ -110,6 +110,15 @@ def load_oracle(path: pathlib.Path | None = None) -> dict[str, dict[str, str]]:
                 # emptiness is a decision rather than a shrug.
                 "type_line": "" if c.get("type_line") is None else c["type_line"],
                 "oracle_text": "" if text is None else text,
+                # Stats the BOARD shows and the deck block did not, so the model
+                # met its own creatures' sizes only once they were in play. Same
+                # explicit-None convention as the fields above: a card with no
+                # power (an instant) and a record missing the field are different
+                # states, and "" says the first without pretending to say the
+                # second.
+                "power": "" if c.get("power") is None else c["power"],
+                "toughness": "" if c.get("toughness") is None else c["toughness"],
+                "loyalty": "" if c.get("loyalty") is None else c["loyalty"],
             }
             out.setdefault(fold_name(c["name"]), entry)
             if " // " in c["name"]:
@@ -189,6 +198,39 @@ BASIC_LANDS = frozenset(
 _DCK_LINE = re.compile(r"^(SB:\s*)?(\d+)\s*\[([^\]]*)\]\s*(.+?)\s*$")
 
 
+def maindeck_entries(decklist: Iterable[str]) -> list[tuple[int, str]]:
+    """(count, name) for the MAINDECK, in first-appearance order.
+
+    TWO THINGS THIS KEEPS THAT `maindeck_names` THREW AWAY, both of which the
+    model needs and neither of which it had:
+
+      * THE COUNT. `_DCK_LINE` has always captured it in group 2 and the caller
+        discarded it, so a deck with 4 Lightning Bolt and one with 1 rendered
+        identically. A seat could not tell its own redraw odds from its prompt.
+      * THE BASIC LANDS. They were skipped outright, so "Mountain" appeared in a
+        60-card mono-red prompt only inside other cards' rules text. A seat could
+        not count its own mana base.
+
+    Repeats of one name are SUMMED rather than listed twice: .dck files split a
+    playset across lines when the printings differ, and four 1-ofs of the same
+    card is not what that means.
+    """
+    counts: dict[str, int] = {}
+    order: list[str] = []
+    if decklist is None:
+        return []
+    for raw in decklist:
+        m = _DCK_LINE.match(str(raw).strip())
+        if not m or m.group(1):
+            continue
+        name = m.group(4)
+        if name not in counts:
+            counts[name] = 0
+            order.append(name)
+        counts[name] += int(m.group(2))
+    return [(counts[n], n) for n in order]
+
+
 def maindeck_names(decklist: Iterable[str]) -> list[str]:
     """Unique non-basic MAINDECK card names, in first-appearance order.
 
@@ -216,7 +258,7 @@ def maindeck_names(decklist: Iterable[str]) -> list[str]:
     return out
 
 
-def deck_text_block(names: Iterable[str], oracle: dict[str, dict]) -> tuple[str, list[str]]:
+def deck_text_block(entries, oracle: dict[str, dict]) -> tuple[str, list[str]]:
     """The system-prompt card reference, and the names it actually covered.
 
     Returns the covered names too, because the caller must pre-seed
@@ -230,12 +272,22 @@ def deck_text_block(names: Iterable[str], oracle: dict[str, dict]) -> tuple[str,
     """
     lines: list[str] = []
     covered: list[str] = []
-    for name in names:
+    for count, name in entries:
         e = oracle.get(fold_name(name))
         if e is None:
             continue
         cost = f" {e['mana_cost']}" if e["mana_cost"] else ""
-        lines.append(f"{e['name']}{cost}\n{e['type_line']}\n{e['oracle_text']}".rstrip())
+        # P/T in parentheses because that is how the BOARD renders it -- the
+        # in-game text is "Goblin Guide (2/2) [tapped]". One card should not have
+        # two shapes depending on where the model reads it.
+        if e["power"] or e["toughness"]:
+            stats = f" ({e['power']}/{e['toughness']})"
+        elif e["loyalty"]:
+            stats = f" (loyalty {e['loyalty']})"
+        else:
+            stats = ""
+        head = f"{count} {e['name']}{cost}{stats}"
+        lines.append(f"{head}\n{e['type_line']}\n{e['oracle_text']}".rstrip())
         covered.append(name)
     if not lines:
         return "", []
@@ -273,4 +325,4 @@ def build_deck_block(deck_path) -> tuple[str, list[str]]:
     if not path.exists():
         raise FileNotFoundError(f"deck file not found for the card block: {path}")
     lines = path.read_text(errors="replace").splitlines()
-    return deck_text_block(maindeck_names(lines), load_oracle())
+    return deck_text_block(maindeck_entries(lines), load_oracle())
