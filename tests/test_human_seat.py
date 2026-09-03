@@ -102,3 +102,44 @@ def test_accepts_the_right_player_with_the_seat_name_given():
         {"name": "Human", "is_you": True, "hand": [{"name": "Plains"}], "hand_size": 1},
         {"name": "EngineAI", "is_you": False, "hand_size": 7},
     ]), "Human")
+
+
+class _StubSession:
+    """Records tool calls so the concede path can be exercised without a JVM."""
+
+    def __init__(self, result=None):
+        self.calls = []
+        self._result = result if result is not None else {"game_seq": 42}
+
+    def call_tool_json(self, name, arguments=None, timeout=None):
+        self.calls.append((name, arguments))
+        return dict(self._result)
+
+
+def test_concede_calls_the_bridge_and_emits():
+    """A seat must be able to END its game, not only stop answering.
+
+    Without this the engine sits on a pending prompt until the job's wall clock
+    kills it: no game_end, no winner, and a record that says the job expired.
+    """
+    from magebench.play.human_seat import SeatDriver
+
+    events = EventStream()
+    session = _StubSession()
+    driver = SeatDriver(session, events, seat_player="Human")
+    result = driver.concede()
+
+    assert session.calls == [("concede", {})]
+    assert result == {"game_seq": 42}
+    _, backlog = events.subscribe(0)
+    assert [(e[1], e[2]) for e in backlog] == [("conceded", {"game_seq": 42})]
+
+
+def test_concede_wakes_a_driver_parked_on_a_decision():
+    """The loop blocks in _actions.get(); conceding must release it, or the seat
+    holds its slot until the clock runs out anyway."""
+    from magebench.play.human_seat import SeatDriver
+
+    driver = SeatDriver(_StubSession(), EventStream(), seat_player="Human")
+    driver.concede()
+    assert driver._actions.get_nowait() is None
