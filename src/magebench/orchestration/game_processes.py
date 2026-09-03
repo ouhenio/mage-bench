@@ -481,6 +481,23 @@ def start_pilot_client(
 
     if player.deck:
         args.extend(["--deck", str(project_root / player.deck)])
+        # The own-deck card block rides on --deck, which every production seat
+        # carries, so the pilot's --no-deck-block was unreachable from a
+        # config-driven run: the ablated arm could not be requested at all. This
+        # is the only way to ask for it, and it must be ASKED for -- an absent
+        # variable leaves existing callers exactly as they were, and a value
+        # that is neither "on" nor "off" raises instead of guessing which arm
+        # the caller meant.
+        if "MAGEBENCH_DECK_BLOCK" in os.environ:
+            mode = os.environ["MAGEBENCH_DECK_BLOCK"]
+            if mode not in ("on", "off"):
+                raise ValueError(
+                    f"MAGEBENCH_DECK_BLOCK={mode!r} is not 'on' or 'off'. It "
+                    "selects which arm plays -- with the own-deck card block in "
+                    "the system prompt, or without it -- so it cannot be guessed."
+                )
+            if mode == "off":
+                args.append("--no-deck-block")
     if player.model:
         args.extend(["--model", player.model])
     if player.provider != DEFAULT_LLM_PROVIDER:
