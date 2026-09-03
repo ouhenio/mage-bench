@@ -62,7 +62,7 @@ class AdapterInvariantError(RuntimeError):
     """A frame violated an invariant and was REFUSED, not logged and emitted."""
 
 
-def check_frame_invariants(frame: dict) -> None:
+def check_frame_invariants(frame: dict, seat_player: str | None = None) -> None:
     """Refuse a frame that could mislead or leak. Raises; never returns False.
 
     The JVM filter is the mechanism and this is the witness -- two independent
@@ -72,6 +72,14 @@ def check_frame_invariants(frame: dict) -> None:
     EXACTLY ONE, not at most one: zero `hand` arrays is also a bug. It is what a
     seat sees when its own player id fails to resolve, and it renders as a
     legal-looking board with no hand rather than as an error.
+
+    AND IT MUST BE THE RIGHT PLAYER. karn-interface's leak lens built a frame
+    where the OPPONENT carried is_you and the hand: exactly one hand array, on
+    the wrong player, and a client that trusts is_you renders the opponent's
+    hand as its own. `seat_player` is the name this adapter passed to its bridge
+    JVM at launch, so checking against it is independent of anything the frame
+    says -- which is the whole point. A check that reads its expectation out of
+    the payload it is checking is not a check.
     """
     board = frame.get("board")
     if not isinstance(board, list):
@@ -87,6 +95,18 @@ def check_frame_invariants(frame: dict) -> None:
             f"{len(with_hand)}: {with_hand}. More than one is a hidden-information leak; "
             f"zero means the seat's own player id did not resolve."
         )
+    if seat_player is not None and with_hand[0] != seat_player:
+        raise AdapterInvariantError(
+            f"the hand array is on {with_hand[0]!r}, but this adapter serves {seat_player!r}. "
+            f"Exactly one hand is present, so the count check passes and the frame still "
+            f"shows the wrong seat's cards."
+        )
+    if seat_player is not None:
+        is_you = [p.get("name") for p in board if isinstance(p, dict) and p.get("is_you")]
+        if is_you != [seat_player]:
+            raise AdapterInvariantError(
+                f"is_you names {is_you}, but this adapter serves {seat_player!r}."
+            )
 
 
 class EventStream:
@@ -135,10 +155,14 @@ class SeatDriver:
         session: BridgeSession,
         events: EventStream,
         *,
+        seat_player: str,
         record_path: Path | None = None,
     ) -> None:
         self._session = session
         self._events = events
+        # The name this adapter passed to its bridge JVM. Known BEFORE any frame
+        # arrives, which is what makes it usable as the expectation.
+        self._seat_player = seat_player
         self._actions: queue.Queue = queue.Queue()
         self._record_path = record_path
         self._stop = threading.Event()
@@ -175,7 +199,7 @@ class SeatDriver:
     # -- seat -> browser -------------------------------------------------
 
     def emit_frame(self, frame: dict) -> None:
-        check_frame_invariants(frame)
+        check_frame_invariants(frame, self._seat_player)
         with self._state_lock:
             self._open_frame = frame
         self._emit("frame", frame)
@@ -189,8 +213,16 @@ class SeatDriver:
         self._events.emit("frame", frame)
         return True
 
+    @property
+    def seat_player(self) -> str:
+        return self._seat_player
+
     def emit_state(self) -> dict:
         state = self._session.call_tool_json("get_game_state", {})
+        # ADAPTER-SUPPLIED, not from the bridge: the client locks its identity to
+        # this before rendering anything, so its seat check and the adapter's are
+        # independent instead of both reading is_you off one payload.
+        state["seat_player"] = self._seat_player
         self._emit("state", state)
         return state
 
@@ -316,6 +348,8 @@ def _make_handler(seat: str, driver: SeatDriver, events: EventStream):
                 self._sse()
             elif self.path == f"/seat/{seat}/state":
                 self._json(200, driver.emit_state())
+            elif self.path == f"/seat/{seat}":
+                self._json(200, {"seat": seat, "seat_player": driver.seat_player})
             elif self.path == "/healthz":
                 self._json(200, {"ok": True, "seat": seat})
             else:
@@ -438,6 +472,7 @@ def main() -> int:
     driver = SeatDriver(
         session,
         events,
+        seat_player=args.username,
         record_path=game_dir / f"{args.username}_seat_events.jsonl" if game_dir else None,
     )
 

@@ -69,3 +69,36 @@ def test_event_stream_gives_a_fresh_client_no_backlog():
     events.emit("frame", {"n": 1})
     _, backlog = events.subscribe(None)
     assert backlog == []
+
+
+def _leak_frame():
+    """karn-interface's leak lens: exactly one hand, on the WRONG player."""
+    return _frame([
+        {"name": "Human", "is_you": False, "hand_size": 5},
+        {"name": "EngineAI", "is_you": True, "hand": [{"name": "Mountain"}], "hand_size": 1},
+    ])
+
+
+def test_refuses_a_hand_on_the_wrong_player():
+    """The count check passes here -- one hand array -- and the frame is still a
+    leak. Only an expectation held OUTSIDE the payload catches it."""
+    check_frame_invariants(_leak_frame())          # count check alone: passes
+    with pytest.raises(AdapterInvariantError, match="this adapter serves 'Human'"):
+        check_frame_invariants(_leak_frame(), "Human")
+
+
+def test_refuses_is_you_on_the_wrong_player():
+    frame = _frame([
+        {"name": "Human", "is_you": False, "hand": [{"name": "Plains"}]},
+        {"name": "EngineAI", "is_you": True, "hand_size": 7},
+    ])
+    with pytest.raises(AdapterInvariantError, match="is_you names"):
+        check_frame_invariants(frame, "Human")
+
+
+def test_accepts_the_right_player_with_the_seat_name_given():
+    """Positive control for the seat check: the good frame still passes."""
+    check_frame_invariants(_frame([
+        {"name": "Human", "is_you": True, "hand": [{"name": "Plains"}], "hand_size": 1},
+        {"name": "EngineAI", "is_you": False, "hand_size": 7},
+    ]), "Human")
