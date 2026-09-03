@@ -1,0 +1,48 @@
+{
+  "title": "McpToolRegistry silently ignores unknown tool arguments, though the schema it publishes forbids them",
+  "description": "McpToolRegistry.call() binds arguments by walking the TOOL METHOD's \
+parameters (McpToolRegistry.java:99 `Parameter[] params = entry.method().getParameters()`, \
+then :107 `args[i] = extractArg(arguments, paramName, type)`). Nothing ever walks the \
+INCOMING JsonObject, so a key the method does not declare is neither bound nor rejected -- \
+it is dropped without a log line, and the tool runs as if the caller had not passed it. \
+CONTRADICTS THE PUBLISHED CONTRACT: buildInputSchema sets `additionalProperties: false` \
+(McpToolRegistry.java:215) on every tool, so the schema handed to clients in tools/list \
+already declares extra properties illegal. The server just does not enforce what it \
+advertises, which is worse than either enforcing or not declaring -- a client that \
+validates against the schema and a client that does not get different answers from the \
+same server. LIVE CALLER, and the reason this was found: sleepwalker.py:86 calls \
+`pass_priority` with {\"timeout_ms\": 15000}. PassPriorityTool declares exactly two \
+parameters, `until` and `board_cursor`; there is no timeout_ms and there never was. So \
+that call blocks with NO timeout, and nothing upstream bounds it either -- \
+bridge_transport.py builds its MCP HTTP client with `httpx.Timeout(30.0, read=None)`, an \
+unlimited read, deliberately, so that pass_priority can wait out a slow opponent. The \
+sleepwalker has therefore been running without the 15s bound its own source says it has, \
+since the line was written. CONSEQUENCE BEYOND THE SLEEPWALKER, which is the part that \
+matters: the pilot's tools are model-generated calls. A model that hallucinates a \
+parameter -- a `timeout_ms`, a `target`, a misspelt `board_cursor` -- gets silence and a \
+successful-looking result instead of an error it could correct from. That failure is \
+invisible in the trace: the call records as fine, and only the behaviour is wrong. This \
+is the silent-fallback class the repo lints for (no .get(key, default) on config, no \
+except: pass, no recovery that fabricates an action), at the tool boundary, where the \
+caller is a language model and therefore the least able to notice. SUGGESTED FIX: in \
+call(), diff the incoming JsonObject's key set against the declared @Param names and throw \
+on the difference, with the tool name and the unknown key in the message -- the same shape \
+as the existing type-mismatch error from extractArg, which already names the parameter and \
+points at the schema. Then fix sleepwalker.py:86 (drop the argument, or add a real bound). \
+Fixing the registry WITHOUT fixing the caller turns the sleepwalker into a hard failure on \
+its first pass_priority, so they land together or the caller lands first. NOT MEASURED \
+HERE: how often live pilot games send an undeclared argument. The trace records the call as \
+successful, so the existing logs cannot answer it -- that count only exists once the \
+registry starts rejecting. Worth reading off the first corpus run after the fix.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "mcp",
+    "silent-failure",
+    "measured",
+    "pilot-prompt",
+  ],
+  "created_at": "2026-09-02T21:20:00.000-04:00",
+  "updated_at": "2026-09-02T21:20:00.000-04:00",
+}
