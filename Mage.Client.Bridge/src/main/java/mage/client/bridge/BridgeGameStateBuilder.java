@@ -75,6 +75,16 @@ public final class BridgeGameStateBuilder {
                     permInfo.put("id", viewLocator.getStableShortId(perm.getId(), perm, gameView));
                     permInfo.put("name", cardFormatter.safeDisplayName(perm));
                     permInfo.put("tapped", perm.isTapped());
+                    // A permanent said nothing about being a land, while a HAND card
+                    // does, so a client could only know a permanent was a land if it
+                    // had already seen that name flagged in a hand this session. That
+                    // is a second copy of a fact the engine holds, and it is wrong
+                    // after a reconnect: lands already on the table stop stacking
+                    // until one of the same name turns up in a hand. Same predicate
+                    // as the hand's, so the two cannot disagree.
+                    if (perm.isLand()) {
+                        permInfo.put("is_land", true);
+                    }
 
                     if (perm.isCreature()) {
                         permInfo.put("power", perm.getPower());
