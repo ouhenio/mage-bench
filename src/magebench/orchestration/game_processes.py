@@ -15,7 +15,7 @@ from magebench.common.llm_cost import DEFAULT_LLM_PROVIDER, required_api_key_env
 from magebench.common.env import env_flag_dir, env_or_none
 from magebench.common.log import get_logger
 from magebench.common.process_manager import ProcessManager
-from magebench.orchestration.config import Config, PilotPlayer
+from magebench.orchestration.config import Config, HumanPlayer, PilotPlayer
 
 # Every `mvn exec:java` below inherits the DEFAULT ~/.m2 unless told otherwise, so a
 # worktree built against an isolated repository still RUNS the shared jars. That makes
@@ -394,6 +394,53 @@ def start_sleepwalker_client(
     ]
     if deck_path:
         args.extend(["--deck", str(project_root / deck_path)])
+    if table_id:
+        args.extend(["--table-id", table_id])
+
+    return pm.start_process(
+        args=args,
+        cwd=project_root,
+        env=env,
+        log_file=log_path,
+    )
+
+
+def start_human_client(
+    pm: ProcessManager,
+    project_root: Path,
+    config: Config,
+    player: HumanPlayer,
+    log_path: Path,
+    game_dir: Path | None = None,
+    table_id: str | None = None,
+) -> subprocess.Popen:
+    """Start the human-seat adapter: a bridge seat a browser drives over HTTP.
+
+    Same shape as start_sleepwalker_client -- the seat is created by the bridge
+    JVM joining the table, and what differs is only who answers the decisions.
+    The adapter binds 127.0.0.1 and is reached over ssh -L; there is no flag here
+    to bind anything else, and human_seat.py refuses one if it is passed.
+    """
+    env = {"PYTHONUNBUFFERED": "1"}
+    args = [
+        sys.executable,
+        "-m",
+        "magebench.play.human_seat",
+        "--server",
+        config.server,
+        "--port",
+        str(config.port),
+        "--username",
+        player.name,
+        "--project-root",
+        str(project_root),
+        "--http-port",
+        str(player.http_port),
+    ]
+    if player.deck:
+        args.extend(["--deck", str(project_root / player.deck)])
+    if game_dir:
+        args.extend(["--game-dir", str(game_dir)])
     if table_id:
         args.extend(["--table-id", table_id])
 

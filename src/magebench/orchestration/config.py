@@ -105,6 +105,24 @@ class ReplayPlayer:
 
 
 @dataclass
+class HumanPlayer:
+    """A seat a person plays from a browser, driven by magebench.play.human_seat.
+
+    The adapter IS this seat's process: nothing here opens a table and waits for
+    someone to join it, so a seat driven from outside has to be started like any
+    other client. `http_port` is REQUIRED and never defaulted -- an explicitly
+    numbered port is killable by identity and does not race when two seats run
+    at once, which an auto-picker does.
+    """
+
+    name: str
+    http_port: int
+    deck: str | None = None  # Path to .dck file, relative to project root
+    deck_name: str | None = None
+    deck_strategy: str | None = None
+
+
+@dataclass
 class CpuPlayer:
     """XMage built-in COMPUTER_MAD AI."""
 
@@ -123,7 +141,7 @@ class CpuPlayer:
 
 
 # Union type for all player types
-Player = SleepwalkerPlayer | PilotPlayer | ReplayPlayer | CpuPlayer
+Player = SleepwalkerPlayer | PilotPlayer | ReplayPlayer | CpuPlayer | HumanPlayer
 
 # XMage server username constraints (from Mage.Server/config/config.xml)
 MIN_USERNAME_LENGTH = 3
@@ -644,6 +662,7 @@ class Config:
     pilot_players: list[PilotPlayer] = field(default_factory=list)
     replay_players: list[ReplayPlayer] = field(default_factory=list)
     cpu_players: list[CpuPlayer] = field(default_factory=list)
+    human_players: list[HumanPlayer] = field(default_factory=list)
 
     def load_config(
         self,
@@ -744,11 +763,24 @@ class Config:
                     self.replay_players.append(ReplayPlayer(name=name, deck=deck, script=player.get("script")))
                 elif player_type == "cpu":
                     self.cpu_players.append(CpuPlayer(name=name, deck=deck, skill=player.get("skill")))
+                elif player_type == "human":
+                    # http_port is read, not .get()'d: a browser seat with no port
+                    # is a config someone forgot to finish, and a default would
+                    # silently collide with the next seat.
+                    assert "http_port" in player, (
+                        f"human player {name!r} needs an explicit http_port -- the adapter "
+                        f"binds it on 127.0.0.1 and it must be killable by identity"
+                    )
+                    self.human_players.append(
+                        HumanPlayer(name=name, deck=deck, http_port=player["http_port"])
+                    )
                 else:
                     raise AssertionError(f"Unknown player type {player_type!r}")
 
             # Validate: only pilot players can have deck="choice"
-            non_pilot = self.sleepwalker_players + self.replay_players + self.cpu_players
+            non_pilot = (
+                self.sleepwalker_players + self.replay_players + self.cpu_players + self.human_players
+            )
             non_pilot_choice = [p.name for p in non_pilot if p.deck == "choice"]
             assert not non_pilot_choice, (
                 f"deck='choice' requires a pilot player (has LLM), but found on non-pilot player(s): {non_pilot_choice}"
@@ -808,6 +840,20 @@ class Config:
             players.append(d)
         for p in self.replay_players:
             d = {"type": "replay", "name": p.name}
+            if p.deck:
+                d["deck"] = p.deck
+            players.append(d)
+        for p in self.human_players:
+            # "bridge", NOT "human", and this is the correct term rather than a
+            # workaround. The observer's vocabulary describes how a seat is FILLED,
+            # not who decides: AiPuppeteerConfig.isHeadless() covers
+            # bridge/sleepwalker/pilot/replay and getPlayerType() maps all of them to
+            # PlayerType.HUMAN -- "a HUMAN slot an external client connects to", which
+            # is exactly what a human seat is. Sending "human" made the seat neither
+            # bot nor headless, so the table was built with a seat nobody would fill
+            # and setup stopped there with no error. Measured 2026-09-02: the observer
+            # logged `type=human, isBot=false, isHeadless=false` and the run hung.
+            d = {"type": "bridge", "name": p.name}
             if p.deck:
                 d["deck"] = p.deck
             players.append(d)
