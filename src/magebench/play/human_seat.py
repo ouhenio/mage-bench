@@ -323,6 +323,25 @@ class SeatDriver:
                     result = self._session.call_tool_json("get_action_choices", {})
         return True
 
+    def concede(self) -> dict:
+        """Concede this seat's game so it ENDS rather than expires.
+
+        Without this the only way out is to stop answering, and the engine then
+        sits on a pending prompt until the job's wall clock kills it -- no
+        game_end, no winner, and a recording that says "the job expired" where it
+        should say "conceded on turn 9". Measured on the first real human game:
+        it stopped at turn 9 on an unanswered kicker prompt and produced no
+        server game_end at all.
+
+        The bridge already has the tool; nothing new happens in the engine.
+        """
+        result = self._session.call_tool_json("concede", {})
+        self._emit("conceded", {"game_seq": result.get("game_seq")})
+        # The decision loop is parked in _actions.get(); wake it so it can see
+        # the game is over rather than hold the seat until the clock runs out.
+        self._actions.put(None)
+        return result
+
     def stop(self) -> None:
         self._stop.set()
         self._actions.put(None)
@@ -356,6 +375,14 @@ def _make_handler(seat: str, driver: SeatDriver, events: EventStream):
                 self._json(404, {"error": f"no such path: {self.path}"})
 
         def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+            if self.path == f"/seat/{seat}/concede":
+                try:
+                    result = driver.concede()
+                except RuntimeError as exc:
+                    self._json(502, {"error": f"concede failed at the bridge: {exc}"})
+                    return
+                self._json(200, {"conceded": True, "result": result})
+                return
             if self.path != f"/seat/{seat}/action":
                 self._json(404, {"error": f"no such path: {self.path}"})
                 return
