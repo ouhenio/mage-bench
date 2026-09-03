@@ -176,6 +176,9 @@ class SeatDriver:
         # emitted the mulligan before the client's SSE stream was up and both sides
         # waited for the other.
         self._open_frame: dict | None = None
+        # The last game_seq this adapter has SEEN, from any payload that carried
+        # one. Not the engine's notion of "now" -- see _emit_conceded.
+        self._last_game_seq: int | None = None
         self.finished = threading.Event()
 
     # -- browser -> seat -------------------------------------------------
@@ -198,8 +201,15 @@ class SeatDriver:
 
     # -- seat -> browser -------------------------------------------------
 
+    def _note_seq(self, payload: dict) -> None:
+        seq = payload.get("game_seq")
+        if isinstance(seq, int):
+            with self._state_lock:
+                self._last_game_seq = seq
+
     def emit_frame(self, frame: dict) -> None:
         check_frame_invariants(frame, self._seat_player)
+        self._note_seq(frame)
         with self._state_lock:
             self._open_frame = frame
         self._emit("frame", frame)
@@ -223,6 +233,7 @@ class SeatDriver:
         # this before rendering anything, so its seat check and the adapter's are
         # independent instead of both reading is_you off one payload.
         state["seat_player"] = self._seat_player
+        self._note_seq(state)
         self._emit("state", state)
         return state
 
@@ -336,7 +347,16 @@ class SeatDriver:
         The bridge already has the tool; nothing new happens in the engine.
         """
         result = self._session.call_tool_json("concede", {})
-        self._emit("conceded", {"game_seq": result.get("game_seq")})
+        # THE SEQ IS THE ADAPTER'S, NOT THE TOOL'S. ConcedeTool's result carries
+        # no game_seq, and passing its absence through emitted `game_seq: null`
+        # on an event the client had already bound to. This is the last seq this
+        # adapter SAW, so it locates the concede in the stream the client has
+        # been reading -- it is not the engine's sequence number for the
+        # concession itself. Anything joining on the engine's own numbering
+        # should use the `game_over` that follows, or the server event log.
+        with self._state_lock:
+            seq = self._last_game_seq
+        self._emit("conceded", {"game_seq": seq, "game_seq_source": "adapter_last_seen"})
         # The decision loop is parked in _actions.get(); wake it so it can see
         # the game is over rather than hold the seat until the clock runs out.
         self._actions.put(None)

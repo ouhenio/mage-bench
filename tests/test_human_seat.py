@@ -132,7 +132,33 @@ def test_concede_calls_the_bridge_and_emits():
     assert session.calls == [("concede", {})]
     assert result == {"game_seq": 42}
     _, backlog = events.subscribe(0)
-    assert [(e[1], e[2]) for e in backlog] == [("conceded", {"game_seq": 42})]
+    # No frame has been seen, so there is no seq to stamp and the field is
+    # honestly None -- but it is LABELLED, so a client can tell "not seen yet"
+    # from "the tool did not say".
+    assert [(e[1], e[2]) for e in backlog] == [
+        ("conceded", {"game_seq": None, "game_seq_source": "adapter_last_seen"})
+    ]
+
+
+def test_concede_stamps_the_last_seq_the_adapter_saw():
+    """ConcedeTool returns no game_seq, so passing its result through emitted a
+    null on an event the client had bound to. The adapter stamps what it saw."""
+    from magebench.play.human_seat import SeatDriver
+
+    events = EventStream()
+    driver = SeatDriver(_StubSession(), events, seat_player="Human")
+    driver.emit_frame({
+        "action_pending": True,
+        "game_seq": 117,
+        "board": [
+            {"name": "Human", "is_you": True, "hand": [{"name": "Plains"}]},
+            {"name": "EngineAI", "is_you": False, "hand_size": 7},
+        ],
+    })
+    driver.concede()
+    _, backlog = events.subscribe(0)
+    conceded = [e[2] for e in backlog if e[1] == "conceded"]
+    assert conceded == [{"game_seq": 117, "game_seq_source": "adapter_last_seen"}]
 
 
 def test_concede_wakes_a_driver_parked_on_a_decision():
