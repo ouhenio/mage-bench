@@ -169,3 +169,50 @@ def test_concede_wakes_a_driver_parked_on_a_decision():
     driver = SeatDriver(_StubSession(), EventStream(), seat_player="Human")
     driver.concede()
     assert driver._actions.get_nowait() is None
+
+
+class _DeadBridgeSession(_StubSession):
+    """The bridge is gone: any tool call raises, as it does after a finished game."""
+
+    def call_tool_json(self, name, arguments=None, timeout=None):
+        self.calls.append((name, arguments))
+        raise RuntimeError("bridge processor is shut down")
+
+
+def test_game_over_carries_the_final_state_when_the_bridge_answers():
+    """The terminal result has no board, so the client's last board predates the
+    lethal blow. Eugenio's second game showed 8-6 under YOU WON; the engine said 8-0."""
+    from magebench.play.human_seat import SeatDriver
+
+    events = EventStream()
+    final = {"board": [{"name": "Human", "life": 8, "is_you": True},
+                       {"name": "EngineAI", "life": 0}]}
+    session = _StubSession(result=final)
+    driver = SeatDriver(session, events, seat_player="Human")
+
+    assert driver._game_over({"game_over": True, "game_seq": 312}) is True
+    _, backlog = events.subscribe(0)
+    kind, payload = backlog[-1][1], backlog[-1][2]
+    assert kind == "game_over"
+    assert payload["final_state"] == final
+    assert payload["final_state_source"] == "get_game_state, after game_over"
+    assert session.calls == [("get_game_state", {})]
+
+
+def test_game_over_labels_a_missing_final_state_rather_than_inventing_one():
+    """When the bridge has already gone the field is absent AND labelled, so a
+    client can tell 'did not answer' from 'no state'. It must never fall back to
+    the pre-lethal board it happens to be holding."""
+    from magebench.play.human_seat import SeatDriver
+
+    events = EventStream()
+    session = _DeadBridgeSession()
+    driver = SeatDriver(session, events, seat_player="Human")
+
+    assert driver._game_over({"player_dead": True, "game_seq": 99}) is True
+    _, backlog = events.subscribe(0)
+    payload = backlog[-1][2]
+    assert payload["game_over"] is False and payload["player_dead"] is True
+    assert payload["game_seq"] == 99
+    assert payload["final_state"] is None
+    assert payload["final_state_source"].startswith("unavailable: RuntimeError")

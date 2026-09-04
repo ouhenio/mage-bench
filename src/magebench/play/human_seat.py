@@ -281,11 +281,35 @@ class SeatDriver:
 
     def _game_over(self, result: dict) -> bool:
         if result.get("game_over") or result.get("player_dead"):
-            self._emit("game_over", {
+            payload = {
                 "game_over": bool(result.get("game_over")),
                 "player_dead": bool(result.get("player_dead")),
                 "game_seq": result.get("game_seq"),
-            })
+                "final_state": None,
+                "final_state_source": None,
+            }
+            # THE TERMINAL RESULT CARRIES NO BOARD, so there is nothing here to forward.
+            # Measured over six game-over results in evidence/opd/paired-run2-step4-full-1449:
+            # its keys are action_taken, game_over, game_seq, success, and nothing else. The
+            # last board the client ever saw is therefore the one BEFORE the lethal blow, and
+            # a victory plate built from it shows a LIVING OPPONENT under "YOU WON" --
+            # Eugenio's second game read 8-6 on screen where the engine recorded 8-0.
+            #
+            # Fetch once, here, because this is the last moment the bridge is known to be up:
+            # `poll_phases` treats the bridge going away as how a finished game looks. Whether
+            # it still answers at this instant is UNVERIFIED -- it cannot be settled without a
+            # live game -- so the field is absent rather than invented when it does not, and
+            # LABELLED either way so a client can tell "the bridge did not answer" from "the
+            # game had no state". A wrong number under "YOU WON" is worse than no number.
+            try:
+                state = self._session.call_tool_json("get_game_state", {}, timeout=5)
+            except Exception as exc:  # noqa: BLE001 -- recorded in the payload, never swallowed
+                payload["final_state_source"] = f"unavailable: {type(exc).__name__}: {exc}"
+                logger.warning("[human-seat] no final state at game over: %s", exc)
+            else:
+                payload["final_state"] = state
+                payload["final_state_source"] = "get_game_state, after game_over"
+            self._emit("game_over", payload)
             return True
         return False
 
