@@ -185,8 +185,12 @@ def test_game_over_carries_the_final_state_when_the_bridge_answers():
     from magebench.play.human_seat import SeatDriver
 
     events = EventStream()
-    final = {"board": [{"name": "Human", "life": 8, "is_you": True},
-                       {"name": "EngineAI", "life": 0}]}
+    # `available: True` is part of a real state body -- 18 of the 19 state events in
+    # Eugenio's second game carry it, and the adapter now requires it. The first version
+    # of this fixture omitted it and the new strictness caught the fixture, not the code.
+    final = {"available": True,
+             "players": [{"name": "Human", "life": 8, "is_you": True},
+                         {"name": "EngineAI", "life": 0}]}
     session = _StubSession(result=final)
     driver = SeatDriver(session, events, seat_player="Human")
 
@@ -216,3 +220,21 @@ def test_game_over_labels_a_missing_final_state_rather_than_inventing_one():
     assert payload["game_seq"] == 99
     assert payload["final_state"] is None
     assert payload["final_state_source"].startswith("unavailable: RuntimeError")
+
+
+def test_game_over_treats_an_answered_but_empty_state_as_unavailable():
+    """The bridge can SUCCEED and carry no state: {"available": false, "error": ...}.
+    One of the 19 state events in Eugenio's second game was exactly that. Passing it
+    through would label it a success while carrying no score, so a client checking
+    only for null would sail into it."""
+    from magebench.play.human_seat import SeatDriver
+
+    events = EventStream()
+    session = _StubSession(result={"available": False, "error": "No game state available yet"})
+    driver = SeatDriver(session, events, seat_player="Human")
+
+    assert driver._game_over({"game_over": True, "game_seq": 7}) is True
+    payload = events.subscribe(0)[1][-1][2]
+    assert payload["final_state"] is None, "an unavailable body must not reach the client as state"
+    assert payload["final_state_source"] == (
+        "unavailable: available=False: No game state available yet")

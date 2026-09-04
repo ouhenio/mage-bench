@@ -307,8 +307,23 @@ class SeatDriver:
                 payload["final_state_source"] = f"unavailable: {type(exc).__name__}: {exc}"
                 logger.warning("[human-seat] no final state at game over: %s", exc)
             else:
-                payload["final_state"] = state
-                payload["final_state_source"] = "get_game_state, after game_over"
+                # A THIRD OUTCOME: the call SUCCEEDS and carries no state.
+                # `{"available": false, "error": "No game state available yet"}` -- one of
+                # the 19 state events in Eugenio's second game was exactly that. Passing it
+                # through would put a non-null dict with no `players` behind a source label
+                # reading "get_game_state, after game_over": the label says success and the
+                # payload has no score. Normalised HERE so `final_state is None` keeps its
+                # meaning of "no score", instead of every client having to know that
+                # `available` exists (karn-interface, 2026-09-04).
+                if state.get("available") is not True:
+                    payload["final_state_source"] = (
+                        f"unavailable: available={state.get('available')!r}: {state.get('error')}"
+                    )
+                    logger.warning("[human-seat] bridge answered with no state at game over: %s",
+                                   state.get("error"))
+                else:
+                    payload["final_state"] = state
+                    payload["final_state_source"] = "get_game_state, after game_over"
             self._emit("game_over", payload)
             return True
         return False
