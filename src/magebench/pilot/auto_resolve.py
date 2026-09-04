@@ -32,6 +32,61 @@ AUTO_RESOLVABLE_RESPONSE_TYPES = frozenset({"select", "index"})
 # What the engine answers on a forced decision, 310,954 times out of 310,980.
 FORCED_ANSWER = {"choice": "no"}
 
+# The engine's own wording for a priority window -- "do you want to respond?" -- as opposed
+# to every other GAME_SELECT/boolean, which asks something real.
+#
+# AN ALLOW-LIST, NOT A DENY-LIST, and the direction is the safety property. "Select
+# attackers" arrives as GAME_SELECT/boolean with the IDENTICAL respond_with string
+# ("choice=yes (confirm) or choice=no (pass)"), and a player holding creatures but no
+# castable cards has has_playable_cards=false -- so a rule keyed on the flag alone would
+# auto-pass every attack declaration. `combat_phase` does not save you: measured on
+# leg1-ckpt132, 19 of 44 "Select attackers" frames carry combat_phase=None. The message is
+# the only field that separates them. With an allow-list an unrecognised prompt goes to the
+# policy, which is today's behaviour; with a deny-list a new prompt would be silently passed.
+PRIORITY_WINDOW_MESSAGES = frozenset({
+    "Play instants and activated abilities",
+    "Play spells and abilities",
+})
+
+
+def auto_resolve_empty_priority_enabled() -> bool:
+    """Whether a priority window the engine says is empty is answered by the harness.
+
+    Separate knob from MAGEBENCH_AUTO_RESOLVE_FORCED so the effect stays measurable: this
+    class is 46.6% of all decisions the policy answers, so turning it on and leaving no way
+    to turn it off would make the next corpus incomparable with every previous one and
+    nobody could say by how much.
+    """
+    value = os.environ.get("MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY")
+    if value is None:
+        return True
+    if value not in ("0", "1"):
+        raise ValueError(
+            f"MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY={value!r} is not 0 or 1. 1 answers a "
+            f"priority window the ENGINE reports as having nothing playable; 0 puts it to "
+            f"the policy, which is the behaviour of every corpus generated before 2026-09-04."
+        )
+    return value == "1"
+
+
+def is_empty_priority_window(data: dict) -> bool:
+    """A priority window the engine itself says has nothing playable.
+
+    `has_playable_cards` is the bridge's own answer, computed from the engine's
+    getCanPlayObjects() with mana-only abilities filtered out. Requires it to be EXACTLY
+    False: absent means an older bridge that never emitted it, and treating absent as False
+    would auto-pass every priority window ever recorded. That distinction is the whole
+    guard -- `data.get("has_playable_cards") or False` would collapse it and is the idiom
+    that erased absent-vs-empty on `choices` earlier the same day.
+    """
+    if not isinstance(data, dict) or not data.get("action_pending"):
+        return False
+    if data.get("action_type") != "GAME_SELECT" or data.get("response_type") != "boolean":
+        return False
+    if data.get("message") not in PRIORITY_WINDOW_MESSAGES:
+        return False
+    return data.get("has_playable_cards") is False
+
 
 def auto_resolve_enabled() -> bool:
     """Whether the harness answers forced decisions itself.
@@ -62,6 +117,13 @@ def is_forced_decision(data: dict) -> bool:
     """
     if not isinstance(data, dict) or not data.get("action_pending"):
         return False
+    # An empty priority window is forced too, and it is the LARGEST class: 46.6% of all
+    # decisions the policy answers, each costing ~2.3 s and ~180 completion tokens to
+    # conclude "I have no mana". It is checked before the response-type gate because these
+    # are `boolean`, which that gate exists to exclude for a different reason (a boolean
+    # carries no `choices`, so length says nothing about whether it is a real question).
+    if auto_resolve_empty_priority_enabled() and is_empty_priority_window(data):
+        return True
     if data.get("response_type") not in AUTO_RESOLVABLE_RESPONSE_TYPES:
         return False
     choices = data.get("choices")

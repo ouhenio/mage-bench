@@ -215,3 +215,80 @@ def test_an_unknown_card_text_mode_is_refused(monkeypatch):
     monkeypatch.setenv("MAGEBENCH_CARD_TEXT", "repeat")
     with pytest.raises(ValueError, match="not one of"):
         card_text_mode()
+
+
+# ---------------------------------------------------------- empty priority windows
+
+_PRIORITY = {"action_pending": True, "action_type": "GAME_SELECT", "response_type": "boolean"}
+
+
+def _pw(**kw):
+    return {**_PRIORITY, "message": "Play instants and activated abilities", **kw}
+
+
+def test_empty_priority_window_is_forced():
+    """46.6% of every decision the policy answers, each ~2.3s and ~180 completion tokens
+    spent concluding "I have no mana"."""
+    from magebench.pilot.auto_resolve import is_forced_decision
+
+    assert is_forced_decision(_pw(has_playable_cards=False)) is True
+
+
+def test_a_priority_window_with_something_playable_is_NOT_forced():
+    from magebench.pilot.auto_resolve import is_forced_decision
+
+    assert is_forced_decision(_pw(has_playable_cards=True)) is False
+
+
+def test_a_missing_flag_is_not_treated_as_empty():
+    """Absent means a bridge that never emitted it. Treating absent as False would
+    auto-pass every priority window in every corpus recorded before 2026-09-04 -- the
+    absent-vs-false collapse that `x.get(k) or False` performs silently."""
+    from magebench.pilot.auto_resolve import is_forced_decision
+
+    assert is_forced_decision(_pw()) is False
+
+
+def test_select_attackers_is_never_auto_passed():
+    """THE ONE THAT MATTERS. 'Select attackers' is GAME_SELECT/boolean with the IDENTICAL
+    respond_with string, and a player holding creatures but no castable cards has
+    has_playable_cards=false -- so a rule keyed on the flag alone suppresses every attack
+    in the corpus. combat_phase does not separate them: 19 of 44 such frames in
+    leg1-ckpt132 carry combat_phase=None. Only the message does."""
+    from magebench.pilot.auto_resolve import is_forced_decision
+
+    assert is_forced_decision({**_PRIORITY, "message": "Select attackers",
+                               "has_playable_cards": False}) is False
+    assert is_forced_decision({**_PRIORITY, "message": "Select blockers",
+                               "has_playable_cards": False}) is False
+
+
+def test_a_mulligan_is_never_auto_passed():
+    """GAME_ASK, not GAME_SELECT. Auto-passing it keeps a hand the mulligan rule wanted
+    thrown -- the failure the response-type guard was written against."""
+    from magebench.pilot.auto_resolve import is_forced_decision
+
+    assert is_forced_decision({"action_pending": True, "action_type": "GAME_ASK",
+                               "response_type": "boolean",
+                               "message": "Mulligan down to 6 cards?",
+                               "has_playable_cards": False}) is False
+
+
+def test_the_knob_turns_it_off_for_comparability(monkeypatch):
+    """This class is 46.6% of decisions, so a corpus generated with it on is not
+    comparable to one generated without. The knob is how that stays measurable."""
+    from magebench.pilot import auto_resolve
+
+    monkeypatch.setenv("MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY", "0")
+    assert auto_resolve.is_forced_decision(_pw(has_playable_cards=False)) is False
+    monkeypatch.setenv("MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY", "1")
+    assert auto_resolve.is_forced_decision(_pw(has_playable_cards=False)) is True
+
+
+def test_the_knob_refuses_a_value_that_is_not_0_or_1(monkeypatch):
+    import pytest
+    from magebench.pilot import auto_resolve
+
+    monkeypatch.setenv("MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY", "yes")
+    with pytest.raises(ValueError, match="is not 0 or 1"):
+        auto_resolve.auto_resolve_empty_priority_enabled()
