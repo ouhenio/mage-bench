@@ -1,0 +1,45 @@
+{
+  "title": "Unknown tool NAME aborts the game; unknown tool ARGUMENTS are dropped in \
+silence",
+  "description": "The two ends of the same dispatch decision behave in opposite and \
+equally unhelpful ways. A tool call naming a tool that is not registered raises a fatal \
+error and the harness ABORTS THE GAME: the pilot exits code 1, the launcher records the \
+generic exit reason 'launch exited', and the episode is lost. A tool call naming a \
+REGISTERED tool but passing arguments the tool does not declare has those arguments \
+dropped without a word (issue 46512add, filed 2026-09-03). One direction destroys the \
+episode over a recoverable mistake; the other conceals a real defect. \
+\
+MEASURED 2026-09-04 on ranokau, D-gate leg1 config, 20 games per policy, three games lost \
+across 40: Eval08 called 'Choose_action' (registered: 'choose_action' -- a capitalisation), \
+Eval09 called 'get_active_choices' and Eval14 called 'get_game_action_choices' (registered: \
+'get_action_choices'). All three are near-misses of a real tool name. There were ZERO \
+non-fatal instances: every unknown tool call killed its game. \
+\
+WHY THIS MATTERS BEYOND THE LOST GAMES. The failure is indistinguishable from \
+infrastructure at every layer above it. The per-game exit reason is 'launch exited', the \
+same string written when a launch genuinely dies, and the cause appears only in the game's \
+errors.log. A model-behaviour regression therefore presents as a machine fault and is \
+counted as one: an OPD evaluation on 2026-09-04 reported these games as infrastructure \
+failures and explicitly advised against attributing them to the policy, which inverted the \
+night's conclusion until the errors.log was read. Rates across a training trajectory were \
+0/20, 1/20, 2/20 -- a signal that was invisible while it wore an infrastructure label. \
+\
+DESCRIBING, NOT PROPOSING A FIX. Any change here alters what an in-flight evaluation \
+measures, and the defect must stay in place to be measured. Worth deciding deliberately: \
+whether an unregistered name should return a tool error to the model (which can retry, as \
+it can for any other bad call) rather than ending the episode; whether unknown arguments \
+should be an error rather than silently dropped; and separately, that the exit reason \
+recorded for an aborted game should name the abort's cause rather than reuse the string \
+for a dead launch.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "mcp",
+    "pilot",
+    "evaluation",
+    "silent-failure",
+  ],
+  "created_at": "2026-09-04T02:22:00.000-04:00",
+  "updated_at": "2026-09-04T02:22:00.000-04:00",
+}
