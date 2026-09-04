@@ -1,0 +1,59 @@
+{
+  "title": "Priority frames (GAME_SELECT + boolean) carry no playable set, so neither a \
+human nor the policy can tell an empty window from a real one",
+  "description": "A select/index decision enumerates its options in `choices`. A PRIORITY \
+window arrives as response_type `boolean` with NO `choices` key and no other statement of \
+what is castable, so the receiver cannot distinguish 'priority with nothing to do' from \
+'priority with three instants in hand'. Both the play-client seat and the pilot must \
+therefore guess from the board. \
+\
+MEASURED, human seat, 2026-09-04 (job 1573, Eugenio's first full game, Boros mirror, lost \
+0-12). Of 85 decisions put to the human, 66 were boolean with `choices` absent: 57 'Play \
+instants and activated abilities', 8 'Play spells and abilities', and 1 mulligan. In all 65 \
+priority windows the seat held 3-7 cards and ZERO untapped lands, so nothing was castable \
+and every one was an empty prompt. The control: across the seat's other 20 frames the same \
+check reports untapped lands 11 times, so the zero is a measurement rather than an \
+unexercised branch. His verdict on the client was 'buggy and not friendly' and this was the \
+largest single contributor. \
+\
+MEASURED, policy, evidence/dgate-paired/leg1-ckpt132, 20 games: 1,049 'Play instants and \
+activated abilities' (52 per game), 748 passed (71%), 63 answered `confirmed`; 247 'Play \
+spells and abilities', 198 passed (80%); 44 'Select attackers', 8 passed (18%), the rest \
+acted. These frames are a large recurring share of every corpus we generate. \
+\
+WHY THE OBVIOUS FIX IS WRONG. Extending the harness's forced-decision rule to boolean \
+priority windows would suppress those 63 confirms -- about three real instant-speed plays \
+per game -- and every attack declaration, since 'Select attackers' is the same response_type \
+and is answered with a play 82% of the time. That is the error the auto_resolve docstring \
+already records for the 'fewer than two' line: folding in single-option decisions would have \
+suppressed every single-attacker attack in the corpus. \
+\
+A NEAR MISS WORTH RECORDING: the natural predicate, 'boolean whose choices is empty', \
+matches NOTHING, because the key is absent rather than empty. Written the natural way, \
+`choices is None or len(choices) == 0`, it matches the MULLIGAN, which has the identical \
+shape, and would silently keep hands the mulligan rule wanted thrown. And \
+`len(x.get('choices') or [])` collapses absent and empty so it cannot see the difference at \
+all -- the silent-fallback idiom this repo bans in config code, appearing in analysis code \
+where nobody was looking for it. \
+\
+PROPOSED, described not implemented: give priority frames the playable set the way select \
+frames get `choices`, sourced from the engine rather than inferred. An empty set then \
+answers itself for the policy and lets a client offer an engine-driven auto-pass instead of \
+inferring castability from untapped lands -- a client that infers castability is a client \
+holding rules, which the play-client contract forbids. A non-empty set lights the playable \
+cards, which also answers 'I could not tell what I was allowed to do'. \
+\
+This changes what every future rollout sees and makes new corpora incomparable with old \
+ones, so it is a deliberate decision, not a fix to slip in.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "bridge",
+    "pilot",
+    "play-client",
+    "corpus",
+  ],
+  "created_at": "2026-09-04T05:25:00.000-04:00",
+  "updated_at": "2026-09-04T05:25:00.000-04:00",
+}
