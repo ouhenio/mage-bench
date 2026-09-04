@@ -36,7 +36,7 @@ shape, and would silently keep hands the mulligan rule wanted thrown. And \
 all -- the silent-fallback idiom this repo bans in config code, appearing in analysis code \
 where nobody was looking for it. \
 \
-PROPOSED, described not implemented: give priority frames the playable set the way select \
+CORRECTION 2026-09-04, and it makes the fix SMALLER. The bridge already computes this: `has_playable_cards` appears on frames in this corpus. But measured over 8 games of paired-run2-step4-full-1449, it appears on exactly 96 frames and ALL 96 are results of the `pass_priority` tool returning a GAME_SELECT/select frame. It appears on ZERO of the 338 GAME_SELECT/boolean priority windows, zero GAME_TARGET, zero GAME_CHOOSE_ABILITY, zero GAME_ASK. So the flag is a property of WHICH TOOL THE CALLER HAPPENED TO INVOKE, not of the decision being asked about -- a receiver learns whether anything is playable only if it reached the decision through one particular path. The machinery exists and is wired into one response path out of several. PROPOSED, described not implemented: give priority frames the playable set the way select \
 frames get `choices`, sourced from the engine rather than inferred. An empty set then \
 answers itself for the policy and lets a client offer an engine-driven auto-pass instead of \
 inferring castability from untapped lands -- a client that infers castability is a client \
