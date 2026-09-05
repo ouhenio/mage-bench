@@ -443,7 +443,36 @@ async def _auto_resolve_forced_decision(
             skipped_message=data.get("message"),
         )
 
-    result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    # A BRIDGE THAT HAS ALREADY TORN DOWN IS NOT A FATAL ERROR HERE, and letting it
+    # propagate is what made this flag look like a 2.3x net LOSS in usable games.
+    #
+    # Measured on job 1979, same seeds, only this knob differing: "Bridge processor is shut
+    # down" reaches errors.log in 14 of 20 games with the flag ON and 0 of 20 with it OFF --
+    # while the underlying event occurs in 18 of 20 OFF games too. So the flag never caused
+    # the race; it changed where the event was ROUTED. Unhandled here it becomes
+    # "[pilot] Fatal tool error" in errors.log, and collect.py:315 drops any game with a
+    # non-empty errors.log, so 70% of a flag-ON corpus would be discarded AFTER being played.
+    #
+    # `auto_pass.py:62` already treats exactly this as an infrastructure event and exits its
+    # loop on a warning. This path is the one place that did not, which is the whole delta
+    # between the arms. The event is still RECORDED -- game_log gets it, as it does in the
+    # OFF arm's transcripts -- it is simply not classified as fatal.
+    try:
+        result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    except ToolExecutionError as exc:
+        if game_log:
+            game_log.emit(
+                "auto_resolve_teardown",
+                harness_action=True,
+                decision_index=state.decisions_seen,
+                game_seq=state.last_decision_seq,
+                error_message=str(exc)[:500],
+            )
+        # No `username` in this function's scope -- a NameError here would fire only in the
+        # error path, i.e. only once something else had already gone wrong.
+        logger.warning("bridge gone while auto-answering a forced decision, "
+                       "ending the game loop: %s", exc)
+        return True
     record_decision_seq(state, result_text)
     # THE FORCED DECISION'S OWN LINE IS ALREADY IN HISTORY. _process_tool_calls
     # rendered and appended it before stashing the blob, and render_for_pilot
