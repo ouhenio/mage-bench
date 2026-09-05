@@ -292,3 +292,34 @@ def test_the_knob_refuses_a_value_that_is_not_0_or_1(monkeypatch):
     monkeypatch.setenv("MAGEBENCH_AUTO_RESOLVE_EMPTY_PRIORITY", "yes")
     with pytest.raises(ValueError, match="is not 0 or 1"):
         auto_resolve.auto_resolve_empty_priority_enabled()
+
+
+# ------------------------------------------------- teardown vs a real failure
+
+def test_only_a_torn_down_bridge_is_tolerated_at_auto_resolve():
+    """The parity argument covers ONE condition. A bridge that has already shut down is
+    what the end of 96.2% of games looks like (karn-sft, 1,010 v1 dirs); anything else is
+    a real failure and must still be recorded as fatal.
+
+    This cannot be tested by sampling: there is a 2.2% floor of genuine errors, so
+    0.978^20 = 64% of twenty-game runs show zero errors whether the fix is correct or
+    swallows everything. The distinction has to live in the code.
+    """
+    import inspect
+    from magebench.pilot import pilot
+
+    src = inspect.getsource(pilot._auto_resolve_forced_decision)
+    assert "Bridge processor is shut down" in src, "the tolerated condition must be named"
+    assert "raise" in src.split("Bridge processor is shut down")[1][:200], (
+        "anything that is not a bridge teardown must re-raise")
+
+
+def test_the_teardown_path_records_rather_than_swallows():
+    """Tolerated does not mean invisible: the event still reaches the game log, which is
+    where the OFF arm's transcripts already carried it. Only the FATAL classification --
+    and therefore collect.py:315's contamination rule -- is what changes."""
+    import inspect
+    from magebench.pilot import pilot
+
+    src = inspect.getsource(pilot._auto_resolve_forced_decision)
+    assert "auto_resolve_teardown" in src, "the teardown must be emitted, not dropped"

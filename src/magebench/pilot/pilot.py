@@ -460,6 +460,20 @@ async def _auto_resolve_forced_decision(
     try:
         result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
     except ToolExecutionError as exc:
+        # ONLY a torn-down bridge is tolerated. Any other ToolExecutionError -- a timeout, a
+        # protocol failure, an unknown tool -- still propagates and is still recorded as
+        # fatal, because the parity argument only covers this one condition.
+        #
+        # There is a 2.2% floor of GENUINELY non-empty errors.log across 1,010 v1 games
+        # (karn-sft), so the correct outcome of this fix is that the ON arm returns to ~2.2%,
+        # NOT to zero. A fix that silenced everything would look identical at n=20 --
+        # 0.978^20 = 64% chance of zero errors in twenty games either way -- so the narrowing
+        # has to come from the code, not from a clean sample.
+        #
+        # If the engine's wording ever changes this stops matching and these become fatal
+        # again: that is over-recording, which is the safe direction to fail in.
+        if "Bridge processor is shut down" not in str(exc):
+            raise
         if game_log:
             game_log.emit(
                 "auto_resolve_teardown",
