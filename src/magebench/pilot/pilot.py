@@ -431,6 +431,16 @@ async def _auto_resolve_forced_decision(
             # despite offering none. Passing them is accepted at that rate; this
             # flag is how the audit counts what it cost instead of inferring it.
             chose_unoffered_risk=chose_unoffered(data, FORCED_ANSWER),
+            # WHAT WAS SKIPPED, so a later audit can classify it. Without these the
+            # decision is answered and its frame is never written anywhere -- not the
+            # transcript, not game_events, not the bridge log -- so "every skipped
+            # decision was a priority window" becomes unanswerable from the artifacts.
+            # Validation job 1979 could not check it: 1,531 skips, 1,172 unclassifiable.
+            # Three small fields rather than the whole frame: the frame is what we are
+            # deliberately not paying for, and these are what a check needs.
+            skipped_action_type=data.get("action_type"),
+            skipped_response_type=data.get("response_type"),
+            skipped_message=data.get("message"),
         )
 
     result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
