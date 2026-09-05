@@ -295,31 +295,76 @@ def test_the_knob_refuses_a_value_that_is_not_0_or_1(monkeypatch):
 
 
 # ------------------------------------------------- teardown vs a real failure
+#
+# These feed the handler a CONSTRUCTED error rather than waiting for one. The natural
+# rate of a genuine (non-teardown) error is 2.2% (karn-sft, 1,010 v1 dirs), so a 40-game
+# paired run has a 41% chance of never exercising this branch at all and reporting "did
+# not occur" -- expensive, and silent about having answered nothing. The claim is
+# code-level and deterministic, so it is tested that way.
 
-def test_only_a_torn_down_bridge_is_tolerated_at_auto_resolve():
-    """The parity argument covers ONE condition. A bridge that has already shut down is
-    what the end of 96.2% of games looks like (karn-sft, 1,010 v1 dirs); anything else is
-    a real failure and must still be recorded as fatal.
+import asyncio
 
-    This cannot be tested by sampling: there is a 2.2% floor of genuine errors, so
-    0.978^20 = 64% of twenty-game runs show zero errors whether the fix is correct or
-    swallows everything. The distinction has to live in the code.
-    """
-    import inspect
-    from magebench.pilot import pilot
+import pytest
 
-    src = inspect.getsource(pilot._auto_resolve_forced_decision)
-    assert "Bridge processor is shut down" in src, "the tolerated condition must be named"
-    assert "raise" in src.split("Bridge processor is shut down")[1][:200], (
-        "anything that is not a bridge teardown must re-raise")
+from magebench.pilot.tool_error import ToolExecutionError
 
 
-def test_the_teardown_path_records_rather_than_swallows():
-    """Tolerated does not mean invisible: the event still reaches the game log, which is
-    where the OFF arm's transcripts already carried it. Only the FATAL classification --
-    and therefore collect.py:315's contamination rule -- is what changes."""
-    import inspect
-    from magebench.pilot import pilot
+class _RaisingSession:
+    """A session whose every tool call fails with a chosen error."""
 
-    src = inspect.getsource(pilot._auto_resolve_forced_decision)
-    assert "auto_resolve_teardown" in src, "the teardown must be emitted, not dropped"
+    def __init__(self, message):
+        self._message = message
+        self.calls = 0
+
+    async def call_tool(self, name, arguments=None):
+        self.calls += 1
+        raise RuntimeError(self._message)
+
+
+class _RecordingLog:
+    def __init__(self):
+        self.events = []
+
+    def emit(self, event_type, **fields):
+        self.events.append((event_type, fields))
+
+
+def _forced_state():
+    from magebench.pilot.pilot_state import PilotLoopState
+
+    blob = json.dumps({
+        "action_pending": True, "action_type": "GAME_SELECT", "response_type": "boolean",
+        "message": "Play instants and activated abilities", "has_playable_cards": False,
+    })
+    st = PilotLoopState(history=[])
+    st.pending_decision_blob = blob
+    return st
+
+
+def _run(session, state, log):
+    from magebench.pilot.pilot import _auto_resolve_forced_decision
+
+    return asyncio.run(_auto_resolve_forced_decision(session, state, log))
+
+
+def test_a_bridge_teardown_is_tolerated_and_recorded():
+    """The end of 96.2% of successful games. Tolerated -- but still EMITTED, so the event
+    is visible in the transcript exactly as the flag-OFF arm already carried it."""
+    log = _RecordingLog()
+    handled = _run(_RaisingSession("Bridge processor is shut down"), _forced_state(), log)
+
+    assert handled is True, "a torn-down bridge must end the loop, not crash the game"
+    assert [e for e, _ in log.events if e == "auto_resolve_teardown"], (
+        "tolerated must not mean invisible")
+
+
+def test_any_other_tool_failure_still_propagates():
+    """THE ONE THAT MATTERS. The parity argument covers a bridge teardown and nothing
+    else. A timeout or protocol failure must still reach errors.log, or the fix has
+    silenced the 2.2% of genuine errors it was never meant to touch -- and at n=40 a
+    sample cannot tell the two apart."""
+    log = _RecordingLog()
+    with pytest.raises(ToolExecutionError):
+        _run(_RaisingSession("connection reset by peer"), _forced_state(), log)
+    assert not [e for e, _ in log.events if e == "auto_resolve_teardown"], (
+        "a non-teardown failure must not be recorded as a teardown")
