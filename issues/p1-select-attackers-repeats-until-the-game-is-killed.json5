@@ -1,0 +1,68 @@
+{
+  "title": "\"Select attackers\" repeats indefinitely until the game is killed \
+(149,235 identical decisions in one game)",
+  "description": "One game in a 3,000-game corpus run entered a loop in which \
+the engine issued the same attacker-declaration decision forever and the \
+harness auto-answered it forever. The game never reached game_end and was \
+killed by the runner's 60-minute `timeout`.\n\
+\n\
+MEASURED, from the game's own server_game_events.jsonl:\n\
+  149,457  total events (30 MB) in one game\n\
+  149,332  of type \"decision\"\n\
+  149,235  with the identical message \"Select attackers\"\n\
+      149,294 of those carry response type \"boolean\"\n\
+       74  game_action, 36 uuid, 34 phase_change, 16 turn_change\n\
+  turn 16, no game_end, killed at exactly 60 minutes\n\
+\n\
+The loop runs from seq 365 to seq 298832. The decision carries \
+`\"query_type\":\"SELECT\"`, `\"message\":\"Select attackers\"` and \
+`\"choices\":{\"can_pass\":true}` with no attacker options listed. The response \
+type recorded against it changes from \"string\" at the first occurrence to \
+\"boolean\" by the last, which may be the more useful end to pull on: the two \
+sides appear to disagree about what kind of answer the prompt wants, and a \
+pass that the engine does not accept as a pass would produce exactly this.\n\
+\n\
+RATE IS THE TELL. 149,235 decisions in 3,600 seconds is 41 per second. That is \
+far too fast to be model calls, so the policy is not in this loop at all -- the \
+harness is auto-resolving the decision and the engine is re-issuing it. A game \
+that is merely long or merely stuck looks nothing like this: finished games in \
+the same run run at a median of 35 events/min, p95 84, and this one produced \
+2,490 events/min.\n\
+\n\
+WHY THIS IS PRIORITY 1 DESPITE BEING RARE. Observed once in 274 games on one \
+run and zero times in a 400-game scan of another, so roughly 1 in 1,250. The \
+cost is not the single game it eats. The game holds its slot, its X display and \
+its share of concurrency for a full hour, and a game pinned that long is what \
+pushes the launcher's live-index window past the display-slot width. On the run \
+where this occurred it drove the window from a mean of 23 to a maximum of 73 \
+against a 32-slot allocator, and 16 further games died as display collisions. \
+One occurrence cost 17 games. A maintainer reading \"1 in 1,250\" without that \
+will price it wrong.\n\
+\n\
+REPRODUCTION. Seed 961059, Constructed - Freeform, pilot deck \
+\"[GTC] Boros Battalion.dck\" against engine AI with \"Justin Cheung's \
+UWR.dck\". The full 30 MB event stream is retained at \
+/workspace1/projects/posttrainlatamgpt/ouhenio/mtg/evidence/opd/corpus-v2-2071/\
+g1058/logs/game_20260905_042443/server_game_events.jsonl on the CENIA cluster \
+(ranokau). Not reproduced deliberately -- it was found in a corpus run.\n\
+\n\
+SUGGESTED GUARD, and the shape matters. A cap on total events per game has to \
+be calibrated against legitimately long games, which do exist here (one clean \
+game reached turn 67 with 1,678 events). A cap on CONSECUTIVE IDENTICAL \
+DECISIONS has no legitimate case at all: the same decision string answered the \
+same way N times in a row is never correct play, so the threshold needs no \
+tuning against real games. A progress-rate floor -- kill below N events/min -- \
+does NOT catch this one, because it is seventy times too fast; it catches a \
+different pathology (games crawling at 4-10 events/min against a p5 of 22) and \
+the two guards are not substitutes for each other.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "engine",
+    "harness",
+    "hang",
+  ],
+  "created_at": "2026-09-05T21:00:00.000000-04:00",
+  "updated_at": "2026-09-05T21:00:00.000000-04:00",
+}
