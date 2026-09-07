@@ -1,0 +1,40 @@
+{
+  "title": "ExpansionRepository swallows the SQLException, so an h2 lock timeout is reported as 'expansionDao is null' with no mention of h2, the path, or the wait",
+  "description": "ExpansionRepository's constructor ends in `catch (SQLException e) { // TODO: \
+add app close?  e.printStackTrace(); }`. When openH2ConnectionWithRetry exhausts its attempts \
+the exception is printed and DISCARDED: the constructor returns normally, `expansionDao` stays \
+null and `instanceInitialized` stays false, and the object is handed out as if it were usable. \
+Nothing on the server path reads instanceInitialized -- the only reader in the tree is \
+Mage.Client's ConstructedFormats -- so the first symptom is an NPE from wherever the DAO is \
+next touched. What the operator actually sees is the Maven line: 'Cannot invoke \
+Dao.queryBuilder() because this.expansionDao is null'. That message names no database, no \
+file, no lock, no elapsed wait and no attempt count, and it points at a null field rather \
+than at h2. CardRepository has the same shape at the same point. MEASURED COST: corpus v3 job \
+3135 lost a cold cohort of 48 of 4000 games to h2 lock contention (see \
+p1-h2-lock-retry-budget-is-50x-shorter-than-the-measured-contention-window), and the cost was \
+not only the games -- it was that nobody looked at h2 at all until a server.log was read by \
+hand hours later, because every visible artifact said 'null DAO'. The four preceding WARN \
+lines naming 'Lock file recently modified [8000-240]' are in server.log, one level below \
+where anyone was looking. THIS IS WORTH MORE THAN THE RETRY FIX: a correct diagnosis costs \
+nothing to produce and this misdiagnosis cost a full cohort plus the hours to find it, and it \
+will cost the same again at the next concurrency we have not tried, whatever the retry budget \
+is by then. Suggested: on exhausted retries throw rather than swallow, and make the message \
+carry the JDBC URL, the resolved absolute db path (it is CWD-relative -- \
+'jdbc:h2:file:./db/%s' -- so the path is not guessable from the message), the attempt count \
+and the total elapsed wait. A caller that cannot proceed without the DAO should fail at the \
+point the DAO could not be built, not at the point someone dereferences it. The repository is \
+constructed by RepositoryUtil.bootstrapLocalDb, called from both Mage.Server/Main and \
+Mage.Client/MageFrame, so both entry points get the same benefit. The house rule against \
+silent fallbacks covers exactly this: no recovery that fabricates a usable object.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "h2",
+    "silent-failure",
+    "diagnosability",
+    "swallowed-exception",
+  ],
+  "created_at": "2026-09-07T02:05:00.000-04:00",
+  "updated_at": "2026-09-07T02:05:00.000-04:00",
+}
