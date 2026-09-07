@@ -92,6 +92,23 @@ class _DecisionSupportRecord:
         return key
 
     def __post_init__(self) -> None:
+        # EXTRAS AND KNOWN FIELDS MUST BE DISJOINT, and the reason is a precedence
+        # nobody wrote down: to_mapping() emits the known fields and then does
+        # `obj.update(self._extras)`, so an extras key colliding with a known field
+        # SILENTLY WINS. Nothing reachable today can produce that -- extras come from
+        # _extras_from_mapping, which partitions by known-field membership -- but a
+        # record constructed by hand can, and the failure would be a typed field the
+        # reader can see and the writer cannot, differing with no error anywhere.
+        # Refused here rather than resolved by ordering, because either ordering is a
+        # silent answer to a question that should not have been asked.
+        collisions = sorted(set(self._extras) & set(self._KNOWN_FIELDS))
+        if collisions:
+            raise ValueError(
+                f"{type(self).__name__}: {collisions} appear in both _extras and the "
+                "known fields. to_mapping() would let the extras copy win silently. "
+                "Build the record from a mapping via the class's own decoder, which "
+                "partitions the two, rather than passing _extras by hand."
+            )
         object.__setattr__(self, "_extras", MappingProxyType(dict(self._extras)))
         present_fields = self._present_fields or frozenset(
             name for name in self._KNOWN_FIELDS if getattr(self, self._attr_name_for_known_field(name)) is not None
