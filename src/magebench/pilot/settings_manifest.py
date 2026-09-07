@@ -28,6 +28,28 @@ third is the one that would have caught the incident:
                   A build that cannot read a flag reports the flag as unread; a
                   build that can, does not.
 
+WHERE THE REFUSAL LIVES, since it is not here. The pilot observes; the LAUNCHER
+asserts. A launcher set the variable and knows why, so the sbatch is where "this
+run depended on that knob" can be a hard check, and the manifest is where the
+run's own answer is recorded. Splitting them that way is deliberate: a fatal in
+this module would either fire on variables another component owns or need a list
+it cannot maintain. (mtg-0f owns the launcher half.)
+
+NOT DEPLOYED IN THE 2026-09-07 RELAUNCH, on purpose and worth stating because it
+looks like an omission. The corrected lascar tree relaunches as ranokau's exact
+as-run mixture and nothing else; adding this module would put bytes on the node
+that neither node has ever run, and comparability with the in-flight ranokau
+block is the entire purpose of that relaunch. So the corpus generated that night
+is knowingly the last one that cannot describe its own settings -- which is the
+single-variable rule beating a good idea, in the one place where the good idea is
+about provenance.
+
+ALSO NOT IN THE v9 EXPORT. export_llm_events selects fields and the schema would
+need a version bump, so this reaches `game.jsonl` -- what the corpus tooling
+reads -- and not the exported game. That makes it auditable by a person and
+invisible to a downstream consumer, which is half a fix; the bump is owned
+jointly with karn-engine and touches readers as well as the writer.
+
 WHY IT WARNS AND DOES NOT REFUSE, in a repo whose rule is fail loud. The pilot is
 not the only consumer of the MAGEBENCH_ namespace -- MAGEBENCH_DISP_WIDTH and
 MAGEBENCH_DECK_BLOCK are read by the runner and the training-side renderer, and
