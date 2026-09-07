@@ -78,6 +78,7 @@ from magebench.pilot.mulligan import (
     mulligan_choice,
     mulligan_mode,
 )
+from magebench.pilot.settings_manifest import settings_manifest, unread_warning
 from magebench.pilot.pilot_state import (
     record_decision_seq,
     PilotLoopState,
@@ -1447,6 +1448,13 @@ async def run_pilot(
                 tool_names = [tool["function"]["name"] for tool in openai_tools]
                 logger.debug("[pilot] Available tools: %s", tool_names)
 
+                # WHAT WAS IN FORCE, written into the game itself. Computed
+                # before the emit so an invalid setting refuses here rather than
+                # midway through the first decision that touches it.
+                manifest = settings_manifest()
+                warning = unread_warning(manifest)
+                if warning:
+                    logger.warning("%s", warning)
                 if game_log:
                     game_log.emit(
                         "game_start",
@@ -1454,6 +1462,11 @@ async def run_pilot(
                         system_prompt=system_prompt,
                         available_tools=tool_names,
                         deck_path=str(deck_path) if deck_path else None,
+                        # A separate key rather than flattened into the row: the
+                        # row is read by export_llm_events and the v9 schema, and
+                        # a nested object under one name is one addition to both
+                        # rather than one per setting forever.
+                        settings=manifest,
                     )
 
                 logger.info("[pilot] Starting game-playing loop...")
