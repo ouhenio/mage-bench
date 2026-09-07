@@ -79,12 +79,49 @@ public class DatabaseUtils {
      *
      * @param url JDBC connection URL from {@link #prepareH2Connection}
      */
+    /** Default retry budget, in ms. See {@link #retryBudgetMs()} for why it is not 261s. */
+    static final long DEFAULT_RETRY_BUDGET_MS = 600_000L;
+    /** Backoff is capped: doubling without a ceiling spends the whole budget in two sleeps. */
+    static final long MAX_BACKOFF_MS = 5_000L;
+
+    /**
+     * How long to keep trying, in ms. MAGEBENCH_H2_RETRY_BUDGET_MS wins and says so.
+     *
+     * NOT FITTED TO THE ONE WINDOW WE MEASURED. Corpus job 3135's cold cohort of 48 produced
+     * a 261-second contention window, and a budget of 261s would be a budget that works
+     * exactly until the next cohort is bigger. The window's length is a function of how many
+     * servers start at once, which this process cannot see -- one game per process -- so the
+     * runner sets this from its own concurrency and the default is simply generous against a
+     * quantity nobody has bounded.
+     *
+     * The number to replace it with will come from data rather than from another single
+     * observation: every successful retry now logs its elapsed wait, so the distribution
+     * accumulates across runs instead of being reconstructed after an incident.
+     */
+    static long retryBudgetMs() {
+        String raw = System.getenv("MAGEBENCH_H2_RETRY_BUDGET_MS");
+        if (raw == null || raw.isBlank()) {
+            return DEFAULT_RETRY_BUDGET_MS;
+        }
+        long value = Long.parseLong(raw.trim());  // malformed must throw, never fall back
+        if (value < 1_000L) {
+            throw new IllegalArgumentException(
+                    "MAGEBENCH_H2_RETRY_BUDGET_MS=" + value + " is below 1000ms; a budget shorter"
+                            + " than one server start cannot absorb any contention at all.");
+        }
+        return value;
+    }
+
     public static ConnectionSource openH2ConnectionWithRetry(String url) throws SQLException {
-        int maxAttempts = 5;
-        int baseDelayMs = 500;
+        long budgetMs = retryBudgetMs();
+        long baseDelayMs = 500L;
         SQLException lastError = null;
         long startedAt = System.currentTimeMillis();
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+        // BUDGET-BOUNDED, NOT ATTEMPT-BOUNDED. The old loop ran 5 attempts with delays of
+        // 500/1000/1500/2000ms -- five seconds of deliberate waiting against a window measured
+        // at 261 seconds, under-provisioned by roughly fifty times. An attempt count is the
+        // wrong unit: it says how many times to ask, when the question is how long to wait.
+        for (int attempt = 1; ; attempt++) {
             try {
                 JdbcConnectionSource connectionSource = new JdbcConnectionSource(url);
                 DatabaseConnection connection = connectionSource.getReadWriteConnection("h2_open_probe");
@@ -95,8 +132,9 @@ public class DatabaseUtils {
                 // cold cohort of 48 produced a 261-second window, measured after the fact from
                 // WARN timestamps. Every run now contributes that measurement instead.
                 if (attempt > 1) {
-                    logger.info("H2 connection succeeded on attempt " + attempt + "/" + maxAttempts
-                            + " after waiting " + (System.currentTimeMillis() - startedAt) + "ms: " + url);
+                    logger.info("H2 connection succeeded on attempt " + attempt
+                            + " after waiting " + (System.currentTimeMillis() - startedAt)
+                            + "ms of a " + budgetMs + "ms budget: " + url);
                 }
                 return connectionSource;
             } catch (SQLException e) {
@@ -104,16 +142,20 @@ public class DatabaseUtils {
                 if (isUnreadableDatabaseFileError(e)) {
                     throw createUnreadableDatabaseException(url, e);
                 }
-                if (attempt < maxAttempts) {
-                    logger.warn(
-                            "H2 connection attempt " + attempt + "/" + maxAttempts
-                                    + " failed, retrying in " + (baseDelayMs * attempt) + "ms: " + e.getMessage());
-                    try {
-                        Thread.sleep(baseDelayMs * attempt);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw e;
-                    }
+                long elapsed = System.currentTimeMillis() - startedAt;
+                long delay = Math.min(baseDelayMs * attempt, MAX_BACKOFF_MS);
+                if (elapsed + delay >= budgetMs) {
+                    break;
+                }
+                logger.warn(
+                        "H2 connection attempt " + attempt + " failed after " + elapsed
+                                + "ms of a " + budgetMs + "ms budget, retrying in " + delay
+                                + "ms: " + e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
                 }
             }
         }
@@ -127,13 +169,13 @@ public class DatabaseUtils {
         Path dbPath = getH2FilePath(url);
         long waitedMs = System.currentTimeMillis() - startedAt;
         throw new SQLException(
-                "Could not open the H2 database after " + maxAttempts + " attempts over " + waitedMs + "ms."
+                "Could not open the H2 database after " + waitedMs + "ms of a " + budgetMs + "ms budget."
                         + " url=" + url
                         + " path=" + (dbPath == null ? "<unresolved from url>" : dbPath.toAbsolutePath())
                         + " cwd=" + Paths.get("").toAbsolutePath()
                         + ". A \"Lock file recently modified\" cause here means another JVM held this"
-                        + " database while this one started; the retry budget is the thing to raise,"
-                        + " not the lock. Last error: " + lastError.getMessage(),
+                        + " database while this one started; raise MAGEBENCH_H2_RETRY_BUDGET_MS,"
+                        + " and the launcher ceiling with it -- neither moves alone. Last error: " + lastError.getMessage(),
                 lastError);
     }
 

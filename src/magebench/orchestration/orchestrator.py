@@ -404,8 +404,11 @@ def run_orchestrator(config: Config, project_root: Path | None = None) -> Orches
         logger.info("Starting XMage server...")
         start_server(pm, project_root, config, server_config_path, server_log)
 
-        if not wait_for_port(config.server, config.port, config.server_wait):
-            logger.error("Server failed to start within %ds", config.server_wait)
+        # See sequential_batch: the ceiling is derived from the h2 retry budget unless
+        # explicitly set, and an explicit value is checked against it rather than trusted.
+        server_wait = config.resolved_server_wait()
+        if not wait_for_port(config.server, config.port, server_wait):
+            logger.error("Server failed to start within %ds", server_wait)
             logger.error("Check %s for details", server_log)
             return OrchestratorRunResult(exit_code=1)
 

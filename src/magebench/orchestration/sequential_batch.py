@@ -366,10 +366,13 @@ def run_sequential_batch(
     server_proc = _start_server(
         pm, project_root, config, server_config_path, server_log, port, ai_record_dir
     )
-    if not wait_for_port(config.server, port, config.server_wait):
+    # resolved_server_wait(), not server_wait: the raw field may be None (derive from the
+    # h2 retry budget) and an explicit value is only validated against that budget here.
+    server_wait = config.resolved_server_wait()
+    if not wait_for_port(config.server, port, server_wait):
         kill_tree(server_proc.pid)
         port_reservation.release()
-        raise RuntimeError(f"Server failed to start within {config.server_wait}s; see {server_log}")
+        raise RuntimeError(f"Server failed to start within {server_wait}s; see {server_log}")
     port_reservation.release()
     logger.info("Server ready. The card load is now paid for; every game below reuses it.")
 

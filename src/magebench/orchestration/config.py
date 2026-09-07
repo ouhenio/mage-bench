@@ -6,6 +6,7 @@ import random
 import re
 import sys
 from dataclasses import dataclass, field
+from typing import ClassVar
 from pathlib import Path
 
 from magebench.common.atomic_write import atomic_write_text
@@ -539,7 +540,18 @@ class Config:
     start_port: int = 17171
     user: str = "spectator"
     password: str = ""
-    server_wait: int = 240
+    # THE LAUNCHER CEILING, AND IT MUST OUTLIVE THE H2 RETRY BUDGET. These are two limits
+    # with a required ordering that were set independently, in different files, in different
+    # languages: the launcher gave up at 240s while the Java side's h2 retry budget faced a
+    # contention window measured at 261s, so a deepened retry would have been killed from
+    # outside before it could win, and raising either alone fixes nothing. Corpus job 3135
+    # lost a 48-game cohort to exactly that pair.
+    #
+    # `None` means DERIVE it from the budget, so the defaults are consistent by construction
+    # rather than by anyone remembering. An explicit value is honoured and CHECKED -- see
+    # resolved_server_wait(). A healthy server reaches ready in 51s (measured, job 3135 g104),
+    # which is the margin's justification.
+    server_wait: int | None = None
     bridge_delay: int = 5
     # MAGEBENCH_LOG_DIR redirects the whole log namespace for one invocation.
     # The default is SHARED across every process on the box, and game dirs are
@@ -555,6 +567,43 @@ class Config:
     jvm_opens: str = "--add-opens=java.base/java.io=ALL-UNNAMED"
     # Enable XRender pipeline for Java 2D — GPU-accelerated rendering on Linux
     jvm_rendering: str = "-Dsun.java2d.xrender=true"
+
+    # Mirrors DatabaseUtils.DEFAULT_RETRY_BUDGET_MS on the Java side. DUPLICATED ACROSS A
+    # LANGUAGE BOUNDARY and there is no way to import it, so the two can drift; the
+    # ordering check below is what makes a drift loud instead of silent, because it reads
+    # the same environment variable the JVM does.
+    H2_RETRY_BUDGET_DEFAULT_MS: ClassVar[int] = 600_000
+    # A healthy server is ready in 51s (measured). 120 is that, doubled, plus room.
+    SERVER_WAIT_MARGIN_S: ClassVar[int] = 120
+
+    @classmethod
+    def h2_retry_budget_s(cls) -> int:
+        raw = os.environ.get("MAGEBENCH_H2_RETRY_BUDGET_MS")
+        if not raw:
+            return cls.H2_RETRY_BUDGET_DEFAULT_MS // 1000
+        return int(raw) // 1000  # malformed raises; never falls back to the default
+
+    def resolved_server_wait(self) -> int:
+        """The launcher ceiling actually in force, with the ordering enforced.
+
+        Derived when unset, so the two limits cannot be inconsistent by default. Checked
+        when set, so an operator who lowers it below the retry budget is told rather than
+        quietly given a launcher that kills every retry before it can succeed.
+        """
+        budget_s = self.h2_retry_budget_s()
+        floor = budget_s + self.SERVER_WAIT_MARGIN_S
+        if self.server_wait is None:
+            return floor
+        if self.server_wait < floor:
+            raise ValueError(
+                f"server_wait={self.server_wait}s is below the h2 retry budget "
+                f"({budget_s}s) plus margin ({self.SERVER_WAIT_MARGIN_S}s) = {floor}s. "
+                "The launcher would kill a server that was still legitimately waiting for "
+                "the card-database lock, which is what cost job 3135 a 48-game cohort. "
+                "Raise server_wait, or lower MAGEBENCH_H2_RETRY_BUDGET_MS -- they move "
+                "together or not at all."
+            )
+        return self.server_wait
 
     @property
     def jvm_bridge_opts(self) -> str:
