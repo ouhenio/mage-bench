@@ -73,6 +73,17 @@ public enum ExpansionRepository {
 
             eventSource.fireRepositoryDbLoaded();
         } catch (SQLException e) {
+            // DO NOT "FIX" THIS BY RETHROWING. It looks like it should throw, and it must not:
+            // this is an ENUM constructor, so an exception escaping here becomes
+            // ExceptionInInitializerError, and every later touch of ExpansionRepository.instance
+            // then throws NoClassDefFoundError with the original cause GONE. That is strictly
+            // worse than the null DAO it would replace -- an error naming neither the database
+            // nor the failure, arriving from an even more distant call site. It is also why the
+            // original author reached for printStackTrace() rather than for a throw.
+            // The failure is recorded below and RAISED by RepositoryUtil.bootstrapLocalDb, the
+            // one call both Mage.Server/Main and Mage.Client/MageFrame make before any other
+            // database use, and a place that can report it properly.
+            //
             // NOT SWALLOWED. This used to be a bare printStackTrace(): the constructor then
             // returned normally with expansionDao null and instanceInitialized false, nothing
             // on the server path reads that flag, and the first symptom was an NPE from

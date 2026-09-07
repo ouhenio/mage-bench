@@ -84,6 +84,10 @@ public enum CardRepository {
             TableUtils.createTableIfNotExists(connectionSource, CardInfo.class);
             cardsDao = DaoManager.createDao(connectionSource, CardInfo.class);
         } catch (SQLException e) {
+            // Deliberately does not rethrow -- see the long note at the same point in
+            // ExpansionRepository. Short version: enum constructor, so a throw here becomes
+            // ExceptionInInitializerError and then NoClassDefFoundError with the cause lost,
+            // which diagnoses worse than the null DAO it would replace.
             // Recorded as well as logged, for the same reason as ExpansionRepository: a log
             // line is not a state anybody can check, and cardsDao stays null either way.
             initFailure = e;
