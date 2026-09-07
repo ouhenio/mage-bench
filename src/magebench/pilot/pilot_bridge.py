@@ -203,6 +203,12 @@ def _tool_execution_error_result(error: ToolExecutionError, game_seq: int | None
     return json.dumps(result, separators=(",", ":"))
 
 
+# The engine's own wording for a bridge that has already shut down. A constant rather than a
+# literal at the use site so the string that decides "recorded vs fatal" is greppable, and so
+# a test can reference the same one the code matches on.
+BRIDGE_TEARDOWN_MARKER = "Bridge processor is shut down"
+
+
 def _record_tool_execution_failure(
     error: ToolExecutionError,
     username: str,
@@ -212,8 +218,58 @@ def _record_tool_execution_failure(
     logger: Logger,
     log_error_fn: Callable[[Logger, Path | None, str, str], None],
 ) -> None:
-    """Persist fatal MCP tool failures so exports don't look falsely clean."""
+    """Persist fatal MCP tool failures so exports don't look falsely clean.
+
+    A TORN-DOWN BRIDGE IS RECORDED BUT NOT WRITTEN TO errors.log, because it is what the
+    end of a game looks like rather than a failure. Measured across the 1,010 v1 production
+    games: "Bridge processor is shut down" occurs in 96.2% of them and reaches errors.log in
+    2.2%. It is present in 39 of 40 games in BOTH arms of the paired flag validation. An
+    event that occurs in ~96% of SUCCESSFUL games is not a failure mode.
+
+    Why it has to be handled HERE and not at a call site. `collect.py` drops any game with a
+    non-empty errors.log, so with the empty-priority flag ON this routing discarded 26 of 40
+    played games -- turning a 2.39x speedup into a 20% net LOSS. A previous fix wrapped the
+    auto-resolve path's own `choose_action`, and that call never fails: it fired ZERO times
+    across 2,012 auto-resolved decisions while the rate stayed at 26/40. The failures are at
+    `get_game_state` (8), `pass_priority` (3) and `get_game_log` (3). This function is the
+    single chokepoint every one of them passes through, which is why the fix belongs here.
+
+    The event is STILL RECORDED: `llm_error` goes to the game log unconditionally, as it
+    already did in the OFF arm's transcripts. Only the errors.log line is withheld, and
+    only for this one condition. Everything else -- a timeout, a protocol failure, an unknown
+    tool name -- is still fatal, because the parity argument covers this condition alone.
+
+    NOT via `_has_errors`: reclassifying post-game errors there may well be right, but it
+    revalidates games every past corpus excluded, which is a decision about existing data
+    rather than a fix to new behaviour. Kept separable deliberately.
+
+    A game that dies BEFORE reaching game_end is still excluded, by the artifact gate rather
+    than by this one -- karn-sft measured zero overlap between the 22 v1 games with a
+    non-empty errors.log and the 977 its renderer accepted, so the two gates already agree.
+
+    If the engine's wording changes this stops matching and these become fatal again. That
+    is over-recording, which is the safe direction to fail in.
+    """
     error_str = str(error)
+    is_teardown = BRIDGE_TEARDOWN_MARKER in error_str
     if game_log:
-        game_log.emit("llm_error", error_type=type(error).__name__, error_message=error_str[:500])
+        # `bridge_teardown` is the PRODUCTION COUNTER for this branch, and it exists because
+        # the previous fix for this defect had none. That fix was correct code with a
+        # behavioural test in both directions and a mutation check that failed as designed --
+        # and it fired ZERO times in 2,012 decisions, because it guarded a call that never
+        # fails. Every check verified behaviour CONDITIONAL ON REACHING THE CODE; none asked
+        # whether the code is reached. After deploying this, the first question is not "do the
+        # tests pass" but "how many times did it fire": count bridge_teardown=true against the
+        # errors.log rate, and if it is zero the fix is inert again whatever the suite says.
+        game_log.emit(
+            "llm_error",
+            error_type=type(error).__name__,
+            error_message=error_str[:500],
+            bridge_teardown=is_teardown,
+        )
+    if is_teardown:
+        logger.warning(
+            "[%s] bridge already torn down (%s) -- recorded, not fatal", username, error_str[:200]
+        )
+        return
     log_error_fn(logger, game_dir, username, f"[pilot] Fatal tool error: {error_str}")

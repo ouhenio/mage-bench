@@ -431,9 +431,62 @@ async def _auto_resolve_forced_decision(
             # despite offering none. Passing them is accepted at that rate; this
             # flag is how the audit counts what it cost instead of inferring it.
             chose_unoffered_risk=chose_unoffered(data, FORCED_ANSWER),
+            # WHAT WAS SKIPPED, so a later audit can classify it. Without these the
+            # decision is answered and its frame is never written anywhere -- not the
+            # transcript, not game_events, not the bridge log -- so "every skipped
+            # decision was a priority window" becomes unanswerable from the artifacts.
+            # Validation job 1979 could not check it: 1,531 skips, 1,172 unclassifiable.
+            # Three small fields rather than the whole frame: the frame is what we are
+            # deliberately not paying for, and these are what a check needs.
+            skipped_action_type=data.get("action_type"),
+            skipped_response_type=data.get("response_type"),
+            skipped_message=data.get("message"),
         )
 
-    result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    # A BRIDGE THAT HAS ALREADY TORN DOWN IS NOT A FATAL ERROR HERE, and letting it
+    # propagate is what made this flag look like a 2.3x net LOSS in usable games.
+    #
+    # Measured on job 1979, same seeds, only this knob differing: "Bridge processor is shut
+    # down" reaches errors.log in 14 of 20 games with the flag ON and 0 of 20 with it OFF --
+    # while the underlying event occurs in 18 of 20 OFF games too. So the flag never caused
+    # the race; it changed where the event was ROUTED. Unhandled here it becomes
+    # "[pilot] Fatal tool error" in errors.log, and collect.py:315 drops any game with a
+    # non-empty errors.log, so 70% of a flag-ON corpus would be discarded AFTER being played.
+    #
+    # `auto_pass.py:62` already treats exactly this as an infrastructure event and exits its
+    # loop on a warning. This path is the one place that did not, which is the whole delta
+    # between the arms. The event is still RECORDED -- game_log gets it, as it does in the
+    # OFF arm's transcripts -- it is simply not classified as fatal.
+    try:
+        result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    except ToolExecutionError as exc:
+        # ONLY a torn-down bridge is tolerated. Any other ToolExecutionError -- a timeout, a
+        # protocol failure, an unknown tool -- still propagates and is still recorded as
+        # fatal, because the parity argument only covers this one condition.
+        #
+        # There is a 2.2% floor of GENUINELY non-empty errors.log across 1,010 v1 games
+        # (karn-sft), so the correct outcome of this fix is that the ON arm returns to ~2.2%,
+        # NOT to zero. A fix that silenced everything would look identical at n=20 --
+        # 0.978^20 = 64% chance of zero errors in twenty games either way -- so the narrowing
+        # has to come from the code, not from a clean sample.
+        #
+        # If the engine's wording ever changes this stops matching and these become fatal
+        # again: that is over-recording, which is the safe direction to fail in.
+        if "Bridge processor is shut down" not in str(exc):
+            raise
+        if game_log:
+            game_log.emit(
+                "auto_resolve_teardown",
+                harness_action=True,
+                decision_index=state.decisions_seen,
+                game_seq=state.last_decision_seq,
+                error_message=str(exc)[:500],
+            )
+        # No `username` in this function's scope -- a NameError here would fire only in the
+        # error path, i.e. only once something else had already gone wrong.
+        logger.warning("bridge gone while auto-answering a forced decision, "
+                       "ending the game loop: %s", exc)
+        return True
     record_decision_seq(state, result_text)
     # THE FORCED DECISION'S OWN LINE IS ALREADY IN HISTORY. _process_tool_calls
     # rendered and appended it before stashing the blob, and render_for_pilot
