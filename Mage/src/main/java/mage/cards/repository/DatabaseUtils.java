@@ -83,11 +83,21 @@ public class DatabaseUtils {
         int maxAttempts = 5;
         int baseDelayMs = 500;
         SQLException lastError = null;
+        long startedAt = System.currentTimeMillis();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 JdbcConnectionSource connectionSource = new JdbcConnectionSource(url);
                 DatabaseConnection connection = connectionSource.getReadWriteConnection("h2_open_probe");
                 connectionSource.releaseConnection(connection);
+                // LOGGED ON SUCCESS, not only on failure. This is the only place the length of
+                // a real contention window can be observed, and without it the budget below can
+                // only ever be set from the one time somebody went looking: corpus job 3135's
+                // cold cohort of 48 produced a 261-second window, measured after the fact from
+                // WARN timestamps. Every run now contributes that measurement instead.
+                if (attempt > 1) {
+                    logger.info("H2 connection succeeded on attempt " + attempt + "/" + maxAttempts
+                            + " after waiting " + (System.currentTimeMillis() - startedAt) + "ms: " + url);
+                }
                 return connectionSource;
             } catch (SQLException e) {
                 lastError = e;
@@ -107,7 +117,24 @@ public class DatabaseUtils {
                 }
             }
         }
-        throw lastError;
+        // NAME THE LOCK, THE PATH AND THE WAIT. The bare `throw lastError` handed the caller an
+        // h2 message with no database path in it -- the URL is CWD-relative
+        // ("jdbc:h2:file:./db/..."), so which of the several card databases in a checkout this
+        // was is not recoverable from the message. Combined with the callers swallowing the
+        // exception, the operator's first and only symptom was "expansionDao is null" from
+        // somewhere else entirely, and corpus job 3135 lost 48 games before anybody looked at
+        // h2 at all.
+        Path dbPath = getH2FilePath(url);
+        long waitedMs = System.currentTimeMillis() - startedAt;
+        throw new SQLException(
+                "Could not open the H2 database after " + maxAttempts + " attempts over " + waitedMs + "ms."
+                        + " url=" + url
+                        + " path=" + (dbPath == null ? "<unresolved from url>" : dbPath.toAbsolutePath())
+                        + " cwd=" + Paths.get("").toAbsolutePath()
+                        + ". A \"Lock file recently modified\" cause here means another JVM held this"
+                        + " database while this one started; the retry budget is the thing to raise,"
+                        + " not the lock. Last error: " + lastError.getMessage(),
+                lastError);
     }
 
     static boolean isUnreadableDatabaseFileError(SQLException error) {

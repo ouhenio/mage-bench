@@ -55,6 +55,17 @@ public enum CardRepository {
             "MB2"
     ));
 
+    // See ExpansionRepository.initFailure: an enum constructor cannot usefully throw, so the
+    // failure is recorded and raised by RepositoryUtil.bootstrapLocalDb.
+    private volatile SQLException initFailure = null;
+
+    /**
+     * The error that stopped this repository initialising, or null if it initialised.
+     */
+    public SQLException getInitFailure() {
+        return initFailure;
+    }
+
     CardRepository() {
         File file = new File("db");
         if (!file.exists()) {
@@ -73,6 +84,9 @@ public enum CardRepository {
             TableUtils.createTableIfNotExists(connectionSource, CardInfo.class);
             cardsDao = DaoManager.createDao(connectionSource, CardInfo.class);
         } catch (SQLException e) {
+            // Recorded as well as logged, for the same reason as ExpansionRepository: a log
+            // line is not a state anybody can check, and cardsDao stays null either way.
+            initFailure = e;
             Logger.getLogger(CardRepository.class).error("Error creating card repository - " + e, e);
             processMemoryErrors(e);
         }

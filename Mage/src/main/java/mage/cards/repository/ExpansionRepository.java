@@ -35,6 +35,22 @@ public enum ExpansionRepository {
     private Dao<ExpansionInfo, Object> expansionDao;
     private final RepositoryEventSource eventSource = new RepositoryEventSource();
     public boolean instanceInitialized = false;
+    // WHY THE CONSTRUCTOR STILL DOES NOT THROW. This is an enum singleton, so an exception
+    // escaping the constructor becomes ExceptionInInitializerError and every later access
+    // throws NoClassDefFoundError with the original cause gone -- strictly worse diagnostics
+    // than the null DAO it would replace. So the failure is RECORDED here and raised by
+    // RepositoryUtil.bootstrapLocalDb, which is the single point both entry points
+    // (Mage.Server/Main and Mage.Client/MageFrame) already call, and which can report it.
+    // What must never happen again is the object being handed out as usable with nothing
+    // remembering that it is not.
+    private volatile SQLException initFailure = null;
+
+    /**
+     * The error that stopped this repository initialising, or null if it initialised.
+     */
+    public SQLException getInitFailure() {
+        return initFailure;
+    }
 
     ExpansionRepository() {
         File file = new File("db");
@@ -57,8 +73,19 @@ public enum ExpansionRepository {
 
             eventSource.fireRepositoryDbLoaded();
         } catch (SQLException e) {
-            // TODO: add app close?
-            e.printStackTrace();
+            // NOT SWALLOWED. This used to be a bare printStackTrace(): the constructor then
+            // returned normally with expansionDao null and instanceInitialized false, nothing
+            // on the server path reads that flag, and the first symptom was an NPE from
+            // wherever the DAO was next touched -- "Cannot invoke Dao.queryBuilder() because
+            // this.expansionDao is null", a message naming no database, no file, no lock and
+            // no wait. See issues/p1-a-swallowed-sqlexception-turns-a-lock-timeout-into-a-null-dao-npe.
+            initFailure = e;
+            // Logger.getLogger, NOT the static `logger` field: this is an enum constructor, and
+            // Java forbids reading a static field from one -- it has not been initialised yet.
+            // That constraint is why the original code reached for printStackTrace() here, and
+            // CardRepository does the same lookup at its own catch for the same reason.
+            Logger.getLogger(ExpansionRepository.class).error("Could not initialise the expansion repository; every later use of it"
+                    + " would have failed with a null DAO instead of this message: " + e.getMessage(), e);
         }
 
     }

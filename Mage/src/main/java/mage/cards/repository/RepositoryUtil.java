@@ -25,6 +25,19 @@ public final class RepositoryUtil {
     public static void bootstrapLocalDb() {
         // call local db to init all sets and cards/tokens repository (need for correct updates cycle, not on random request)
         logger.info("Loading database...");
+        // FAIL WHERE THE DATABASE COULD NOT BE OPENED, not where somebody later dereferences a
+        // null DAO. Both repositories are enum singletons whose constructors cannot usefully
+        // throw, so they record their failure instead (see ExpansionRepository.initFailure) and
+        // this -- the one call both Mage.Server/Main and Mage.Client/MageFrame make before any
+        // other database use -- is where it is raised.
+        //
+        // Before this, an h2 lock timeout produced "Cannot invoke Dao.queryBuilder() because
+        // this.expansionDao is null" from an unrelated call site: a null-pointer report for a
+        // lock timeout, naming no database, no path and no wait, with the four WARN lines that
+        // said "Lock file recently modified" sitting one level down in server.log. Corpus job
+        // 3135 lost a cold cohort of 48 games and nobody looked at h2 for hours.
+        raiseRepositoryInitFailure("expansion", ExpansionRepository.instance.getInitFailure());
+        raiseRepositoryInitFailure("card", CardRepository.instance.getInitFailure());
         ExpansionRepository.instance.getContentVersionConstant();
         CardRepository.instance.getContentVersionConstant();
         TokenRepository.instance.getAll().size();
@@ -44,6 +57,20 @@ public final class RepositoryUtil {
         if (DebugUtil.DATABASE_SHOW_CACHE_AND_MEMORY_STATS_ON_STARTUP) {
             CardRepository.instance.printDatabaseStats("on startup");
         }
+    }
+
+    private static void raiseRepositoryInitFailure(String which, SQLException failure) {
+        if (failure == null) {
+            return;
+        }
+        // The cause is CHAINED, not flattened into the message: the h2 exception underneath
+        // carries the lock state, and a message-only rethrow would lose exactly the part that
+        // says what went wrong.
+        throw new IllegalStateException(
+                "The " + which + " repository could not open its database, so nothing that uses it"
+                        + " can work. This is the real error; anything downstream reporting a null"
+                        + " DAO is a consequence of it. " + failure.getMessage(),
+                failure);
     }
 
     public static boolean isDatabaseObsolete(ConnectionSource connectionSource, String entityName, long version) throws SQLException {
