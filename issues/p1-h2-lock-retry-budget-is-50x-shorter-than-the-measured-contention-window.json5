@@ -1,0 +1,45 @@
+{
+  "title": "openH2ConnectionWithRetry gives up after ~5s of backoff against a contention window measured at 261s",
+  "description": "When N XMage servers start at once they all open the shared h2 card \
+database and race for its file lock. openH2ConnectionWithRetry exists for exactly this and \
+its comment names the case ('during golden tests'), but its budget is maxAttempts=5 with \
+baseDelayMs*attempt backoff -- 500+1000+1500+2000ms = 5s of deliberate waiting, ~26s of \
+wall clock per game once the failing connection attempts themselves are counted. MEASURED \
+against production: corpus v3 job 3135 launched a cold cohort of 48 games on lascar at \
+2026-09-07 00:45:30 and the contention window, from the first 'Lock file recently modified' \
+[8000-240] warning to the last, was 261 SECONDS (00:45:36 to 00:49:57) across 51 games. The \
+retry budget is under-provisioned by roughly 50x. Every one of the 48 exhausted its \
+attempts, and the caller then died on 'Cannot invoke Dao.queryBuilder() because \
+this.expansionDao is null' -- a null-pointer report for what is actually a lock timeout, so \
+the log names the wrong subsystem. Cost: 48 of 4000 games, recorded by the harness as \
+ordinary 'launch exited' and indistinguishable from any other launch failure. THE \
+MECHANISM WORKS AND IS ONLY TOO SHALLOW, which is the useful part: 3 of the 51 contended \
+games retried, won the lock and reached game_end. That is a positive control from \
+production -- this code path can return the good state, so the fix is the budget and not \
+the design. TWO COUPLED CEILINGS, and raising either alone fixes nothing: the harness \
+launcher gives up at 240s ('Server failed to start within 240s'), which is BELOW the 261s \
+window, so a deepened retry would still be killed from outside before it could win. A \
+healthy server reaches ready in 51s (measured, g104), so the launcher ceiling has room to \
+move. Suggested: raise maxAttempts and cap the backoff so the total budget exceeds the \
+observed window with margin, raise the launcher ceiling above it, and log the elapsed wait \
+on success so the window is measured every run rather than once. NOTE FOR ANY per-database \
+alternative: there are three live h2 databases in a corpus checkout, not one -- \
+Mage.Server/db (284MB), Mage.Client/db (50MB) and Mage.Client.Bridge/db (1.4MB) -- and job \
+3018 reported 'the fix did not fire' while zero games ran because a guard was applied to \
+Mage.Server/db alone and the run died on Mage.Client/db. The db path is CWD-relative in \
+three modules (DatabaseUtils 'jdbc:h2:file:./db/%s', CardRepository and ExpansionRepository \
+new File(\"db\")), so giving each game its own copy needs a configurable path or per-game \
+module trees; the bytes themselves are free on this cluster (XFS with reflink, \
+cp --reflink=always succeeds, so a copy is O(1) metadata) but the plumbing is not.",
+  "status": "open",
+  "priority": 1,
+  "type": "bug",
+  "labels": [
+    "h2",
+    "concurrency",
+    "cold-start",
+    "misleading-error",
+  ],
+  "created_at": "2026-09-07T01:45:00.000-04:00",
+  "updated_at": "2026-09-07T01:45:00.000-04:00",
+}
