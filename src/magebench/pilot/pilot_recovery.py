@@ -36,18 +36,36 @@ def _handle_truncated_response(
     max_tokens: int,
     max_consecutive_truncations: int,
 ) -> bool:
-    """Handle max-token truncation and reset context after repeated failures.
+    """Handle max-token truncation, record it, and reset context after repeats.
 
-    UNREACHABLE UNDER THE CURRENT CONFIGURATION, and kept deliberately.
-    finish_reason "length" fired 0 times in 41,970 decisions across 449 games:
-    with thinking disabled a tool call is ~18 completion tokens against
-    MAX_TOKENS=1024, so the budget is never approached.
+    LIVE, NOT DEAD. This docstring used to open "UNREACHABLE UNDER THE CURRENT
+    CONFIGURATION -- finish_reason 'length' fired 0 times in 41,970 decisions",
+    and then predicted its own refutation: "it becomes live again the moment a
+    model reasons at length". That is exactly what happened when the fleet moved
+    to Qwen3.5-35B-A3B, and nobody re-measured. Counted on the traces of two
+    corpora, both deck-block ON:
 
-    Not dead code, conditionally dead. Before MAGEBENCH_DISABLE_THINKING was set,
-    ~19% of decisions were truncated mid-<think> and this path carried them. It
-    becomes live again the moment a model reasons at length -- Qwen3.5-4B was
-    measured at 10.5x the completion tokens of Qwen3-4B (median 89 vs 20), so
-    re-measure this rate before switching rather than after.
+        corpus-v3-lascar-3135    57 of  8,296 calls (0.69%), 39 of 94 game logs
+        step2-q35b-v2           122 of 14,302 calls (0.85%), 68 of 126 game logs
+
+    The truncated text is deliberation, not a half-written tool call: with
+    thinking disabled the model reasons in `content` and runs out of budget
+    before emitting the call. recover_unwrapped_tool_call refuses a partial one
+    (it needs a complete JSON parse), so nothing half-emitted is ever executed.
+
+    WHY THIS EMITS ON EVERY OCCURRENCE. The counter and the warning below existed
+    already; both went only to the pilot's stderr, and the game log heard nothing
+    until three fired IN A ROW -- which, at 0.7% of calls, essentially never
+    happens. So the condition was invisible to every reader that works from
+    game.jsonl, and a run count of games says nothing about how often it OCCURRED.
+    `completion_truncated` is that count: one row per occurrence, carrying the
+    decision it belongs to. tools/count_truncations.py totals it, and reads the
+    raw llm_trace files too so the two can be compared.
+
+    Its nudge still names pass_priority, unlike the no-tool-call nudge in pilot.py
+    which was changed because it was coercing passes. That difference is not an
+    oversight: nobody has measured this path coercing anything, because until now
+    nobody could see it fire. It is now countable; measure before changing it.
 
     Its nudge still names pass_priority, unlike the no-tool-call nudge in pilot.py
     which was changed because it was coercing passes. That difference is not an
@@ -68,6 +86,19 @@ def _handle_truncated_response(
         max_tokens,
         state.consecutive_truncations,
     )
+    if game_log:
+        # UNCONDITIONAL, and before the reset branch on purpose: the reset is rare
+        # and the occurrence is what has to be countable. Carries the decision it
+        # belongs to so a truncation can be joined to the board state that provoked
+        # it -- last_decision_seq is the server's sparse global counter, the same
+        # anchor llm_trace uses.
+        game_log.emit(
+            "completion_truncated",
+            completion_tokens=tokens_used,
+            max_tokens=max_tokens,
+            consecutive=state.consecutive_truncations,
+            game_seq=state.last_decision_seq,
+        )
     if state.consecutive_truncations < max_consecutive_truncations:
         return False
 

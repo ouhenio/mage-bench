@@ -14,7 +14,7 @@ round. Two copies of a threshold is one copy that will drift.
 
 import os
 
-from magebench.pilot.pilot_rendering import CHARS_PER_TOKEN_WORST
+from magebench.pilot.pilot_rendering import CHARS_PER_TOKEN_WORST, MAX_TOKENS
 
 # The training default, from render_conversations' --max-tokens. A segment is
 # cut so that its rendered characters fit this many tokens under the worst
@@ -83,13 +83,40 @@ PENDING_ANSWER_RESERVE_CHARS = 4096
 # 131,072 tokens only at the constant; at the observed minimum it is 136,852,
 # and the completion reserve vLLM counts against the same limit adds MAX_TOKENS:
 #
-#     316,539 / 3 / 0.771 + 1,024 = 137,876 tokens
+#     316,539 / 3 / 0.771 + MAX_TOKENS
 #
-# 143,360 (140 * 1024) is the next round figure above that, 4.0% of headroom.
-# Serving at 131,072 instead would leave a band where the character budget
-# permits a segment the server refuses -- and the refusal lands the game on the
-# reactive reset, which is the boundary this whole change exists to remove.
+# 143,360 (140 * 1024) is the next round figure above that. Serving at 131,072
+# instead would leave a band where the character budget permits a segment the
+# server refuses -- and the refusal lands the game on the reactive reset, which is
+# the boundary this whole change exists to remove.
+#
+# MAX_TOKENS IS A TERM IN THAT SUM, so the headroom moves when the completion
+# reserve moves: 3.8% at 1,024, 3.1% at 2,048 (the current value), 1.7% at 4,096,
+# and NEGATIVE at 8,192. The figure used to be written out as a literal 1,024 in
+# the line above, which is the "one number restated in a second place" trap this
+# file warns about elsewhere -- raising the reserve would have left this derivation
+# quietly describing an arithmetic nobody was doing any more. The assert is what
+# makes the next raise loud instead.
 SERVE_MIN_MODEL_LEN = 143360
+
+# The character budget at the WORST observed ratio, in tokens, plus the completion
+# reserve. Recomputed here rather than restated, so the assert below fails at import
+# if someone raises MAX_TOKENS past what the serving floor can carry.
+# The MINIMUM (chars/3)/tokens ratio over 10,875 recorded prompts, which is what
+# turns the character budget back into real tokens. Named rather than inlined
+# because it appears in the derivation comment above and in segment_budget_chars'
+# docstring, and three copies of a measured constant is two that can drift.
+_MIN_OBSERVED_CHARS_PER_TOKEN = 0.771
+_BUDGET_CHARS = SEGMENT_MAX_TOKENS * 3 * CHARS_PER_TOKEN_WORST
+_WORST_CASE_PROMPT_TOKENS = int(_BUDGET_CHARS / 3 / _MIN_OBSERVED_CHARS_PER_TOKEN)
+assert _WORST_CASE_PROMPT_TOKENS + MAX_TOKENS <= SERVE_MIN_MODEL_LEN, (
+    f"MAX_TOKENS={MAX_TOKENS} leaves no room: a {SEGMENT_MAX_TOKENS}-token segment "
+    f"is worst-case {_WORST_CASE_PROMPT_TOKENS} real tokens, and "
+    f"{_WORST_CASE_PROMPT_TOKENS} + {MAX_TOKENS} exceeds the {SERVE_MIN_MODEL_LEN} "
+    f"floor a server must advertise. Raise SERVE_MIN_MODEL_LEN and re-serve, or "
+    f"lower the reserve -- do not leave the two disagreeing, because the disagreement "
+    f"shows up as a mid-game 400 on the longest games only."
+)
 
 _MODES = ("full", "windowed")
 

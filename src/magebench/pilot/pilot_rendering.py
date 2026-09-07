@@ -31,10 +31,44 @@ from magebench.pilot.tool_error import ToolExecutionError
 # permanent set, so the pilot fired a blind pass_priority, wiped the conversation,
 # and finished the game looking healthy. That recovery path is gone -- any LLM error
 # now aborts, see the OpenAIError handler in run_pilot_loop -- so an overflow would
-# fail loudly today rather than silently. 1024 keeps it from arising at all:
-# measured completion length with thinking disabled is ~21 tokens mean, ~102 max,
-# so this is ~10x headroom while returning ~19k tokens of prompt budget.
-MAX_TOKENS = 1024
+# fail loudly today rather than silently.
+#
+# 1024 WAS SIZED ON A DIFFERENT MODEL AND IS NO LONGER 10x HEADROOM. The line here
+# used to read "measured completion length with thinking disabled is ~21 tokens
+# mean, ~102 max, so this is ~10x headroom", from Qwen3-4B. On the fleet actually
+# generating corpus v3 (Qwen3.5-35B-A3B, thinking disabled) the model deliberates
+# in plain `content` before it calls a tool, and the completion distribution is an
+# order of magnitude longer -- so the cap is not approached, it is HIT:
+#
+#   corpus-v3-lascar-3135   8,296 calls   p50 97  p90 415  p99 953   57 at the cap (0.69%)
+#   step2-q35b-v2          14,302 calls   ...                       122 at the cap (0.85%)
+#
+# 39 of 94 game logs in the first set contain at least one. The 1,024-token cap was
+# reported as UNREACHABLE ("0 times in 41,970 decisions") in pilot_recovery's
+# docstring; that measurement was true of its model and false of this one. See
+# LEDGER 55.
+#
+# What a truncation costs: the completion is cut mid-sentence, so no tool call is
+# emitted, and recover_unwrapped_tool_call refuses it (it requires a complete JSON
+# parse -- 0 of 22,598 calls across both sets carried unparseable tool-call
+# arguments, so a HALF-EMITTED CALL IS NEVER EXECUTED). The turn costs a round trip,
+# leaves the cut-off deliberation in the model's own context, and counts towards
+# turns_without_progress. It does NOT reach training: a row's label comes from an
+# executed decision, and a truncated turn publishes none.
+#
+# 2048 is sized from the censored tail, and that is an EXTRAPOLATION, not a bound.
+# The observed survival above the cap is unmeasurable by construction; below it the
+# tail decays by roughly 0.65 per 128 tokens (6.42% > 512, 1.89% > 768, 1.15% > 896,
+# 0.96% > 960), which puts the residual rate at 2048 near 0.02% -- about one call in
+# four thousand rather than one in 140. Re-measure with tools/count_truncations.py
+# rather than assuming it reached zero; a runaway deliberation loop (the sampled
+# truncations are of the "Wait, let me recalculate..." shape) has a heavier tail
+# than the bulk.
+#
+# The cost of the raise is 1,024 tokens of prompt budget out of 143,360 (0.7%);
+# context_segments.SERVE_MIN_MODEL_LEN now derives from this constant and asserts,
+# so raising it further cannot silently outgrow the serving floor.
+MAX_TOKENS = 2048
 
 # Worst-case (chars/3)/actual_tokens ratio among prompts large enough to approach
 # the context ceiling. See the derivation at the append-only guard: the bound must
