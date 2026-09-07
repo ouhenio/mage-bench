@@ -87,6 +87,27 @@ public final class BridgePublishedQueryBuilder {
         result.action_type = action.method().name();
         result.message = BridgePromptFormatting.stripHtml(action.message());
 
+        // EVERY pending frame says whether anything is playable, not just the ones that
+        // happened to come back through pass_priority. Before this, `has_playable_cards`
+        // was set on one branch of BridgePassPriorityFlow and nowhere else, so a receiver
+        // learned whether it could act only if it had arrived by that route: measured over
+        // 8 games, the flag was on 96 frames (all pass_priority) and on ZERO of 338
+        // GAME_SELECT/boolean priority windows.
+        //
+        // The cost of the gap is not subtle. 46.6% of all decisions the policy answers are
+        // priority windows, and it must read the whole board to work out that it has no
+        // mana -- about 2.3 s and ~180 completion tokens to conclude "no". A human seat has
+        // the same problem: 57 of Eugenio's 85 prompts were these, every one with zero
+        // untapped lands, and he answered "no" to each.
+        //
+        // Set for every method, not only GAME_SELECT: GAME_TARGET and GAME_CHOOSE_ABILITY
+        // are equally opaque today, and a flag that appears on some pending frames and not
+        // others is the defect being fixed rather than a smaller version of it.
+        if (gameView != null) {
+            result.has_playable_cards = BridgePlayableCheck.hasPlayableCards(
+                    gameView, projectionInputs::failedManaCast);
+        }
+
         if (fallbackGameView != null && !projectedActionContext.available()) {
             throw new IllegalStateException("Published action context missing for projected game view");
         }

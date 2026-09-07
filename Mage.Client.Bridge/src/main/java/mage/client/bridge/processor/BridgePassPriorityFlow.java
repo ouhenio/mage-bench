@@ -293,23 +293,10 @@ public final class BridgePassPriorityFlow {
     }
 
     private boolean hasPlayableCards(GameView gameView) {
-        PlayableObjectsList playable = gameView != null ? gameView.getCanPlayObjects() : null;
-        if (playable == null || playable.isEmpty()) {
-            return false;
-        }
-        for (Map.Entry<UUID, PlayableObjectStats> entry : playable.getObjects().entrySet()) {
-            if (context.failedManaCast(entry.getKey())) {
-                continue;
-            }
-            PlayableObjectStats stats = entry.getValue();
-            List<String> abilityNames = stats.getPlayableAbilityNames();
-            List<String> manaNames = stats.getAllManaAbilityNames();
-            boolean allMana = !abilityNames.isEmpty() && manaNames.size() == abilityNames.size();
-            if (!allMana) {
-                return true;
-            }
-        }
-        return false;
+        // Delegates to BridgePlayableCheck so this predicate has exactly one implementation.
+        // It used to live here as a private method, which is why the flag reached only
+        // pass_priority results and never the GAME_SELECT/boolean priority windows.
+        return BridgePlayableCheck.hasPlayableCards(gameView, context::failedManaCast);
     }
 
     private GameView extractGameView(PendingAction action) {
