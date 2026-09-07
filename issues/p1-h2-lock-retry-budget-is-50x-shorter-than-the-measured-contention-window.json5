@@ -22,7 +22,20 @@ window, so a deepened retry would still be killed from outside before it could w
 healthy server reaches ready in 51s (measured, g104), so the launcher ceiling has room to \
 move. Suggested: raise maxAttempts and cap the backoff so the total budget exceeds the \
 observed window with margin, raise the launcher ceiling above it, and log the elapsed wait \
-on success so the window is measured every run rather than once. NOTE FOR ANY per-database \
+on success so the window is measured every run rather than once. THE COST IS PER LAUNCH, AND THAT IS WHY IT WAS NEVER \
+FIXED. Per run it reads as a ~1.2% loss and gets shrugged at. MEASURED across the five \
+lascar launches of the night of 2026-09-06/07, by counting games whose exit is `launch \
+exited` AND whose server.log carries \"Lock file recently modified\": 3135 48, 3185 0 \
+(cancelled before its first cohort completed), 3192 27, 3197 48, 3200 48 -- \
+**171 games in one night**, which is larger than block 3135 entire (115 banked). It is \
+also not a fixed 48: it is bounded above by CONC and varies with how much of the cold \
+cohort actually collides, so a single run's number under-reports it in both directions. \
+The general shape, and the reason this sat open while smaller defects were fixed: a \
+per-occurrence cost multiplied by an occurrence rate NOBODY WAS TRACKING. The occurrence \
+is a launch, launches are not in any dashboard, and a defect whose cost is invisible in \
+the artifact everyone reads is a defect that stays. Ask for the per-occurrence cost and \
+the occurrence rate separately; their product is the only number that decides priority. \
+NOTE FOR ANY per-database \
 alternative: there are three live h2 databases in a corpus checkout, not one -- \
 Mage.Server/db (284MB), Mage.Client/db (50MB) and Mage.Client.Bridge/db (1.4MB) -- and job \
 3018 reported 'the fix did not fire' while zero games ran because a guard was applied to \
