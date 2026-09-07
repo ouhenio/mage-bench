@@ -65,6 +65,24 @@ class PilotLoopState:
     # seqs in one game, seq=19 repeated 20 times).
     last_decision_seq: int | None = None
 
+    # How many CONSECUTIVE tool results have named the same decision seq. This is the only
+    # in-harness detector for an engine that re-asks one decision forever: the existing stall
+    # guard counts turns_without_progress, which a repeat loop RESETS, because the policy is
+    # calling tools successfully and getting valid results back the whole time. Progress at
+    # the tool-call layer is not progress in the game, and the game_seq is where the
+    # difference shows.
+    #
+    # Legitimate repeats are normal and common -- one decision routinely takes several LLM
+    # turns. MEASURED over 214 finished games on two nodes at two concurrencies (jobs 3135,
+    # 3143, 3126): p50 2-3, p99 5-8, max 8. An older configuration recorded one game with
+    # seq=19 repeated 20 times, which is the largest ever observed here, so the ceiling is
+    # set well clear of that rather than of the current p99 -- see MAX_DECISION_REPEATS.
+    consecutive_same_decision_seq: int = 1
+    # Set once the repeat ceiling has already been escalated for the CURRENT seq, so the
+    # recovery is tried once and then the game is given up on, rather than the same auto-pass
+    # firing every turn forever -- which would replace one infinite loop with another.
+    repeat_recovery_attempted: bool = False
+
     # How many DECISIONS this pilot has been shown, which is what the rendered
     # header's "[Decision N]" is supposed to say. Counted here rather than derived
     # in the renderer because the renderer sees one tool result at a time and has
@@ -161,7 +179,18 @@ def record_decision_seq(state: "PilotLoopState", result_text: str) -> None:
     except (json.JSONDecodeError, TypeError, ValueError):
         return
     if isinstance(parsed, dict) and isinstance(parsed.get("game_seq"), int):
-        state.last_decision_seq = parsed["game_seq"]
+        seq = parsed["game_seq"]
+        # Counted here, in the one function every tool-executing path is required to call,
+        # for the same reason the stamp itself lives here: the harness's own recovery passes
+        # reach this and would not reach an inline counter in _process_tool_calls. A repeat
+        # loop that the recovery path is itself feeding is exactly the case that must be
+        # counted, not the case to leave out.
+        if state.last_decision_seq is not None and seq == state.last_decision_seq:
+            state.consecutive_same_decision_seq += 1
+        else:
+            state.consecutive_same_decision_seq = 1
+            state.repeat_recovery_attempted = False
+        state.last_decision_seq = seq
 
 
 def reset_context(

@@ -138,6 +138,35 @@ MAX_CONSECUTIVE_TIMEOUTS = 3
 MAX_CONSECUTIVE_EMPTY_CHOICES = 5
 MAX_GAME_DURATION_SECS = 3 * 3600  # 3 hours absolute maximum
 MAX_TURNS_WITHOUT_PROGRESS = 20
+# CEILING ON REPEATS OF ONE DECISION. An engine defect can re-ask the same decision forever
+# (issues/p1-select-attackers-repeats-until-the-game-is-killed); MAX_TURNS_WITHOUT_PROGRESS
+# does not catch it, because the policy is calling tools successfully and getting valid
+# results the whole time, so turns_without_progress is reset on every pass round the loop.
+# The game_seq is where the difference between "the policy is working" and "the game is
+# advancing" actually shows.
+#
+# NOT SIZED TO THE LARGEST THING WE HAVE SEEN. Measured over 214 finished games across two
+# nodes and two concurrencies (jobs 3135 CONC=48 lascar, 3143 CONC=32 ranokau, 3126): p50
+# 2-3, p99 5-8, max 8. An older configuration recorded seq=19 repeated 20 times. 20 is
+# therefore the largest repeat ever observed here, and 60 is 3x that and ~8x the current
+# worst -- generous against a distribution nobody has bounded, because the cost of tripping
+# early is a discarded game and the cost of tripping late is an hour of a slot. The trip
+# LOGS the count, so the real distribution accumulates and this can be set from data.
+#
+# NOTE ON THE OTHER CAP: MAX_GAME_DURATION_SECS is 3 hours, and the corpus runner kills a
+# game at 1 hour from outside. Under a corpus run the 3-hour cap is unreachable dead code,
+# so this ceiling is the only in-harness protection against a repeat loop.
+def _max_decision_repeats() -> int:
+    """The repeat ceiling, with an explicit environment value winning and saying so."""
+    raw = os.environ.get("MAGEBENCH_MAX_DECISION_REPEATS")
+    if raw:
+        value = int(raw)  # a malformed value must raise, not fall back to the default
+        if value < 1:
+            raise ValueError(f"MAGEBENCH_MAX_DECISION_REPEATS={value} must be >= 1")
+        logger.info("[pilot] decision repeat ceiling: %d (EXPLICIT, from the environment)", value)
+        return value
+    logger.info("[pilot] decision repeat ceiling: %d (DEFAULT; nothing explicit in the environment)", 60)
+    return 60
 MAX_CONSECUTIVE_PASS_ERRORS = 3
 MAX_CONSECUTIVE_TRUNCATIONS = 3
 MAX_CONSECUTIVE_EMPTY_ERRORS = 10  # bridge is dead if every tool returns empty error
@@ -954,6 +983,7 @@ async def run_pilot_loop(
     state.pending_decision_chars = len(initial_message)
     model_price = get_model_price(model, prices)
     game_start = time.monotonic()
+    max_decision_repeats = _max_decision_repeats()
 
     while True:
         if time.monotonic() - game_start > MAX_GAME_DURATION_SECS:
@@ -1249,6 +1279,58 @@ async def run_pilot_loop(
                         "content": "Respond with a tool call.",
                     }
                 )
+
+            # Checked BEFORE the stall guard, because a repeat loop never reaches the stall
+            # guard: the loop keeps turns_without_progress at zero by making successful tool
+            # calls. Two stages, so a recoverable case is recovered and an unrecoverable one
+            # is not retried forever.
+            if state.consecutive_same_decision_seq >= max_decision_repeats:
+                if not state.repeat_recovery_attempted:
+                    logger.warning(
+                        "[pilot] decision seq %s has repeated %d times (ceiling %d); "
+                        "auto-passing it once",
+                        state.last_decision_seq,
+                        state.consecutive_same_decision_seq,
+                        max_decision_repeats,
+                    )
+                    if game_log:
+                        game_log.emit(
+                            "decision_repeat_ceiling",
+                            game_seq=state.last_decision_seq,
+                            repeats=state.consecutive_same_decision_seq,
+                            ceiling=max_decision_repeats,
+                            action="auto_pass",
+                        )
+                    state.repeat_recovery_attempted = True
+                    if await _recover_from_stall(
+                        session,
+                        state,
+                        game_log,
+                        turn_tools_called,
+                    ):
+                        return
+                    continue
+                # The recovery has already been tried for THIS seq and the engine is still
+                # asking it. Give up loudly and by name: a game abandoned here must be
+                # distinguishable at collection from every other way a game can end, or it
+                # gets counted as ordinary attrition -- which is how the underlying engine
+                # bug went unnamed for as long as it did.
+                logger.error(
+                    "[pilot] decision seq %s still repeating after auto-pass (%d times, "
+                    "ceiling %d); abandoning the game",
+                    state.last_decision_seq,
+                    state.consecutive_same_decision_seq,
+                    max_decision_repeats,
+                )
+                if game_log:
+                    game_log.emit(
+                        "decision_repeat_ceiling",
+                        game_seq=state.last_decision_seq,
+                        repeats=state.consecutive_same_decision_seq,
+                        ceiling=max_decision_repeats,
+                        action="abandoned",
+                    )
+                return
 
             if state.turns_without_progress >= MAX_TURNS_WITHOUT_PROGRESS:
                 if await _recover_from_stall(
