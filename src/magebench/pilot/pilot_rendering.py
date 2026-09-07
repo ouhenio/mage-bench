@@ -46,7 +46,7 @@ from magebench.pilot.tool_error import ToolExecutionError
 # 39 of 94 game logs in the first set contain at least one. The 1,024-token cap was
 # reported as UNREACHABLE ("0 times in 41,970 decisions") in pilot_recovery's
 # docstring; that measurement was true of its model and false of this one. See
-# LEDGER 55.
+# LEDGER 60 (filed as 59; renumbered on collision with karn-engine).
 #
 # What a truncation costs: the completion is cut mid-sentence, so no tool call is
 # emitted, and recover_unwrapped_tool_call refuses it (it requires a complete JSON
