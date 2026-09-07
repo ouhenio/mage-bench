@@ -132,6 +132,16 @@ def read_llm_events(
                 available_tools = raw.get("available_tools")
                 if available_tools is not None:
                     exported["available_tools"] = available_tools
+                # WHAT WAS IN FORCE. Carried into the export rather than left in
+                # game.jsonl, because a manifest a person can audit and a consumer
+                # cannot read is half a fix: every downstream reader works from the
+                # exported game. Omitted when absent rather than written as null --
+                # games rendered before settings_manifest landed have no manifest,
+                # and "no such key" is the honest form of that, distinguishable from
+                # a manifest that ran and found nothing.
+                settings = raw.get("settings")
+                if settings is not None:
+                    exported["settings"] = settings
             elif event_type == "llm_response":
                 exported["reasoning"] = raw.get("reasoning")
                 if raw.get("thinking"):

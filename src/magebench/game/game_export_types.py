@@ -446,6 +446,13 @@ class GameStartEvent(_LlmEventBase):
     type: Literal["game_start"]
     model: str | None = None
     available_tools: list[str] | None = field(default=None, metadata={_JSON_KEY_METADATA: "available_tools"})
+    # The settings manifest: what the harness's accessors resolved, the constants
+    # that shape every row, and every MAGEBENCH_* request no accessor read. Typed
+    # as an opaque object on purpose -- its shape is owned by
+    # pilot/settings_manifest.py, and restating it here would be the second copy
+    # that drifts. None means the game predates the manifest, which is NOT the
+    # same as a manifest that ran and resolved nothing.
+    settings: dict | None = None
 
 
 @dataclass(kw_only=True)

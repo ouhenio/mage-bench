@@ -532,6 +532,11 @@
             "type": "string"
           }
         },
+        "settings": {
+          "type": "object",
+          "description": "game_start only. What was in force for this game: `resolved` (what the harness's own accessors returned), `constants` (max_tokens, segment_max_tokens, serve_min_model_len), and `requested_but_unread` (every MAGEBENCH_* variable in the environment that no accessor in the build reads -- non-empty means the run differs from the one that was asked for). Absent on games generated before the manifest existed, which is not the same as an empty manifest. Shape is owned by pilot/settings_manifest.py and deliberately not restated here.",
+          "additionalProperties": true
+        },
         "reasoning": {
           "type": [
             "string",
