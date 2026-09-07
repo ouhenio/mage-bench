@@ -129,8 +129,30 @@ _OWNED_ELSEWHERE = frozenset({
 })
 
 
-def settings_manifest() -> dict[str, Any]:
+def settings_manifest(*, driver: str) -> dict[str, Any]:
     """What is in force, what was requested and not read, and what is not a setting.
+
+    `driver` names the code path that produced the game -- "pilot" for a policy
+    game, "replay" for a scripted one. It is REQUIRED rather than defaulted, and
+    that is the fix for a collision karn-engine found in review: replay.py emitted
+    `game_start` without a manifest, so a replayed game exported with NO settings
+    key, which under this module's own semantics reads as "generated before the
+    manifest existed". Three states, two encodings:
+
+        key absent    the game predates this module
+        key absent    the instrument exists and this path never called it   <-- collided
+        key present   the instrument ran
+
+    A reader cannot recover from that later, and replays are not games anyone
+    would think to exclude. So every path that writes a game_start emits the
+    manifest and says which path it was; a default would let the next new path
+    inherit "pilot" silently, which is the same defect wearing the fix's clothes.
+
+    On a replay the resolved values are this process's real resolutions -- replay
+    renders through render_for_pilot, so the rendering settings genuinely apply --
+    but the policy loop never runs, so the policy-side ones (auto_resolve_forced,
+    mulligan) are recorded as resolved and NOT exercised. `driver` is what lets a
+    reader tell those apart.
 
     Raises nothing an accessor would not already raise: if a value is invalid the
     accessor refuses, and it refuses here at game start rather than midway through
@@ -151,6 +173,9 @@ def settings_manifest() -> dict[str, Any]:
     }
 
     return {
+        # Which code path produced this game. See the docstring: absent-vs-absent
+        # was a real collision, and this is the field that breaks it.
+        "driver": driver,
         "resolved": resolved,
         # Not settings, and recorded for the same reason: they shape every row and
         # they move. The completion reserve moved from 1024 to 2048 on 2026-09-07

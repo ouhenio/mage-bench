@@ -1451,7 +1451,7 @@ async def run_pilot(
                 # WHAT WAS IN FORCE, written into the game itself. Computed
                 # before the emit so an invalid setting refuses here rather than
                 # midway through the first decision that touches it.
-                manifest = settings_manifest()
+                manifest = settings_manifest(driver="pilot")
                 warning = unread_warning(manifest)
                 if warning:
                     logger.warning("%s", warning)
