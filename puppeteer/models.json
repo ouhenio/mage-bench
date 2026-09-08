@@ -529,7 +529,7 @@
       "_context_k": 32,
       "_thinking": false,
       "_tier": "cheap",
-      "_notes": "Locally served via vLLM on this host. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes."
+      "_notes": "Locally served via vLLM on this host. Free. PARSER IN PRODUCTION IS qwen3_coder, and it parses: 3,598 responses across the tier0 and tier0-rerun blocks (2026-09-02, served under this id from an OPD student checkpoint) carried 0 unwrapped tool calls and 0 unparseable arguments. The 79 responses with no tool call are 50 completion truncations and 29 prose replies, neither of which is a parse failure. This note previously read 'Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes'. It was written 2026-08-17, when the choice was xml-or-hermes, and what it argues against is HERMES -- which nothing in this repo has ever served. qwen3_coder arrived later and is what pipelines/opd/serve_student.sh and serve_teacher.sh pass. This is NOT a claim that qwen3_xml is worse: no head-to-head has been run, and pipelines/rlvr/serve_policy.sh and pipelines/eval/serve_q38b.sh still serve this family with qwen3_xml, so both parsers are live on different paths and neither is 'the' one."
     },
     {
       "id": "Qwen/Qwen3-4B",
