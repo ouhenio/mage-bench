@@ -532,6 +532,17 @@
       "_notes": "Locally served via vLLM on this host. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes."
     },
     {
+      "id": "Qwen/Qwen3.5-35B-A3B",
+      "name": "Qwen3.5 35B-A3B",
+      "name_part": "Q3535B",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 143,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "Locally served via vLLM (TP2), seated at a 143360-token window. Free. Stock multimodal Instruct chosen for reproducible-by-name; the vision tower rides along UNUSED and contributes nothing to play. PARSER IN PRODUCTION IS qwen3_coder, and it parses: measured over the 2,320 banked games of corpus v3 served under this id across BOTH nodes (lascar 3205 and ranokau 3143), 127,571 responses carried 124,819 tool calls and 0 unparseable arguments. What that shows is that every call the parser produced had valid JSON arguments; it does NOT bound calls the parser may have missed, which would appear among the 2,752 responses with no tool call and are not classified here. This note previously said 'Same family as Qwen3.5-4B, so the same qwen3_xml tool-call parser applies'. That was an inference from the 4B's note rather than a measurement of this model, and the 4B's own note has since been corrected too (karn-interface, bc77e5a5, 3,598 responses) -- so the inference was drawn from a claim that was itself unverified. This is NOT a claim that qwen3_xml is worse: no head-to-head has been run, and pipelines/rlvr/serve_policy.sh and pipelines/eval/serve_q38b.sh still serve this family with qwen3_xml, so both parsers are live on different paths and neither is 'the' one. name_part is 6 chars, which with the longest personality name_part (7) makes exactly the 14-char username limit -- no headroom, unlike the 4B's 5-char Q354B."
+    },
+    {
       "id": "Qwen/Qwen3-4B",
       "name": "Qwen3 4B",
       "name_part": "Q34B",
