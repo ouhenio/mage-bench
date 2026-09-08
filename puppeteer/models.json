@@ -534,7 +534,7 @@
     {
       "id": "mtg-ckpt-265",
       "name": "MTG checkpoint 265",
-      "name_part": "CKPT265",
+      "name_part": "C265",
       "_input_per_m": 0.0,
       "_output_per_m": 0.0,
       "_context_k": 32,
@@ -545,7 +545,7 @@
     {
       "id": "mtg-ckpt-132",
       "name": "MTG checkpoint 132",
-      "name_part": "CKPT132",
+      "name_part": "C132",
       "_input_per_m": 0.0,
       "_output_per_m": 0.0,
       "_context_k": 32,
