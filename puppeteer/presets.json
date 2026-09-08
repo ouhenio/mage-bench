@@ -457,6 +457,18 @@
       "status": "active",
       "system_prompt": "notalk-strategy-reminders",
       "toolset": "notalk"
+    },
+    "q35-4b-ckpt265-strategy": {
+      "model": "mtg-ckpt-265",
+      "status": "active",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
+    },
+    "q35-4b-ckpt132-strategy": {
+      "model": "mtg-ckpt-132",
+      "status": "active",
+      "system_prompt": "notalk-strategy",
+      "toolset": "notalk"
     }
   }
 }
