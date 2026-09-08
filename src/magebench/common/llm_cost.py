@@ -22,19 +22,42 @@ _PROVIDER_BASE_URLS = {
     "openai": "https://api.openai.com/v1",
     "anthropic": "https://api.anthropic.com/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
-    # Locally served OpenAI-compatible endpoint (vLLM). Override the host with
-    # MAGEBENCH_LOCAL_BASE_URL; the API key is ignored by vLLM but the client
-    # still requires a non-empty string.
-    "local": os.environ.get("MAGEBENCH_LOCAL_BASE_URL", "http://127.0.0.1:8000/v1"),
 }
+
+# SELF-HOSTED SEATS. Two of them, because vLLM cannot hold two weight sets in one server
+# and a checkpoint-vs-checkpoint game therefore needs two servers -- one per seat. `local_b`
+# is `local` in every respect except which host it reads; nothing else in the harness
+# distinguishes them, and nothing should.
+_SELF_HOSTED_BASE_URL_ENVS = {
+    "local": ("MAGEBENCH_LOCAL_BASE_URL", "http://127.0.0.1:8000/v1"),
+    "local_b": ("MAGEBENCH_LOCAL_B_BASE_URL", "http://127.0.0.1:8001/v1"),
+}
+SELF_HOSTED_PROVIDERS = frozenset(_SELF_HOSTED_BASE_URL_ENVS)
+
 _PROVIDER_API_KEY_ENVS = {
     "openrouter": "OPENROUTER_API_KEY",
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "gemini": "GEMINI_API_KEY",
+    # The key is ignored by vLLM but the client still requires a non-empty string.
     "local": "MAGEBENCH_LOCAL_API_KEY",
+    "local_b": "MAGEBENCH_LOCAL_B_API_KEY",
 }
-SUPPORTED_LLM_PROVIDERS = tuple(_PROVIDER_BASE_URLS)
+SUPPORTED_LLM_PROVIDERS = tuple(_PROVIDER_BASE_URLS) + tuple(_SELF_HOSTED_BASE_URL_ENVS)
+
+
+def is_self_hosted(provider: str | None) -> bool:
+    """Whether this provider is one of our own vLLM servers.
+
+    ONE PREDICATE, because there were already two copies of the question and the second
+    was written as `provider != "local"`. Anything gated on "is this a vLLM endpoint" --
+    token-id capture, the decision-identity passthrough, cost accounting -- must ask here
+    rather than compare against a literal, or adding a third self-hosted seat silently
+    breaks whichever copy nobody remembered.
+    """
+    return _resolve_llm_provider(provider) in SELF_HOSTED_PROVIDERS
+
+
 _OPENROUTER_HOSTS = frozenset({"openrouter.ai"})
 
 
@@ -42,15 +65,29 @@ def _resolve_llm_provider(provider: str | None) -> str:
     """Resolve a provider slug to a supported value."""
     if provider is None:
         return DEFAULT_LLM_PROVIDER
-    if provider in _PROVIDER_BASE_URLS:
+    if provider in _PROVIDER_BASE_URLS or provider in _SELF_HOSTED_BASE_URL_ENVS:
         return provider
     supported = ", ".join(SUPPORTED_LLM_PROVIDERS)
     raise ValueError(f"Unknown LLM provider: {provider!r}. Supported providers: {supported}.")
 
 
 def llm_base_url(provider: str | None) -> str:
-    """Map a provider slug to its OpenAI-compatible base URL."""
-    return _PROVIDER_BASE_URLS[_resolve_llm_provider(provider)]
+    """Map a provider slug to its OpenAI-compatible base URL.
+
+    THE SELF-HOSTED HOSTS ARE READ AT CALL TIME. They used to be captured into
+    _PROVIDER_BASE_URLS at import, so a process that imported this module before setting
+    MAGEBENCH_LOCAL_BASE_URL got the default and never knew. With one self-hosted seat that
+    was a wrong host; with two it is worse and quieter -- BOTH fall back to their defaults,
+    and if only one default is reachable both seats end up on the SAME SERVER, playing a
+    checkpoint against itself while every config, log and result looks exactly like the
+    intended experiment. That is the failure this whole feature has to be proof against.
+    """
+    resolved = _resolve_llm_provider(provider)
+    env_entry = _SELF_HOSTED_BASE_URL_ENVS.get(resolved)
+    if env_entry is not None:
+        env_name, fallback = env_entry
+        return os.environ.get(env_name, fallback)
+    return _PROVIDER_BASE_URLS[resolved]
 
 
 def required_api_key_env(provider: str | None) -> str:

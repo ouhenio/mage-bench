@@ -21,6 +21,7 @@ from magebench.common.llm_cost import (
     load_prices,
     required_api_key_env,
     write_cost_file,
+    is_self_hosted,
 )
 from magebench.common.log import get_logger, log_error, setup_logging
 from magebench.game.game_log import GameLogWriter
@@ -1573,13 +1574,18 @@ def main() -> int:
     ignore_providers = args.ignore_providers.split(",") if args.ignore_providers else None
     provider_order = args.provider_order.split(",") if args.provider_order else None
     cache_control = json.loads(args.cache_control) if args.cache_control else None
-    if DECISION_IDENTITY and provider != "local":
+    # is_self_hosted(), not `provider != "local"`. This was the second copy of the question
+    # "is this one of our vLLM servers", and a literal comparison here would have silently
+    # refused the local_b seat -- the one that exists precisely so two checkpoints can play
+    # each other, which is the game most likely to want decision identity on.
+    if DECISION_IDENTITY and not is_self_hosted(provider):
         # Fail HERE, before asyncio.run and before a single game starts. The field is a
         # vLLM/shim extension; OpenRouter, Anthropic and OpenAI reject unknown request
         # fields with a 400, and a 400 discovered on the first LLM call of a batch means
         # every game in that batch is played by the error handler.
         logger.error(
-            "[pilot] MAGEBENCH_DECISION_IDENTITY=1 requires --provider=local "
+            "[pilot] MAGEBENCH_DECISION_IDENTITY=1 requires a self-hosted provider "
+            "(local or local_b) "
             "(got %s). The magebench_decision passthrough is a vLLM/shim extension "
             "and hosted providers 400 on unknown request fields.",
             provider,

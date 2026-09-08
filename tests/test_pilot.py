@@ -1600,7 +1600,33 @@ def test_decision_identity_refuses_a_hosted_provider_at_startup(caplog: pytest.L
         caplog.at_level(logging.ERROR),
     ):
         assert main() == 2
-    assert "MAGEBENCH_DECISION_IDENTITY=1 requires --provider=local" in caplog.text
+    assert "MAGEBENCH_DECISION_IDENTITY=1 requires a self-hosted provider" in caplog.text
+
+
+def test_decision_identity_ACCEPTS_the_second_self_hosted_provider(caplog: pytest.LogCaptureFixture):
+    """local_b must pass the guard that local passes.
+
+    The guard read `provider != "local"`, a literal comparison that would have refused
+    the very seat local_b exists for -- a checkpoint-vs-checkpoint game, which is the
+    game most likely to want decision identity on. This asserts the ACCEPTANCE, because
+    the refusal test above passes just as happily against a guard that refuses
+    everything.
+    """
+    with (
+        patch("magebench.pilot.pilot.DECISION_IDENTITY", new=True),
+        patch.object(sys, "argv", ["pilot", "--provider", "local_b", "--api-key", "k"]),
+        caplog.at_level(logging.ERROR),
+    ):
+        # main() runs past the guard and then fails on real infrastructure this test has
+        # no business standing up. Whatever it raises is not the subject: the subject is
+        # that the guard did not stop it, which is what the log assertion below reads.
+        try:
+            main()
+        except Exception:  # noqa: BLE001 -- see above
+            pass
+    assert "requires a self-hosted provider" not in caplog.text, (
+        "local_b was refused by the self-hosted guard, which is the defect this exists for"
+    )
 
 
 class TestHarnessPassAdvancesTheDecisionSeq:
