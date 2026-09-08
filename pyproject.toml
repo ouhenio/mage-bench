@@ -5,7 +5,23 @@ description = "Mage-bench Python package"
 requires-python = ">=3.11"
 dependencies = [
     "psutil>=5.9.0",
-    "mcp>=1.28.0",
+    # UPPER BOUND, NOT JUST A FLOOR. mcp 2.x drops the top-level re-export of McpError,
+    # which src/magebench/pilot/auto_pass.py and sleepwalker.py both import as
+    # `from mcp import McpError` -- so magebench.pilot.pilot does not import at all under
+    # 2.2.0. Every existing tree works only because its venv predates that release; a
+    # `git worktree add` plus `uv pip install -e .` from today resolves 2.2.0 and gets a
+    # harness whose pilot cannot be imported.
+    #
+    # `<2` rather than `==1.28.0`: 1.28.0 is what is known to work and later 1.x very
+    # likely does, so pinning exactly would forbid fixes we have no reason to refuse.
+    #
+    # MIGRATION, so it is a known change rather than a rediscovery: McpError is DEFINED in
+    # mcp.shared.exceptions (verified under 1.28.0 -- McpError.__module__ is that, and the
+    # top-level name is a re-export of the same object). `from mcp.shared.exceptions import
+    # McpError` therefore works today and is the obvious 2.x form. NOT VERIFIED against
+    # 2.x, because doing so needs a venv resolving 2.2.0 and this session has none; treat
+    # the submodule path as the candidate to check first, not as the answer.
+    "mcp>=1.28.0,<2",
     "openai>=2.44.0",
     "google-api-python-client>=2.197.0",
     "google-auth-oauthlib>=1.4.0",
