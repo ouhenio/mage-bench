@@ -238,14 +238,73 @@ def prefs_isolation_args(game_dir: Path) -> list[str]:
     It gets worse as concurrency rises, which is the direction we are going.
 
     A per-game tree removes the shared resource. Nothing reads it back: these clients
-    are configured entirely by system properties.
+    are configured entirely by system properties -- except for the one preference seeded
+    below, which is the only reason this tree has any content at all.
     """
     prefs = game_dir / "prefs"
     prefs.mkdir(parents=True, exist_ok=True)
+    _seed_no_json_game_log(prefs)
     return [
         f"-Djava.util.prefs.userRoot={prefs}",
         f"-Djava.util.prefs.systemRoot={prefs}",
     ]
+
+
+# THE LAYOUT IS JAVA'S, NOT THE ONE THE PROPERTY NAME SUGGESTS. `java.util.prefs.userRoot`
+# names a directory, and FileSystemPreferences then puts its tree in `.java/.userPrefs`
+# UNDER it -- not at it. My first version wrote <userRoot>/mage/client/prefs.xml, which
+# Java ignored in complete silence: it created its own empty tree beside the seeded one and
+# read the "true" default, so the fix looked applied and changed nothing.
+#
+# Established by making Java write the value itself and reading back the paths it produced,
+# rather than by reasoning about the property name. MageFrame.getPreferences() is
+# Preferences.userNodeForPackage(MageFrame.class), package mage.client, so the node is
+# /mage/client and the file is:
+#     <userRoot>/.java/.userPrefs/mage/client/prefs.xml
+_PREFS_NODE = (".java", ".userPrefs", "mage", "client")
+_EMPTY_PREFS_XML = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE map SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<map MAP_XML_VERSION="1.0"/>
+"""
+_PREFS_XML = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE map SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<map MAP_XML_VERSION="1.0">
+  <entry key="gameLogJsonAutoSave" value="false"/>
+</map>
+"""
+
+
+def _seed_no_json_game_log(prefs_root: Path) -> None:
+    """Turn off XMage's per-game JSON transcript before the client can write one.
+
+    SessionImpl.appendJsonLog writes every action to `gamelogsJson/game-<id>.json` when
+    `gameLogJsonAutoSave` is true, and SessionHandler reads that preference with a DEFAULT
+    OF "true". It is an upstream GUI convenience -- a human opening a transcript later --
+    and NOTHING IN THIS CODEBASE READS IT: there is no deserialiser for ActionData and no
+    reader of that path anywhere in magebench or mtg.
+
+    Measured cost: 18 GB on lascar and 23 GB on ranokau, 9,999 files, individual games up
+    to 111 MB, and a census showed 9,896 of them were the engine playing itself with no LLM
+    pilot involved at all. It is unbounded by construction -- the writer does
+    `new File("gamelogsJson")`, relative to the JVM's working directory, so it accumulates
+    per TREE rather than per run and nothing that cleans a run directory could ever catch
+    it.
+
+    WHY SEEDING A PREFERENCE AND NOT DELETING AFTERWARDS: deleting still pays the I/O to
+    write 111 MB first, and a teardown that must run is a teardown that can be skipped by
+    a crash. This stops the write.
+
+    WHY IT NEEDS SEEDING AT ALL, given prefs_isolation_args gives each game a FRESH tree:
+    fresh is exactly the problem. An empty tree has no value for the key, so every game
+    gets the "true" default -- the isolation that stops JVMs sharing a preferences store
+    is also what guarantees the dump is on, forever.
+    """
+    node = prefs_root.joinpath(*_PREFS_NODE)
+    node.mkdir(parents=True, exist_ok=True)
+    # The intermediate node needs its own (empty) file, which is what Java writes when it
+    # creates the same tree; without it the parent node is not materialised.
+    (node.parent / "prefs.xml").write_text(_EMPTY_PREFS_XML, encoding="utf-8")
+    (node / "prefs.xml").write_text(_PREFS_XML, encoding="utf-8")
 
 
 def start_gui_client(
