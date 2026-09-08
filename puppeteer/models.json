@@ -532,6 +532,28 @@
       "_notes": "Locally served via vLLM on this host. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes."
     },
     {
+      "id": "mtg-ckpt-265",
+      "name": "MTG checkpoint 265",
+      "name_part": "CKPT265",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 32,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "An SFT checkpoint of Qwen3.5-4B, served locally via vLLM with --served-model-name mtg-ckpt-265. Cloned from the Qwen/Qwen3.5-4B entry -- same price (free), context and tier, because it IS that architecture with different weights. It exists so config.py's _resolve_randoms can resolve the preset that asks for this id: a preset alone is not enough, and a one-deal smoke found that by dying at 'Unknown model' before any server was contacted."
+    },
+    {
+      "id": "mtg-ckpt-132",
+      "name": "MTG checkpoint 132",
+      "name_part": "CKPT132",
+      "_input_per_m": 0.0,
+      "_output_per_m": 0.0,
+      "_context_k": 32,
+      "_thinking": false,
+      "_tier": "cheap",
+      "_notes": "An SFT checkpoint of Qwen3.5-4B, served locally via vLLM with --served-model-name mtg-ckpt-132. Cloned from the Qwen/Qwen3.5-4B entry -- same price (free), context and tier, because it IS that architecture with different weights. It exists so config.py's _resolve_randoms can resolve the preset that asks for this id: a preset alone is not enough, and a one-deal smoke found that by dying at 'Unknown model' before any server was contacted."
+    },
+    {
       "id": "Qwen/Qwen3-4B",
       "name": "Qwen3 4B",
       "name_part": "Q34B",
