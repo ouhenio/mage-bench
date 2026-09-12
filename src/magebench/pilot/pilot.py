@@ -25,6 +25,9 @@ from magebench.common.llm_cost import (
 from magebench.common.log import get_logger, log_error, setup_logging
 from magebench.game.game_log import GameLogWriter
 from magebench.pilot.auto_pass import auto_pass_loop
+from magebench.pilot.log_delta import fetch_and_inject
+from magebench.pilot.log_delta import enabled as log_delta_enabled
+from magebench.pilot.log_delta import SETTING_NAME as LOG_DELTA_SETTING
 from magebench.pilot.bridge_transport import build_bridge_launch_args, spawn_bridge_http
 from magebench.pilot.pilot_bridge import (
     _record_tool_execution_failure as _record_tool_execution_failure_impl,
@@ -417,6 +420,13 @@ async def _auto_resolve_forced_decision(
         )
 
     result_text = await execute_tool(session, "choose_action", dict(FORCED_ANSWER))
+    # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+    # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+    # windows this loop answers itself; a cursor that only moved on shown frames would
+    # leave every shown frame repeating lines already passed or skipping them. Paired with
+    # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+    # pairing by scanning this source.
+    result_text = await fetch_and_inject(session, state, result_text)
     record_decision_seq(state, result_text)
     # THE FORCED DECISION'S OWN LINE IS ALREADY IN HISTORY. _process_tool_calls
     # rendered and appended it before stashing the blob, and render_for_pilot
@@ -488,6 +498,13 @@ async def _answer_mulligan_from_the_engine_rule(
         )
 
     result_text = await execute_tool(session, "choose_action", {"choice": choice})
+    # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+    # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+    # windows this loop answers itself; a cursor that only moved on shown frames would
+    # leave every shown frame repeating lines already passed or skipping them. Paired with
+    # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+    # pairing by scanning this source.
+    result_text = await fetch_and_inject(session, state, result_text)
     record_decision_seq(state, result_text)
     # A USER message, for the same reason the segment cut writes one: there is no
     # assistant tool call to answer, because the policy was never asked.
@@ -802,6 +819,13 @@ async def _process_tool_calls(
             # recorded game dirs. The same counter finds stall=79 and context_reset=4, so
             # the zero is a real negative, not a broken check. Closing it by construction
             # costs nothing.)
+            # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+            # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+            # windows this loop answers itself; a cursor that only moved on shown frames would
+            # leave every shown frame repeating lines already passed or skipping them. Paired with
+            # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+            # pairing by scanning this source.
+            result_text = await fetch_and_inject(session, state, result_text)
             record_decision_seq(state, result_text)
             display_text, state.last_board = render_for_pilot(
                 result_text, state.last_board, state.seen_oracle_cards, state.decisions_seen
@@ -954,6 +978,10 @@ async def run_pilot_loop(
     state.pending_decision_chars = len(initial_message)
     model_price = get_model_price(model, prices)
     game_start = time.monotonic()
+    # READ ONCE per game, not per decision: the provenance line should appear once in a log,
+    # and a setting that could change mid-game would make half a transcript incomparable with
+    # the other half.
+    state.log_delta_on = log_delta_enabled()
 
     while True:
         if time.monotonic() - game_start > MAX_GAME_DURATION_SECS:
@@ -1454,6 +1482,12 @@ async def run_pilot(
                         system_prompt=system_prompt,
                         available_tools=tool_names,
                         deck_path=str(deck_path) if deck_path else None,
+                        # RECORDED IN THE ARTIFACT, so a finished corpus says which
+                        # arm it is without anyone remembering. karn-interface's
+                        # settings manifest is not on integration yet; when it lands
+                        # this key is the one to fold into it -- log_delta.SETTING_NAME,
+                        # so a census can key on one name.
+                        **{LOG_DELTA_SETTING: log_delta_enabled()},
                     )
 
                 logger.info("[pilot] Starting game-playing loop...")

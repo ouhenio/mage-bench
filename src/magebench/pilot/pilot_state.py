@@ -65,6 +65,13 @@ class PilotLoopState:
     # seqs in one game, seq=19 repeated 20 times).
     last_decision_seq: int | None = None
 
+    # THE LOG CURSOR, and whether the delta is on. Both live here because the cursor must
+    # survive across the auto-resolved decisions the harness answers itself -- with the
+    # auto-resolve flag on that is 46.6% of decisions, so a cursor that only advanced on
+    # shown frames would leave every shown frame repeating or skipping lines.
+    log_cursor: int | None = None
+    log_delta_on: bool = False
+
     # How many DECISIONS this pilot has been shown, which is what the rendered
     # header's "[Decision N]" is supposed to say. Counted here rather than derived
     # in the renderer because the renderer sees one tool result at a time and has

@@ -9,6 +9,7 @@ from magebench.pilot.auto_resolve import (
     is_forced_decision,
     render_auto_resolved,
 )
+from magebench.pilot.log_delta import DELTA_FIELD
 
 from mcp import ClientSession
 
@@ -191,6 +192,15 @@ def render_for_pilot(
     # `board` is already resolved above (this result's, or the last one carried
     # forward). The decision must see the same board the snapshot does, or it
     # cannot identify which player is the pilot.
+    # THE OPPONENT'S PLAY SINCE THIS SEAT LAST ACTED, if log_delta injected one. Rendered
+    # HERE rather than at either caller, for the reason in this function's own docstring: it
+    # is the one renderer the pilot and render_conversations share, so a block added here
+    # appears in the training transcript and the inference transcript by construction.
+    #
+    # ABSENT when nothing happened -- the field is simply not in the frame. 47.3% of real
+    # intervals are empty (30,325 of 64,121 measured), so a heading on all of them would be
+    # noise on the majority of frames.
+    delta_block = data.get(DELTA_FIELD)
     decision = build_pilot_decision(data, board, decision_index=decision_index)
     snapshot = build_pilot_snapshot(data, board, decision)
 
@@ -219,7 +229,10 @@ def render_for_pilot(
         include_card_reference=True,
     )
 
-    lines = [rendered]
+    # THE DELTA GOES FIRST: what happened, then what you must decide. Reading the decision
+    # before the events that produced it is the order the snapshot-only transcripts already
+    # forced, and the reason a Bolt to the face and a chump-blocked Bolt looked identical.
+    lines = ([delta_block] if delta_block else []) + [rendered]
     resp_type = data.get("response_type")
     respond_with = data.get("respond_with")
     if respond_with:
