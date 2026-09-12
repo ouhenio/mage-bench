@@ -607,6 +607,19 @@ def _chat_prompts_enabled() -> bool:
     """
     return os.environ.get("MAGEBENCH_CHAT_PROMPTS") != "0"
 
+def _tally_tool_call(state: PilotLoopState, name: str, *, ok: bool) -> None:
+    """Count one attempt at one tool, over the game.
+
+    A name NOT in the offered toolset still gets a row -- that is a hallucinated
+    tool, and a summary that quietly dropped it would hide the thing worth seeing.
+    The seeded zeros and these late arrivals are distinguishable because the offered
+    set is recorded beside the tally.
+    """
+    row = state.tool_usage.setdefault(name, {"calls": 0, "ok": 0, "failed": 0})
+    row["calls"] += 1
+    row["ok" if ok else "failed"] += 1
+
+
 async def _process_tool_calls(
     session: ClientSession,
     choice: _ChoiceLike,
@@ -650,6 +663,7 @@ async def _process_tool_calls(
                 result_text = await execute_tool(session, fn.name, args)
             except ToolExecutionError as exc:
                 tool_latency_ms = int((time.monotonic() - tool_start) * 1000)
+                _tally_tool_call(state, fn.name, ok=False)
                 if game_log:
                     game_log.emit(
                         "tool_call",
@@ -662,6 +676,7 @@ async def _process_tool_calls(
                     )
                 raise
             tool_latency_ms = int((time.monotonic() - tool_start) * 1000)
+            _tally_tool_call(state, fn.name, ok=True)
 
         result_data = _maybe_extract_result_dict(result_text)
         if result_data and "game_seq" in result_data:
@@ -921,8 +936,15 @@ async def run_pilot_loop(
     *,
     capture_token_ids: bool = False,
     decision_identity: bool = False,
+    tool_usage_out: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """Run the LLM-driven game-playing loop.
+
+    `tool_usage_out`, when given, is filled in place with one row per tool --
+    calls, ok, failed -- seeded at zero for every OFFERED tool. The caller owns it
+    because the summary is emitted at game_end, and this loop has many exits; an
+    out-parameter keeps the count here and the record there without wrapping the
+    whole loop in a try/finally for one line.
 
     `capture_token_ids` asks the serving engine to return the exact prompt and
     completion token ids for every call, for RL rollouts. It is vLLM-specific
@@ -947,6 +969,12 @@ async def run_pilot_loop(
         _record_tool_execution_failure(exc, username, game_dir, game_log)
         raise
     state = PilotLoopState(history=[{"role": "user", "content": initial_message}])
+    # Seeded with every OFFERED tool at zero. A capability the build exposes and the
+    # run never exercises is invisible unless the zero is written down.
+    state.tool_usage = tool_usage_out if tool_usage_out is not None else {}
+    state.tool_usage.update(
+        {name: {"calls": 0, "ok": 0, "failed": 0} for name in sorted(_toolset_names)}
+    )
     state.last_decision_seq = first_decision_seq
     # The first decision is pending before the loop starts, so stash it the way
     # _process_tool_calls stashes every later one. Safe for the segment check as
@@ -1425,6 +1453,15 @@ async def run_pilot(
             game_log = log_stack.enter_context(GameLogWriter(game_dir, username))
             trace_log = log_stack.enter_context(GameLogWriter(game_dir, username, suffix="llm_trace"))
 
+        # Declared OUTSIDE the try, so the finally can emit whatever was counted
+        # even when the loop died -- a game that aborted is exactly the one whose
+        # capability usage is worth reading.
+        tool_usage: dict[str, dict[str, int]] = {}
+        # Captured here too, NOT read off `openai_tools` in the finally: that name is
+        # bound inside the try, and a bridge that dies before it exists would turn
+        # this summary into a NameError that masks the real exception. An empty list
+        # is the honest value for "we never got as far as being offered tools".
+        offered_tools: list[str] = []
         try:
             async with spawn_bridge_http(
                 mvn_args=launch_args.mvn_args,
@@ -1446,6 +1483,7 @@ async def run_pilot(
                         )
                 openai_tools = mcp_tools_to_openai(tools_result.tools, tools)
                 tool_names = [tool["function"]["name"] for tool in openai_tools]
+                offered_tools = sorted(tool_names)
                 logger.debug("[pilot] Available tools: %s", tool_names)
 
                 # WHAT WAS IN FORCE, written into the game itself. Computed
@@ -1487,9 +1525,23 @@ async def run_pilot(
                     cache_control=cache_control,
                     capture_token_ids=CAPTURE_TOKEN_IDS,
                     decision_identity=DECISION_IDENTITY,
+                    tool_usage_out=tool_usage,
                 )
         finally:
             if game_log:
+                # WHICH CAPABILITIES THIS GAME ACTUALLY USED. Emitted at game_end
+                # rather than inside the settings manifest, because the manifest is
+                # written at game_start when every count is necessarily zero and a
+                # zero there would mean nothing. `offered` is recorded beside the
+                # tally so "offered and never called" is readable without joining to
+                # another row -- that is the case this exists for: get_game_log was
+                # offered for a whole corpus and called 113 times in 929 games, 112
+                # of them after the bridge had closed, and no artifact said so.
+                game_log.emit(
+                    "tool_usage",
+                    offered=offered_tools,
+                    tools=tool_usage,
+                )
                 game_log.emit(
                     "game_end",
                     total_cost_usd=round(game_log.last_cumulative_cost_usd(), 6),
