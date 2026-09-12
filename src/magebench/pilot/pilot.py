@@ -78,6 +78,10 @@ from magebench.pilot.mulligan import (
     mulligan_choice,
     mulligan_mode,
 )
+from magebench.pilot.tool_name_guard import (
+    structured_outputs_field,
+    tool_name_guard_mode,
+)
 from magebench.pilot.pilot_state import (
     record_decision_seq,
     PilotLoopState,
@@ -936,10 +940,14 @@ async def run_pilot_loop(
     # Names of the tools this game actually offers. The unwrapped-tool-call recovery
     # below requires a match here, so prose that merely mentions a tool name cannot
     # be mistaken for a call.
-    _toolset_names = {
+    # ORDERED, and the set derived from it rather than the other way round. The
+    # structural tag built from these names must be byte-identical between two
+    # seats offered the same tools, and a set's iteration order is not a promise.
+    _toolset_names_list = [
         tool["function"]["name"] for tool in tools
         if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
-    }
+    ]
+    _toolset_names = set(_toolset_names_list)
     try:
         initial_message, first_decision_seq, first_blob = await _prefetch_first_action(session)
     except ToolExecutionError as exc:
@@ -1023,6 +1031,14 @@ async def run_pilot_loop(
                 # AUDIT ONLY. Never feed prompt_text to the trainer: it is the rendered string,
                 # and tokenizing it is exactly the round trip return_token_ids exists to avoid.
                 extra_body["return_prompt_text"] = True
+            # THE ONLY REQUEST FIELD THIS CHANGES: structured_outputs.structural_tag.
+            # Constrains the function NAME to the tools this seat was offered, and
+            # nothing else -- prose outside a tool call and the arguments inside one
+            # stay free. Off unless MAGEBENCH_TOOL_NAME_GUARD=structural_tag, and the
+            # tag is a function of `tool_names`, which is the same list game_start
+            # records as available_tools.
+            if tool_name_guard_mode() == "structural_tag":
+                extra_body["structured_outputs"] = structured_outputs_field(_toolset_names_list)
             if reasoning_effort:
                 extra_body["reasoning"] = {"effort": reasoning_effort}
             if ignore_providers or provider_order:
