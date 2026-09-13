@@ -1,0 +1,59 @@
+{
+  "title": "structural_tag tool-name guard does not bind the second tool call in \
+a response",
+  "description": "`magebench.pilot.tool_name_guard` builds a \
+`structured_outputs.structural_tag` that permits exactly the tool names a seat was \
+offered, so an invented function name cannot be emitted. Measured on vLLM 0.27.1 \
+(`--tool-call-parser qwen3_coder --enable-auto-tool-choice`), the tag IS enforced — \
+but only on the first tool call of a response.\n\
+\n\
+HOW IT WAS MEASURED (job 7866, three arms, N=8 each, one 4B checkpoint):\n\
+  * unguarded                       0/8 invented a name (clean baseline)\n\
+  * guarded with the REAL tool names 8/8 ordinary tool calls (the healthy state — a \
+server that mangled every tag would fail here)\n\
+  * guarded to a tag permitting ONLY `zzz_enforcement_probe`, a name in no toolset \
+and no prompt: 3/8 emitted it, 5/8 returned no tool call at all\n\
+\n\
+The forced name is unforgeable — it exists only inside the tag — so its appearance \
+proves the serving engine applies the tag.\n\
+\n\
+THE DEFECT. In all 3 draws where the forced name appeared, a SECOND parsed tool \
+call carried `get_action_choices`, which that tag does not permit:\n\
+\n\
+    tool_calls: [ zzz_enforcement_probe  args={} ,\n\
+                  get_action_choices     args={\"choice\": \"choice\"} ]\n\
+    content:    \"...Let me call get_action_choices to see what actions I can take.\"\n\
+\n\
+The model intended `get_action_choices`; the grammar overrode the first slot and the \
+second came through unaltered. A name the guard forbade reached the parsed output.\n\
+\n\
+NOT DETERMINED: whether the second trigger occurrence is unconstrained, or the \
+parser is more lenient than the grammar and split one malformed emission into two. \
+Deciding needs the raw pre-parse string, which the chat-completions endpoint does \
+not expose — `message.content` holds only prose once the parser has consumed the \
+tool-call text. That is why this is filed rather than fixed.\n\
+\n\
+WHY IT MATTERS AND FOR WHOM. On the 35B teacher this is small: 4.7% of responses in \
+job 7860 carry two tool calls ({0:34, 1:1209, 2:62}), every observed second name is \
+one of the six real tools, and at the 35B's measured invention rate of 3.77e-5 per \
+call those 207 second slots expect 0.008 inventions — so zero there is no evidence \
+either way, not reassurance. On the 4B students it is the blocker: hallucinated tool \
+names are their characteristic fatal failure (7 of 8 policy deaths in job 4452), so \
+'the guard binds EVERY tool call in a response' is a precondition for any 4B run \
+under the guard.\n\
+\n\
+SUGGESTED ACCEPTANCE TEST for a fix, which the current guard would fail: repeat the \
+fake-name arm and require the forced name in EVERY slot of a multi-call response, or \
+require the response to carry exactly one tool call. `pipelines/eval/prove_guard_\
+enforced.py` in the mtg repo is the harness.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "tool-calling",
+    "vllm",
+    "structured-outputs",
+  ],
+  "created_at": "2026-09-13T20:20:00.000000-07:00",
+  "updated_at": "2026-09-13T20:20:00.000000-07:00",
+}
