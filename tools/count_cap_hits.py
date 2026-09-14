@@ -125,8 +125,13 @@ def scan(path_str: str) -> collections.Counter:
                     counter[(model, "args_empty")] += 1
                 if detail.get("tool_name_missing"):
                     counter[(model, "name_missing")] += 1
-    except (OSError, UnicodeDecodeError):
-        pass
+    except (OSError, UnicodeDecodeError) as exc:
+        # A FILE WE COULD NOT READ IS NOT A FILE WITH NOTHING IN IT. Swallowing
+        # this made an unreadable corpus print the same clean zeros as a healthy
+        # one -- a check whose healthy answer is silence, which is the same defect
+        # profile as any zero and the reason a census needs a denominator.
+        counter[("*", "unreadable_files")] += 1
+        counter[("*", f"unreadable:{type(exc).__name__}")] += 1
     return counter
 
 
@@ -150,7 +155,14 @@ def main(argv: list[str]) -> int:
         with Pool(8) as pool:
             for part in pool.map(scan, files, chunksize=2):
                 total.update(part)
+        unreadable = total[("*", "unreadable_files")]
         print(f"\n### {root}   ({len(files)} traces)   predicate {PREDICATE_VERSION}")
+        if unreadable:
+            kinds = {k[1]: v for k, v in total.items()
+                     if k[0] == "*" and k[1].startswith("unreadable:")}
+            print(f"  ** {unreadable} of {len(files)} TRACE FILES COULD NOT BE READ: {kinds}")
+            print("     Every count below is over the files that COULD be read. A census")
+            print("     that reported zero here would look exactly like a clean corpus.")
         for model in sorted({m for m, _ in total}):
             calls = total[(model, "calls")]
             if not calls:

@@ -36,6 +36,9 @@ import sys
 from pathlib import Path
 
 
+UNREADABLE: list[str] = []
+
+
 def _rows(path: Path):
     try:
         with path.open() as fh:
@@ -45,6 +48,9 @@ def _rows(path: Path):
                 except json.JSONDecodeError:
                     continue
     except (OSError, UnicodeDecodeError):
+        # Same reason as count_cap_hits: an unreadable file returning silently
+        # makes a broken corpus and a clean one print the same thing.
+        UNREADABLE.append(str(path))
         return
 
 
@@ -111,6 +117,9 @@ def report(root: Path, r: dict) -> None:
     calls = r["calls"]
     comp = r["comp"]
     print(f"\n### {root}")
+    if UNREADABLE:
+        print(f"  ** {len(UNREADABLE)} FILES COULD NOT BE READ, e.g. {UNREADABLE[:2]}")
+        print("     The counts below are over what could be read, not over the corpus.")
     print(f"  llm_call rows           {calls} in {r['trace_games']} traces")
     print(f"  max_tokens sent         {r['caps'] or '(no traces)'}")
     pct = 100 * r["trunc_trace"] / calls if calls else 0.0
