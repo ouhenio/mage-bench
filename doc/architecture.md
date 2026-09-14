@@ -18,6 +18,11 @@ The bridge now runs in a single MCP-oriented mode:
 - **pilot**: A Python LLM loop layered on top of the same MCP bridge. This is the primary evaluation path.
 - **replay**: A scripted Python controller layered on top of the same MCP bridge for golden tests.
 - **cpu**: XMage's built-in AI and not a bridge mode.
+- **play**: A seat a *person* plays, from a browser. `magebench.play.human_seat`
+  puts an HTTP/SSE adapter in front of the same MCP bridge the pilot drives, so a
+  human and a policy answer the same decisions through the same renderer. Launched
+  by the orchestrator as a subprocess, not imported by it. Its browser client lives
+  outside this repo.
 
 The bridge also handles several things automatically so the LLM doesn't have to micromanage:
 

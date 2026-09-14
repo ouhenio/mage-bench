@@ -46,8 +46,23 @@ class BridgeSession:
         if params is not None:
             req["params"] = params
         body = json.dumps(req, separators=(",", ":")).encode("utf-8")
-        tool_name = (params or {}).get("name", "") if method == "tools/call" else ""
-        rpc_label = f"{method}({tool_name})" if tool_name else method
+        # THE LABEL IS FOR A LOG LINE, and that is exactly why the old shape was
+        # wrong rather than harmless: `(params or {}).get("name", "")` turned a
+        # tools/call with no tool name into a label reading plain "tools/call",
+        # so a malformed request logged as an ordinary one. Every caller in this
+        # file passes a name (call_tool builds it), so an absent one is a
+        # programming error, and the loud version costs nothing -- it fires
+        # before the request is sent rather than as a bridge-side rejection
+        # nobody can attribute.
+        if method == "tools/call":
+            assert params is not None and params.get("name"), (
+                f"tools/call with no tool name: params={params!r}. The bridge "
+                f"would reject this and the rejection would name the transport, "
+                f"not the caller."
+            )
+            rpc_label = f"{method}({params['name']})"
+        else:
+            rpc_label = method
         t0 = time.monotonic()
         http_req = urllib.request.Request(
             self._url,
@@ -83,7 +98,13 @@ class BridgeSession:
 
     def call_tool(self, name: str, arguments: dict | None = None, timeout: int | None = None) -> str:
         """Call an MCP tool and return the result text (matches execute_tool()'s return format)."""
-        kwargs: dict = {"name": name, "arguments": arguments or {}}
+        # ABSENT MEANS EMPTY HERE, and it is written out rather than folded into
+        # an `or` so it is a statement someone can disagree with: the signature's
+        # default is None, meaning "this tool takes no arguments", and MCP wants
+        # the key present with an empty object rather than missing. No behaviour
+        # change -- `{}` and None were already the same call -- but `or {}` would
+        # also silently swallow any other falsy value someone passes later.
+        kwargs: dict = {"name": name, "arguments": {} if arguments is None else arguments}
         rpc_kwargs: dict = {}
         if timeout is not None:
             rpc_kwargs["timeout"] = timeout
