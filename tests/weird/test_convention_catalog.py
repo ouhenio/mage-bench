@@ -4,6 +4,47 @@ from magebench.common.json5_utils import loads_json5
 from tests.weird.repo_convention_helpers import PUPPETEER_DIR, REPO_ROOT, load_json
 
 
+# A PRESET MAY DECLARE THAT ITS PROMPT IS WRITTEN AT LAUNCH, and the test honours the
+# DECLARATION rather than inferring intent from an absent file. `p1-arm-s`'s prompt is the
+# shared base plus a document, written by pipelines/eval/run_p1.py at launch into a per-block
+# prompts/ directory -- it is not committed because its content derives from a document that
+# can change, and committing a snapshot would make the two diverge silently.
+#
+# NOT AN ALLOWLIST IN THE TEST. A list of exempt names here would drift from the presets it
+# exempts and would exempt by memory; the marker travels with the preset it describes. A
+# preset with a missing prompt and NO marker still fails, which is the property that matters.
+PROVISIONED = "system_prompt_provisioned_by"
+
+
+def provisioned_at_launch(name: str, preset: dict) -> bool:
+    """True if this preset DECLARES that its prompt is written at launch.
+
+    A malformed declaration is an error, not an exemption: the value must name the thing
+    that writes the prompt, so that the marker is followable. `{}` or `""` would otherwise
+    exempt silently, which is the allowlist failure mode wearing a different hat.
+    """
+    if PROVISIONED not in preset:
+        return False
+    value = preset[PROVISIONED]
+    if not isinstance(value, str) or not value.strip():
+        raise AssertionError(
+            f"{name!r}: {PROVISIONED}={value!r} must be a non-empty string naming what"
+            " writes the prompt (e.g. \"pipelines/eval/run_p1.py\")"
+        )
+    return True
+
+
+def unknown_prompt_refs(presets: dict, prompt_keys: set) -> list:
+    """The rule, separable from the catalog on disk so it can be tested both ways."""
+    missing = []
+    for name, preset in presets.items():
+        if provisioned_at_launch(name, preset):
+            continue
+        system_prompt = preset.get("system_prompt")
+        if system_prompt and system_prompt not in prompt_keys:
+            missing.append(f"{name!r} -> {system_prompt!r}")
+    return missing
+
 class TestPresetsReferenceValidModels:
     def test_all_preset_models_exist(self) -> None:
         models_data = load_json(PUPPETEER_DIR / "models.json")
@@ -43,13 +84,32 @@ class TestPresetsReferenceValidModels:
         if prompts_json.exists():
             prompt_keys.update(load_json(prompts_json).keys())
 
-        missing = []
-        for name, preset in presets_data["presets"].items():
-            system_prompt = preset.get("system_prompt")
-            if system_prompt and system_prompt not in prompt_keys:
-                missing.append(f"{name!r} -> {system_prompt!r}")
-
+        missing = unknown_prompt_refs(presets_data["presets"], prompt_keys)
         assert not missing, "Presets reference unknown system_prompts:\n  " + "\n  ".join(missing)
+
+    def test_missing_prompt_without_the_marker_still_fails(self) -> None:
+        """The property the marker must not cost us.
+
+        Exempting the two arm presets is only acceptable if a preset that simply forgot its
+        prompt is still caught. Asserted against the rule with synthetic presets, because
+        asserting it against the catalog on disk would only pass while the catalog happens
+        to be broken."""
+        assert unknown_prompt_refs({"forgot": {"system_prompt": "nope"}}, set()) == [
+            "'forgot' -> 'nope'"
+        ]
+        assert unknown_prompt_refs(
+            {"declared": {"system_prompt": "nope", PROVISIONED: "pipelines/eval/run_p1.py"}},
+            set(),
+        ) == []
+
+    def test_a_marker_must_name_its_provisioner(self) -> None:
+        for bad in ("", "   ", True, {}, None):
+            try:
+                unknown_prompt_refs({"x": {"system_prompt": "nope", PROVISIONED: bad}}, set())
+            except AssertionError as e:
+                assert PROVISIONED in str(e)
+            else:
+                raise AssertionError(f"{bad!r} was accepted as a provisioning declaration")
 
 
 class TestToolsetsReferenceValidTools:
