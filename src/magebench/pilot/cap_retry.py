@@ -69,42 +69,42 @@ def _is_empty_arguments(arguments: object) -> bool:
     return False
 
 
-def cap_hit_with_call_open(
-    choice: object,
-    response: object,
+def classify(
     *,
+    finish_reason: object,
+    completion_tokens: object,
     max_tokens: int,
+    has_tool_call: bool,
+    name: str | None,
+    arguments: object,
     offered: set[str],
 ) -> tuple[bool, dict]:
-    """Three terms, all required, exactly as agreed with karn-research's classifier.
+    """THE PREDICATE, in one place, for both the live path and every census.
 
-    Returns (matched, detail). `detail` is emitted whether or not a retry happens,
-    so the population stays countable after it stops being fatal -- a fix that
-    hides its own trigger is how the truncation record went unread for a corpus.
+    The live pilot holds SDK objects and a census holds JSON rows, so the two
+    wrappers below extract the same six values and delegate here. A criterion
+    agreed in prose and implemented twice is two criteria -- and the whole point of
+    this population is that two counts of it must be the same object.
+
+    Three terms, all required:
+        finish_reason == "tool_calls"     the parser found a call, so this is NOT
+                                          the finish_reason "length" case
+        completion_tokens == max_tokens   the generation used every token it had
+        name not offered OR args empty    something about the call is unfinished
     """
-    finish = getattr(choice, "finish_reason", None)
-    usage = getattr(response, "usage", None)
-    completion = getattr(usage, "completion_tokens", None) if usage else None
-    message = getattr(choice, "message", None)
-    tool_calls = getattr(message, "tool_calls", None) if message is not None else None
-
     detail: dict = {
-        "finish_reason": finish,
-        "completion_tokens": completion,
+        "finish_reason": finish_reason,
+        "completion_tokens": completion_tokens,
         "max_tokens": max_tokens,
     }
-    if finish != "tool_calls" or not tool_calls:
+    if finish_reason != "tool_calls" or not has_tool_call:
         return False, detail
-    if not isinstance(completion, int) or completion < max_tokens:
+    if not isinstance(completion_tokens, int) or completion_tokens < max_tokens:
         return False, detail
-
-    fn = getattr(tool_calls[0], "function", None)
-    # None and "" are DIFFERENT facts and the row keeps them apart: no name
-    # attribute at all is a malformed response, an empty string is a call whose
-    # name was cut before its first character. Collapsing them with `or ""` is the
-    # absent-vs-empty conflation, and the lint was right to refuse it.
-    name = getattr(fn, "name", None)
-    arguments = getattr(fn, "arguments", None)
+    # None and "" are DIFFERENT facts and the row keeps them apart: no name at all
+    # is a malformed response, an empty string is a call whose name was cut before
+    # its first character. Collapsing them with `or ""` is the absent-vs-empty
+    # conflation, and the lint was right to refuse it.
     detail["tool"] = name
     detail["tool_name_missing"] = name is None
     detail["arguments_empty"] = _is_empty_arguments(arguments)
@@ -120,6 +120,73 @@ def cap_hit_with_call_open(
 
     matched = (not detail["name_offered"]) or detail["arguments_empty"]
     return matched, detail
+
+
+def cap_hit_with_call_open(
+    choice: object,
+    response: object,
+    *,
+    max_tokens: int,
+    offered: set[str],
+) -> tuple[bool, dict]:
+    """The live path: SDK objects from the chat completion."""
+    message = getattr(choice, "message", None)
+    tool_calls = getattr(message, "tool_calls", None) if message is not None else None
+    usage = getattr(response, "usage", None)
+    fn = getattr(tool_calls[0], "function", None) if tool_calls else None
+    return classify(
+        finish_reason=getattr(choice, "finish_reason", None),
+        completion_tokens=getattr(usage, "completion_tokens", None) if usage else None,
+        max_tokens=max_tokens,
+        has_tool_call=bool(tool_calls),
+        name=getattr(fn, "name", None) if fn is not None else None,
+        arguments=getattr(fn, "arguments", None) if fn is not None else None,
+        offered=offered,
+    )
+
+
+def cap_hit_from_trace_row(row: dict) -> tuple[bool, dict]:
+    """A census: one `llm_call` row from a `*_llm_trace.jsonl`.
+
+    Takes `max_tokens` and the offered toolset from the ROW'S OWN REQUEST rather
+    than from a constant, because a corpus can contain more than one value of
+    either and a census keyed on today's constant would silently misclassify
+    yesterday's games.
+    """
+    request = row.get("request") if isinstance(row, dict) else None
+    response = row.get("response") if isinstance(row, dict) else None
+    if not isinstance(request, dict) or not isinstance(response, dict):
+        return False, {}
+    choices = response.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else None
+    if not isinstance(choice, dict):
+        return False, {}
+    message = choice.get("message")
+    tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
+    first = tool_calls[0] if isinstance(tool_calls, list) and tool_calls else None
+    fn = first.get("function") if isinstance(first, dict) else None
+    usage = response.get("usage")
+    max_tokens = request.get("max_tokens")
+    if not isinstance(max_tokens, int):
+        # No cap in the record means the condition is undefined for this row, not
+        # absent from it. Refusing to guess keeps a census from reporting zero on
+        # rows it could not judge.
+        return False, {"undecidable": "request carries no max_tokens"}
+    tools = request.get("tools")
+    offered = {
+        t["function"]["name"]
+        for t in (tools if isinstance(tools, list) else ())
+        if isinstance(t, dict) and isinstance(t.get("function"), dict)
+    }
+    return classify(
+        finish_reason=choice.get("finish_reason"),
+        completion_tokens=usage.get("completion_tokens") if isinstance(usage, dict) else None,
+        max_tokens=max_tokens,
+        has_tool_call=bool(tool_calls),
+        name=fn.get("name") if isinstance(fn, dict) else None,
+        arguments=fn.get("arguments") if isinstance(fn, dict) else None,
+        offered=offered,
+    )
 
 
 def should_retry(state, detail: dict, *, logger: Logger, temperature: float | None) -> bool:

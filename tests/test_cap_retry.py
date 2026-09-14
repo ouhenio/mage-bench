@@ -211,3 +211,68 @@ async def test_a_second_cap_hit_falls_through_to_the_fatal_path():
     outcomes = [c.kwargs["outcome"] for c in game_log.emit.call_args_list
                 if c.args and c.args[0] == "completion_truncated"]
     assert outcomes == ["retry_after_cap", "fatal_path"], outcomes
+
+
+def test_the_live_path_and_a_census_agree_on_the_same_call():
+    """One predicate, two wrappers. If these ever disagree, two counts of this
+    population are two different objects and the reconciliation is void."""
+    from magebench.pilot.cap_retry import cap_hit_from_trace_row
+
+    choice, response = _response(finish="tool_calls", completion=MAX_TOKENS,
+                                 name="choose", arguments="{}")
+    live_hit, live_detail = cap_hit_with_call_open(
+        choice, response, max_tokens=MAX_TOKENS, offered=OFFERED)
+
+    row = {
+        "type": "llm_call",
+        "request": {
+            "model": "m",
+            "max_tokens": MAX_TOKENS,
+            "tools": [{"type": "function", "function": {"name": n, "parameters": {}}}
+                      for n in sorted(OFFERED)],
+        },
+        "response": {
+            "usage": {"completion_tokens": MAX_TOKENS},
+            "choices": [{"finish_reason": "tool_calls",
+                         "message": {"tool_calls": [
+                             {"function": {"name": "choose", "arguments": "{}"}}]}}],
+        },
+    }
+    census_hit, census_detail = cap_hit_from_trace_row(row)
+
+    assert live_hit is census_hit is True
+    for key in ("tool", "arguments_empty", "name_offered", "name_is_prefix_of_offered",
+                "completion_tokens", "max_tokens", "finish_reason"):
+        assert live_detail[key] == census_detail[key], key
+
+
+def test_a_row_with_no_max_tokens_is_undecidable_not_false():
+    """A census must not report zero on rows it could not judge."""
+    from magebench.pilot.cap_retry import cap_hit_from_trace_row
+
+    hit, detail = cap_hit_from_trace_row({
+        "type": "llm_call",
+        "request": {"model": "m", "tools": []},
+        "response": {"usage": {"completion_tokens": 10},
+                     "choices": [{"finish_reason": "tool_calls", "message": {}}]},
+    })
+    assert hit is False
+    assert detail["undecidable"] == "request carries no max_tokens"
+
+
+def test_the_census_reads_the_cap_from_the_row_not_from_a_constant():
+    """A corpus can hold more than one max_tokens; keying on today's constant
+    would silently misclassify yesterday's games."""
+    from magebench.pilot.cap_retry import cap_hit_from_trace_row
+
+    row = {
+        "type": "llm_call",
+        "request": {"model": "m", "max_tokens": 2048,
+                    "tools": [{"type": "function", "function": {"name": "choose_action"}}]},
+        "response": {"usage": {"completion_tokens": 2048},
+                     "choices": [{"finish_reason": "tool_calls",
+                                  "message": {"tool_calls": [
+                                      {"function": {"name": "choose", "arguments": "{}"}}]}}]},
+    }
+    hit, detail = cap_hit_from_trace_row(row)
+    assert hit and detail["max_tokens"] == 2048 and detail["completion_tokens"] == 2048
