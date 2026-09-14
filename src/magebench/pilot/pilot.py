@@ -1099,10 +1099,21 @@ async def run_pilot_loop(
             if cap_hit:
                 cap_detail["game_seq"] = state.last_decision_seq
                 cap_detail["deterministic_decoding"] = create_kwargs.get("temperature") == 0
-                retrying = should_retry(
+                # THE FOURTH TERM gates the retry, not the population. A response
+                # carrying many calls that ends in a stump is the tail of a
+                # degenerate loop -- run A: 68 x pass_priority with empty args
+                # filling the budget, game survives -- and redrawing a loop buys
+                # another loop. Counted, never retried.
+                retrying = cap_detail["retry_eligible"] and should_retry(
                     state, cap_detail, logger=logger,
                     temperature=create_kwargs.get("temperature"),
                 )
+                if not cap_detail["retry_eligible"]:
+                    logger.warning(
+                        "[pilot] cap-hit with %d tool calls in one response (tool %r): "
+                        "a stump after a repeat loop, counted and not retried.",
+                        cap_detail["n_tool_calls"], cap_detail.get("tool"),
+                    )
                 if game_log:
                     # EMITTED ON EVERY OCCURRENCE, retry or not. The population was
                     # invisible to every counter we had; a fix that also hid its own
@@ -1110,7 +1121,11 @@ async def run_pilot_loop(
                     game_log.emit(
                         "completion_truncated",
                         call_open=True,
-                        outcome="retry_after_cap" if retrying else "fatal_path",
+                        outcome=(
+                            "retry_after_cap" if retrying
+                            else "not_retried_multicall" if not cap_detail["retry_eligible"]
+                            else "fatal_path"
+                        ),
                         **cap_detail,
                     )
                 if retrying:

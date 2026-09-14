@@ -39,14 +39,23 @@ def _no_prefetch():
         yield
 
 
-def _response(*, finish, completion, name, arguments):
+def _one_call(name, arguments):
     tool_call = MagicMock()
-    tool_call.id = "call_x"
+    tool_call.id = f"call_{name}"
     tool_call.function.name = name
     tool_call.function.arguments = arguments
+    return tool_call
+
+
+def _response(*, finish, completion, name, arguments, repeats_before=0):
+    """`repeats_before` prepends N complete pass_priority calls, which is the
+    degenerate-loop shape run A found: many identical calls and then a stump."""
+    calls = [_one_call("pass_priority", "{}") for _ in range(repeats_before)]
+    if name:
+        calls.append(_one_call(name, arguments))
     choice = MagicMock()
     choice.finish_reason = finish
-    choice.message.tool_calls = [tool_call] if name else []
+    choice.message.tool_calls = calls
     choice.message.content = None
     response = MagicMock()
     response.choices = [choice]
@@ -276,3 +285,76 @@ def test_the_census_reads_the_cap_from_the_row_not_from_a_constant():
     }
     hit, detail = cap_hit_from_trace_row(row)
     assert hit and detail["max_tokens"] == 2048 and detail["completion_tokens"] == 2048
+
+
+def test_a_stump_after_a_repeat_loop_is_counted_and_not_retried():
+    """Run A: 5 responses of 14,442 are 68 x pass_priority with empty args filling
+    the budget, and the GAME SURVIVES them (g175 seq 120/122/124). Empty args plus
+    a cap hit is the three-term population, so it must still be counted -- but
+    redrawing a loop is a round trip into the same loop."""
+    hit, detail = cap_hit_with_call_open(
+        *_response(finish="tool_calls", completion=MAX_TOKENS, name="pass",
+                   arguments="{}", repeats_before=65),
+        max_tokens=MAX_TOKENS, offered=OFFERED)
+    assert hit is True, "a multi-call stump is still in the population"
+    assert detail["n_tool_calls"] == 66
+    assert detail["retry_eligible"] is False
+
+
+def test_the_single_stump_still_retries():
+    """The positive control for the test above: the fourth term must not swallow
+    the case the retry exists for."""
+    hit, detail = cap_hit_with_call_open(
+        *_response(finish="tool_calls", completion=MAX_TOKENS, name="choose",
+                   arguments="{}"),
+        max_tokens=MAX_TOKENS, offered=OFFERED)
+    assert hit is True
+    assert detail["n_tool_calls"] == 1
+    assert detail["retry_eligible"] is True
+
+
+def test_the_population_is_unchanged_by_the_fourth_term():
+    """cap-hit/2 must not move a number reconciled against cap-hit/1. `matched`
+    is still the three terms; the fourth lives in detail only."""
+    from magebench.pilot.cap_retry import PREDICATE_VERSION
+    assert PREDICATE_VERSION == "cap-hit/2"
+    for repeats in (0, 1, 65):
+        hit, _ = cap_hit_with_call_open(
+            *_response(finish="tool_calls", completion=MAX_TOKENS, name="choose",
+                       arguments="{}", repeats_before=repeats),
+            max_tokens=MAX_TOKENS, offered=OFFERED)
+        assert hit is True, repeats
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_no_prefetch")
+async def test_the_loop_counts_a_multicall_stump_without_redrawing_it():
+    calls: list = []
+    session = _session(calls)
+    client = MagicMock()
+
+    async def fake_create(**_kw):
+        fake_create.n += 1
+        if fake_create.n == 1:
+            return _response(finish="tool_calls", completion=MAX_TOKENS,
+                             name="pass", arguments="{}", repeats_before=65)[1]
+        return _response(finish="tool_calls", completion=20,
+                         name="pass_priority", arguments="{}")[1]
+
+    fake_create.n = 0
+    client.chat.completions.create = AsyncMock(side_effect=fake_create)
+    game_log = MagicMock()
+
+    with patch("magebench.pilot.pilot.auto_pass_loop", new_callable=AsyncMock):
+        await asyncio.wait_for(
+            run_pilot_loop(session=session, client=client, model="m",
+                           system_prompt="s", tools=_TOOLS, prices={},
+                           username="p", game_log=game_log),
+            timeout=5)
+
+    rows = [c for c in game_log.emit.call_args_list
+            if c.args and c.args[0] == "completion_truncated"]
+    assert rows, "the occurrence was not counted"
+    assert rows[0].kwargs["outcome"] == "not_retried_multicall"
+    assert rows[0].kwargs["n_tool_calls"] == 66
+    assert rows[0].kwargs["call_open"] is True

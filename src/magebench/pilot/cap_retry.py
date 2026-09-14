@@ -75,7 +75,7 @@ def _is_empty_arguments(arguments: object) -> bool:
 # number" has to be answerable from the number rather than from a memory of when
 # somebody copied the file. Bump this whenever the three terms or the detail keys
 # change; never for a comment.
-PREDICATE_VERSION = "cap-hit/1"
+PREDICATE_VERSION = "cap-hit/2"
 
 
 def classify(
@@ -83,7 +83,7 @@ def classify(
     finish_reason: object,
     completion_tokens: object,
     max_tokens: int,
-    has_tool_call: bool,
+    n_tool_calls: int,
     name: str | None,
     arguments: object,
     offered: set[str],
@@ -95,11 +95,24 @@ def classify(
     agreed in prose and implemented twice is two criteria -- and the whole point of
     this population is that two counts of it must be the same object.
 
-    Three terms, all required:
+    Three terms define the POPULATION, all required:
         finish_reason == "tool_calls"     the parser found a call, so this is NOT
                                           the finish_reason "length" case
         completion_tokens == max_tokens   the generation used every token it had
         name not offered OR args empty    something about the call is unfinished
+
+    A FOURTH term gates the RETRY and not the population: the response must carry
+    exactly ONE tool call. Run A found the reason -- 5 responses of 14,442 are
+    degenerate repeat loops, 68 x `pass_priority` with empty args filling the whole
+    budget, and the game SURVIVES them (g175 seq 120/122/124; g168 seq 20 ends in a
+    stump `pass` and finishes normally). A trailing stump after 65 identical calls
+    is not a cut-off decision, it is the tail of a loop, and redrawing a loop is a
+    round trip into the same loop.
+
+    The split is deliberate: `matched` stays the three-term population so every
+    count reconciled against cap-hit/1 is still the same object, and
+    `detail["retry_eligible"]` carries the fourth term. A multi-call response is
+    COUNTED and never retried.
     """
     detail: dict = {
         "predicate_version": PREDICATE_VERSION,
@@ -107,7 +120,8 @@ def classify(
         "completion_tokens": completion_tokens,
         "max_tokens": max_tokens,
     }
-    if finish_reason != "tool_calls" or not has_tool_call:
+    detail["n_tool_calls"] = n_tool_calls
+    if finish_reason != "tool_calls" or n_tool_calls < 1:
         return False, detail
     if not isinstance(completion_tokens, int) or completion_tokens < max_tokens:
         return False, detail
@@ -129,6 +143,9 @@ def classify(
     )
 
     matched = (not detail["name_offered"]) or detail["arguments_empty"]
+    # The fourth term. A stump at the end of 65 identical calls is the tail of a
+    # loop, not a decision that ran out of room; retrying it buys another loop.
+    detail["retry_eligible"] = matched and n_tool_calls == 1
     return matched, detail
 
 
@@ -148,7 +165,7 @@ def cap_hit_with_call_open(
         finish_reason=getattr(choice, "finish_reason", None),
         completion_tokens=getattr(usage, "completion_tokens", None) if usage else None,
         max_tokens=max_tokens,
-        has_tool_call=bool(tool_calls),
+        n_tool_calls=len(tool_calls) if tool_calls else 0,
         name=getattr(fn, "name", None) if fn is not None else None,
         arguments=getattr(fn, "arguments", None) if fn is not None else None,
         offered=offered,
@@ -192,7 +209,7 @@ def cap_hit_from_trace_row(row: dict) -> tuple[bool, dict]:
         finish_reason=choice.get("finish_reason"),
         completion_tokens=usage.get("completion_tokens") if isinstance(usage, dict) else None,
         max_tokens=max_tokens,
-        has_tool_call=bool(tool_calls),
+        n_tool_calls=len(tool_calls) if isinstance(tool_calls, list) else 0,
         name=fn.get("name") if isinstance(fn, dict) else None,
         arguments=fn.get("arguments") if isinstance(fn, dict) else None,
         offered=offered,

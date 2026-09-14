@@ -112,6 +112,11 @@ def scan(path_str: str) -> collections.Counter:
                 if not hit:
                     continue
                 counter[(model, "retry_trigger")] += 1
+                # Nested inside the trigger, not beside it: the population is the
+                # three terms and stays reconciled with cap-hit/1; the fourth term
+                # only decides whether a member of it is redrawn.
+                counter[(model, "retry_eligible" if detail.get("retry_eligible")
+                         else "multicall_not_retried")] += 1
                 if not detail.get("name_offered"):
                     counter[(model, "out_of_schema")] += 1
                     key = "name_is_prefix" if detail.get("name_is_prefix_of_offered") else "genuine_at_cap"
@@ -126,6 +131,7 @@ def scan(path_str: str) -> collections.Counter:
 
 
 COLUMNS = ("finish_length", "at_cap_any", "cap_hit_with_call", "retry_trigger",
+           "retry_eligible", "multicall_not_retried",
            "out_of_schema", "name_is_prefix", "genuine_at_cap", "args_empty",
            "name_missing", "undecidable")
 
