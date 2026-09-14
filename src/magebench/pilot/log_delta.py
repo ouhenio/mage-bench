@@ -107,6 +107,57 @@ def announce() -> None:
                 "ON" if enabled() else "OFF")
 
 
+def setting_from_game_start(row: dict) -> bool:
+    """Read the treatment flag out of a `game_start` row. REQUIRES it; never defaults.
+
+    THE DEFECT THIS EXISTS FOR, and it is a reader defect by mtg-0f's ruling rather than a
+    merge-ordering one. The flag was written at the top level of `game_start` on
+    `s/run-b-merge` and moved inside karn-interface's settings manifest when that landed:
+
+        old shape    row["opponent_log_delta"]
+        new shape    row["settings"]["resolved"]["opponent_log_delta"]
+
+    A census that reads only the new path against an old-shape row does not fail -- it gets
+    ABSENT, and absent for a boolean reads as False, which reads as "the delta was off". The
+    failure mode is therefore a game that HAD the treatment counted in the control arm,
+    silently, inside the only comparison the run exists to make. Two shapes with one name is
+    survivable; absent-read-as-False is not.
+
+    So this accepts both shapes BY NAME and refuses absence. Refusing is the whole point: a
+    row from before the setting existed genuinely cannot answer, and "cannot answer" must not
+    be spelled the same way as "answered no". The caller decides what to do about a corpus
+    that predates the flag; it does not get to inherit a default from here.
+
+    Raises on disagreement too. A row carrying both keys with different values is a writer
+    bug, and picking one would hide it.
+    """
+    present: dict[str, bool] = {}
+    if SETTING_NAME in row:
+        present["top-level"] = bool(row[SETTING_NAME])
+    # Indexed only after checking, because a manifest whose `resolved` lacks the key is a
+    # DIFFERENT state from a row with no manifest at all, and both must reach the raise
+    # below rather than a KeyError from halfway down a chain.
+    settings = row.get("settings")
+    if isinstance(settings, dict):
+        resolved = settings.get("resolved")
+        if isinstance(resolved, dict) and SETTING_NAME in resolved:
+            present["settings.resolved"] = bool(resolved[SETTING_NAME])
+    if not present:
+        raise KeyError(
+            f"{SETTING_NAME!r} is in neither shape of this game_start row: not at the top "
+            f"level and not under settings.resolved. Keys present: {sorted(row)}. This row "
+            "cannot say which arm the game was in, and absence is NOT 'the delta was off' -- "
+            "decide what to do with a pre-flag game at the call site."
+        )
+    values = set(present.values())
+    if len(values) > 1:
+        raise ValueError(
+            f"{SETTING_NAME!r} disagrees between shapes in one row: {present}. One game was "
+            "in one arm; a row that says both is a writer bug, not something to pick from."
+        )
+    return values.pop()
+
+
 def max_chars() -> int:
     raw = os.environ.get("MAGEBENCH_OPPONENT_LOG_DELTA_CHARS")
     if not raw:

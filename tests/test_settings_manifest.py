@@ -193,3 +193,92 @@ def test_the_manifest_emits_nothing_while_resolving(monkeypatch, caplog):
         log_delta.announce()
     lines = [r.getMessage() for r in caplog.records if "opponent log delta" in r.getMessage()]
     assert len(lines) == 1 and "ON (EXPLICIT" in lines[0]
+
+
+# ---------------------------------------------------------------------------
+# Reading the flag back out, across the shape change.
+# ---------------------------------------------------------------------------
+
+
+def test_the_treatment_flag_reads_from_either_shape():
+    from magebench.pilot.log_delta import SETTING_NAME, setting_from_game_start
+
+    assert setting_from_game_start({SETTING_NAME: True}) is True
+    assert setting_from_game_start({SETTING_NAME: False}) is False
+    assert setting_from_game_start({"settings": {"resolved": {SETTING_NAME: True}}}) is True
+    assert setting_from_game_start({"settings": {"resolved": {SETTING_NAME: False}}}) is False
+    # Both shapes agreeing is fine -- it is one game in one arm, said twice.
+    assert setting_from_game_start(
+        {SETTING_NAME: True, "settings": {"resolved": {SETTING_NAME: True}}}
+    ) is True
+
+
+def test_an_absent_flag_raises_rather_than_reading_as_off():
+    """The defect this reader exists for, asserted rather than described.
+
+    Absent must not be spelled the same way as False. Each of these rows is a distinct way of
+    failing to say which arm the game was in, and every one of them has to raise -- the
+    partial-manifest cases especially, because a `.get` chain would turn them into False
+    without ever touching a missing key.
+    """
+    import pytest as _pytest
+
+    from magebench.pilot.log_delta import setting_from_game_start
+
+    for row in (
+        {},                                             # predates the flag entirely
+        {"model": "x"},                                 # a real row, other keys only
+        {"settings": {}},                               # manifest present, no resolved
+        {"settings": {"resolved": {}}},                 # resolved present, key absent
+        {"settings": {"resolved": {"mulligan": "on"}}},  # other settings resolved, not this one
+        {"settings": None},                             # manifest key present and null
+    ):
+        with _pytest.raises(KeyError, match="opponent_log_delta"):
+            setting_from_game_start(row)
+
+
+def test_a_row_that_says_both_arms_raises():
+    import pytest as _pytest
+
+    from magebench.pilot.log_delta import SETTING_NAME, setting_from_game_start
+
+    with _pytest.raises(ValueError, match="disagrees between shapes"):
+        setting_from_game_start(
+            {SETTING_NAME: True, "settings": {"resolved": {SETTING_NAME: False}}}
+        )
+
+
+def test_nothing_else_names_the_flag_by_hand():
+    """The reader is only a fix if it is the ONLY way in.
+
+    `setting_from_game_start` is currently uncalled -- run B's readout does not exist yet --
+    and an available-but-unused function is the shape that fired zero times in 2,012 decisions
+    once already. This test is what makes it load-bearing before it has a caller: any future
+    census that reaches for the literal instead gets caught here, in the module that owns the
+    name, rather than shipping a `.get` chain that reads absent as off.
+
+    Scoped to the literal in CODE, so the comments explaining the shape change are allowed to
+    say the name.
+    """
+    import ast
+    from pathlib import Path
+
+    from magebench.pilot import log_delta
+
+    owner = Path(log_delta.__file__).resolve()
+    roots = [owner.parents[2], owner.parents[3] / "tools"]
+    offenders = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            if path.resolve() == owner:
+                continue
+            tree = ast.parse(path.read_text())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and node.value == "opponent_log_delta":
+                    offenders.append(f"{path}:{node.lineno}")
+    assert not offenders, (
+        "These name the treatment flag by literal instead of going through "
+        "log_delta.setting_from_game_start / SETTING_NAME:\n  " + "\n  ".join(offenders)
+    )
