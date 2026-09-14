@@ -14,6 +14,18 @@ _COMPONENT_DEPENDENCIES = {
     "analysis": frozenset({"common", "game"}),
     "leaderboard": frozenset({"common", "game"}),
     "pilot": frozenset({"common", "game"}),
+    # A seat a PERSON plays from a browser: an HTTP/SSE adapter in front of the
+    # same MCP bridge the pilot drives. It imports `common` for the bridge session
+    # and `pilot` for the renderer, so the human and the policy see the same
+    # decision text -- that shared renderer is the point of the component, not an
+    # accident of layering.
+    #
+    # `orchestration` does NOT depend on it, and the appearance that it does is
+    # worth naming: game_processes.py launches "magebench.play.human_seat" as a
+    # SUBPROCESS ARGV STRING, never an import. This test parses imports, so a
+    # subprocess launch is not an edge -- and if that string ever becomes an
+    # import, this entry is where the edge has to be declared.
+    "play": frozenset({"common", "pilot"}),
     "orchestration": frozenset({"analysis", "common", "game", "leaderboard", "pilot"}),
     "cli": frozenset({"analysis", "common", "game", "leaderboard", "orchestration", "pilot"}),
 }
