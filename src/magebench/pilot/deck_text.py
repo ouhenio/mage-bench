@@ -26,8 +26,55 @@ import re
 import unicodedata
 from collections.abc import Iterable
 
-MTG_DATA_ROOT = pathlib.Path(os.environ.get(
-    "MTG_DATA_ROOT", "/workspace1/projects/posttrainlatamgpt/ouhenio/mtg"))
+# Both known layouts of the data root. Eugenio's 2026-09-03 reorg moved lascar's
+# under `users/` and left ranokau's alone, so the two nodes differ by one path
+# segment. Exactly one must exist on any given node: zero means the layout moved
+# again and every derived path would dangle, two means the node is ambiguous and a
+# silent pick would split one run's data across both roots.
+#
+# KEPT IN SYNC BY HAND with the mtg repo's `pipelines/data_root.py` and `env.sh`,
+# which check the same list in the same order. It cannot be imported from here --
+# mage-bench is a submodule of that repo and depending upwards would invert the
+# dependency -- so this is a real duplication and the residual risk is that the
+# two lists drift. Adding a candidate means adding it in all three places.
+CANDIDATE_DATA_ROOTS = (
+    pathlib.Path("/workspace1/projects/posttrainlatamgpt/users/ouhenio/mtg"),  # lascar
+    pathlib.Path("/workspace1/projects/posttrainlatamgpt/ouhenio/mtg"),        # ranokau
+)
+
+
+def data_root() -> pathlib.Path:
+    """$MTG_DATA_ROOT if set, else the one candidate that exists. Raises otherwise.
+
+    NEVER DEFAULTS TO A NODE. This used to be a module constant defaulting to
+    ranokau's root, which meant that on lascar, with the variable unset, the
+    oracle path resolved somewhere that does not exist and the failure surfaced
+    as "oracle card data not found at .../scryfall/oracle_cards.jsonl" -- the
+    name of a missing 200 MB download that was in fact present all along under a
+    different prefix. A default that is right on one node and wrong on the other
+    is not a fallback; it is a coin-flip with a preferred side.
+
+    An explicit value is never second-guessed, including one that does not exist:
+    pointing this at a scratch tree for a one-off is deliberate.
+    """
+    explicit = os.environ.get("MTG_DATA_ROOT")
+    if explicit:
+        return pathlib.Path(explicit)
+    found = [c for c in CANDIDATE_DATA_ROOTS if c.is_dir()]
+    if len(found) != 1:
+        import socket
+        raise RuntimeError(
+            f"cannot resolve MTG_DATA_ROOT on {socket.gethostname()}: "
+            f"{len(found)} of {len(CANDIDATE_DATA_ROOTS)} candidate roots exist "
+            f"({', '.join(str(c) for c in found) or 'none'}). "
+            "Set MTG_DATA_ROOT explicitly, or `source env.sh` in the mtg repo. "
+            "Refusing to guess: the two nodes' roots differ by a `users/` segment, "
+            "and picking the wrong one fails later and elsewhere, naming a missing "
+            "data file rather than a missing root."
+        )
+    return found[0]
+
+
 def oracle_cards_path() -> pathlib.Path:
     """Where the training oracle bulk file lives, resolved AT CALL TIME.
 
@@ -37,13 +84,19 @@ def oracle_cards_path() -> pathlib.Path:
     card text a corpus is built from is the failure this codebase keeps paying
     for. Callers that want the value at import time can still take one.
     """
-    root = pathlib.Path(os.environ.get(
-        "MTG_DATA_ROOT", "/workspace1/projects/posttrainlatamgpt/ouhenio/mtg"))
-    return pathlib.Path(os.environ.get(
-        "MTG_ORACLE_CARDS", root / "scryfall" / "oracle_cards.jsonl"))
+    explicit = os.environ.get("MTG_ORACLE_CARDS")
+    if explicit:
+        return pathlib.Path(explicit)
+    return data_root() / "scryfall" / "oracle_cards.jsonl"
 
 
-ORACLE_CARDS = oracle_cards_path()
+# NOT `ORACLE_CARDS = oracle_cards_path()` any more. Two reasons, and the first is
+# the one this whole file is about: a module constant is read once at import, which
+# is exactly what the docstring above says must not happen -- the old code carried
+# that warning and the constant it warns about, three lines apart. The second is
+# that resolution can now legitimately RAISE, and a module that refuses to import on
+# an unresolvable node is a worse failure than a call that refuses at the point of
+# use. Callers take the function.
 
 
 def fold_name(name: str) -> str:
@@ -70,7 +123,11 @@ def load_oracle(path: pathlib.Path | None = None) -> dict[str, dict[str, str]]:
     path = path if path is not None else oracle_cards_path()
     if not path.exists():
         raise FileNotFoundError(
-            f"oracle card data not found at {path}. Set MTG_ORACLE_CARDS, or see "
+            # Name the ROOT as well as the file: naming only the file is what sent
+            # readers hunting for a download that was present under another prefix.
+            f"oracle card data not found at {path} "
+            f"(data root: {os.environ.get('MTG_DATA_ROOT') or '<resolved from the node>'}). "
+            "Set MTG_ORACLE_CARDS or MTG_DATA_ROOT, or `source env.sh`, or see "
             "the README beside the canonical copy for how to refresh it."
         )
     out: dict[str, dict[str, str]] = {}
