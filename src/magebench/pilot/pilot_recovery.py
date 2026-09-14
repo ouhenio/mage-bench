@@ -10,6 +10,7 @@ from mcp import ClientSession
 
 from magebench.game.game_log import GameLogWriter
 from magebench.pilot.pilot_bridge import execute_tool
+from magebench.pilot.log_delta import fetch_and_inject
 from magebench.pilot.pilot_state import PilotLoopState, record_decision_seq, reset_context
 from magebench.pilot.tool_error import ToolExecutionError
 
@@ -140,6 +141,13 @@ async def _recover_from_stall(
         # The harness just answered one or more decisions the POLICY never saw. Stamp the
         # seq here or every later row names a decision this pass already consumed --
         # measured at 5 decisions in one stall on game_20260818_025636.
+        # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+        # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+        # windows this loop answers itself; a cursor that only moved on shown frames would
+        # leave every shown frame repeating lines already passed or skipping them. Paired with
+        # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+        # pairing by scanning this source.
+        result_text = await fetch_and_inject(session, state, result_text)
         record_decision_seq(state, result_text)
         logger.info("[pilot] Auto-passed stalled action")
         reason = _parse_game_ended_reason(result_text)
@@ -190,6 +198,13 @@ async def _handle_timeout(
         result_text = await execute_tool(session, "pass_priority", {})
         # Same reason as the stall path: this pass is the HARNESS answering, and the stamp
         # must move with it.
+        # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+        # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+        # windows this loop answers itself; a cursor that only moved on shown frames would
+        # leave every shown frame repeating lines already passed or skipping them. Paired with
+        # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+        # pairing by scanning this source.
+        result_text = await fetch_and_inject(session, state, result_text)
         record_decision_seq(state, result_text)
         reason = _parse_game_ended_reason(result_text)
         if reason:

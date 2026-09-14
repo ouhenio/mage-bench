@@ -26,6 +26,9 @@ from magebench.common.log import get_logger, log_error, setup_logging
 from magebench.game.game_log import GameLogWriter
 from magebench.pilot.deck_text import build_deck_block
 from magebench.pilot.auto_pass import auto_pass_loop
+from magebench.pilot.log_delta import fetch_and_inject
+from magebench.pilot.log_delta import enabled as log_delta_enabled
+from magebench.pilot.log_delta import SETTING_NAME as LOG_DELTA_SETTING
 from magebench.pilot.bridge_transport import build_bridge_launch_args, spawn_bridge_http
 from magebench.pilot.pilot_bridge import (
     _record_tool_execution_failure as _record_tool_execution_failure_impl,
@@ -491,6 +494,26 @@ async def _auto_resolve_forced_decision(
         logger.warning("bridge gone while auto-answering a forced decision, "
                        "ending the game loop: %s", exc)
         return True
+    # THE CURSOR DOES NOT ADVANCE ON THE TEARDOWN PATH ABOVE, and that is deliberate.
+    # Three reasons, in order of how expensive getting it wrong would be:
+    #
+    #   1. That path `return True`s and ends the game loop, so there is NO NEXT FRAME for the
+    #      lines to be shown to. Advancing a cursor with no consumer is not conservative, it
+    #      is meaningless.
+    #   2. fetch_and_inject asks the BRIDGE for the log, and on that path the bridge is the
+    #      thing that has shut down. The call would fail by construction and log a warning per
+    #      torn-down game for nothing.
+    #   3. Worst: it would issue a NEW bridge call on a dead bridge, on the one path whose
+    #      entire purpose is keeping "Bridge processor is shut down" out of errors.log. A new
+    #      ToolExecutionError there is how 70% of a flag-ON corpus gets discarded after being
+    #      played, which is the cost the comment above records.
+    #
+    # The invariant and the source-scan in test_log_delta.py agree here, and it is worth
+    # saying WHY rather than leaving it to coincidence: the scan's subject is
+    # record_decision_seq, and the teardown path returns before reaching it. So the
+    # decision-bearing path that gets a cursor advance is exactly the one that gets a
+    # decision stamp, on this call site as on the other four.
+    result_text = await fetch_and_inject(session, state, result_text)
     record_decision_seq(state, result_text)
     # THE FORCED DECISION'S OWN LINE IS ALREADY IN HISTORY. _process_tool_calls
     # rendered and appended it before stashing the blob, and render_for_pilot
@@ -562,6 +585,13 @@ async def _answer_mulligan_from_the_engine_rule(
         )
 
     result_text = await execute_tool(session, "choose_action", {"choice": choice})
+    # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+    # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+    # windows this loop answers itself; a cursor that only moved on shown frames would
+    # leave every shown frame repeating lines already passed or skipping them. Paired with
+    # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+    # pairing by scanning this source.
+    result_text = await fetch_and_inject(session, state, result_text)
     record_decision_seq(state, result_text)
     # A USER message, for the same reason the segment cut writes one: there is no
     # assistant tool call to answer, because the policy was never asked.
@@ -876,6 +906,13 @@ async def _process_tool_calls(
             # recorded game dirs. The same counter finds stall=79 and context_reset=4, so
             # the zero is a real negative, not a broken check. Closing it by construction
             # costs nothing.)
+            # THE CURSOR ADVANCES HERE, ON EVERY DECISION-BEARING PATH -- including the ones the
+            # HARNESS answers. With the auto-resolve flag on, 46.6% of decisions are priority
+            # windows this loop answers itself; a cursor that only moved on shown frames would
+            # leave every shown frame repeating lines already passed or skipping them. Paired with
+            # record_decision_seq for exactly that reason, and test_log_delta.py asserts the
+            # pairing by scanning this source.
+            result_text = await fetch_and_inject(session, state, result_text)
             record_decision_seq(state, result_text)
             display_text, state.last_board = render_for_pilot(
                 result_text, state.last_board, state.seen_oracle_cards, state.decisions_seen
@@ -1032,6 +1069,10 @@ async def run_pilot_loop(
     state.pending_decision_chars = len(initial_message)
     model_price = get_model_price(model, prices)
     game_start = time.monotonic()
+    # READ ONCE per game, not per decision: the provenance line should appear once in a log,
+    # and a setting that could change mid-game would make half a transcript incomparable with
+    # the other half.
+    state.log_delta_on = log_delta_enabled()
 
     while True:
         if time.monotonic() - game_start > MAX_GAME_DURATION_SECS:
@@ -1540,6 +1581,12 @@ async def run_pilot(
                         system_prompt=system_prompt,
                         available_tools=tool_names,
                         deck_path=str(deck_path) if deck_path else None,
+                        # RECORDED IN THE ARTIFACT, so a finished corpus says which
+                        # arm it is without anyone remembering. karn-interface's
+                        # settings manifest is not on integration yet; when it lands
+                        # this key is the one to fold into it -- log_delta.SETTING_NAME,
+                        # so a census can key on one name.
+                        **{LOG_DELTA_SETTING: log_delta_enabled()},
                     )
 
                 logger.info("[pilot] Starting game-playing loop...")
