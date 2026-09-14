@@ -9,7 +9,7 @@ import pathlib
 
 import pytest
 
-from magebench.pilot.deck_text import build_deck_block, deck_text_block, load_oracle, maindeck_names
+from magebench.pilot.deck_text import build_deck_block, deck_text_block, load_oracle, maindeck_entries
 from magebench.pilot.pilot import _load_default_system_prompt, assemble_system_prompt
 
 DECKS = sorted(pathlib.Path("tmp/decks").glob("*.dck")) if pathlib.Path("tmp/decks").exists() else []
@@ -42,9 +42,19 @@ def test_the_block_is_a_pure_function_of_the_decklist():
     """Same names in, same bytes out -- the property the cross-repo gate relies on."""
     oracle = load_oracle()
     for deck in DECKS[:8]:
-        names = maindeck_names(deck.read_text(errors="replace").splitlines())
-        a, _ = deck_text_block(names, oracle)
-        b, _ = deck_text_block(names, oracle)
+        # `maindeck_entries`, NOT `maindeck_names`. 09dd2f0d changed deck_text_block to take
+        # (count, name) pairs so the block can render quantities, and this call site was the
+        # one place left passing bare names -- so the test died with `ValueError: too many
+        # values to unpack (expected 2)` INSIDE the function under test, which is why it read
+        # as a defect in deck_text_block rather than a stale caller.
+        #
+        # The mtg-side twin, pipelines/synth/test_pilot_training_parity.py, already passes
+        # entries. That is why "the property the cross-repo gate relies on" kept holding while
+        # this half of the gate was not running at all: only one side had been updated, and the
+        # side that had not was the side that raises.
+        entries = maindeck_entries(deck.read_text(errors="replace").splitlines())
+        a, _ = deck_text_block(entries, oracle)
+        b, _ = deck_text_block(entries, oracle)
         assert a == b
         assert a == build_deck_block(deck)[0], f"{deck.name}: path and names disagree"
 
