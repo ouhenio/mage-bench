@@ -22,6 +22,7 @@ from magebench.game.game_log import GameLogWriter
 from magebench.pilot.bridge_transport import build_bridge_launch_args, spawn_bridge_http
 from magebench.pilot.pilot import build_initial_message
 from magebench.pilot.pilot_bridge import execute_tool
+from magebench.pilot.settings_manifest import settings_manifest, unread_warning
 from magebench.pilot.pilot_rendering import render_context, render_for_pilot
 from magebench.pilot.pilot_state import BoardCursorTracker
 from magebench.pilot.prompts import load_prompts
@@ -317,7 +318,18 @@ async def run_replay(
             logger.debug("[replay] Available tools: %s", tool_names)
 
             if game_log:
-                game_log.emit("game_start", available_tools=tool_names)
+                # THE MANIFEST GOES HERE TOO, marked as a replay. Without it a
+                # replayed game exports with no `settings` key, which is the same
+                # encoding as a game generated before the manifest existed -- and a
+                # reader cannot tell those apart afterwards. A replay renders
+                # through render_for_pilot, so the rendering settings really are in
+                # force; the policy loop never runs, so the policy-side ones are
+                # resolved but not exercised, which is what `driver` says.
+                manifest = settings_manifest(driver="replay")
+                warning = unread_warning(manifest)
+                if warning:
+                    logger.warning("%s", warning)
+                game_log.emit("game_start", available_tools=tool_names, settings=manifest)
 
             # Execute script via shared helper.
             async def call_tool(name: str, arguments: dict) -> str:
