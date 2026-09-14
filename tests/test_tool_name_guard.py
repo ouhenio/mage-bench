@@ -9,9 +9,23 @@ carries it only when asked.
 
 The grammar-level control (does the compiled grammar actually reject
 `ghost_pass`?) cannot run here: it needs xgrammar and the model's tokenizer,
-neither of which is in the harness venv. It was run under slurm against the real
-4B tokenizer and is recorded in the commit message -- 6 of 6 real names accepted,
-5 of 5 observed inventions rejected, prose accepted, free-form arguments accepted.
+neither of which is in the harness venv. It lives in
+`tools/compile_tool_name_guard_grammar.py` -- a TOOL rather than a test, runnable
+on any box that serves, because a proof quoted in a commit message is a claim.
+Last run against the real 4B tokenizer, 16 of 16 cases as expected:
+
+    6 real tool names                             accepted
+    5 bare inventions from production             rejected
+    2 SYNTAX inventions (doubled and escaped
+      opener, both observed in corpus v3)         rejected
+    prose, free-form arguments                    accepted
+    escaped opener as prose, no real trigger      accepted  <- the known limit
+
+The two syntax cases were added after karn-research pointed out they were covered
+by ARGUMENT while the bare names were covered by DEMONSTRATION -- the tag fires on
+the first `<tool_call>\n<function=` and then permits only a real name, which does
+cover a doubled opener, but "does cover" and "was shown to cover" are the
+distinction this file exists to keep.
 """
 
 import json
