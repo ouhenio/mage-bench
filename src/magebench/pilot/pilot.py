@@ -78,6 +78,7 @@ from magebench.pilot.mulligan import (
     mulligan_choice,
     mulligan_mode,
 )
+from magebench.pilot.cap_retry import cap_hit_with_call_open, should_retry
 from magebench.pilot.pilot_state import (
     record_decision_seq,
     PilotLoopState,
@@ -1087,6 +1088,36 @@ async def run_pilot_loop(
             choice = response.choices[0]
             if _handle_truncated_response(state, choice, response, game_log):
                 continue
+
+            # A call cut off AT the cap reports finish_reason "tool_calls", not
+            # "length", so the handler above never sees it. Detected here, before
+            # the call is executed, because the bridge answers a half-written name
+            # with "Unknown tool" and the pilot treats that as fatal.
+            cap_hit, cap_detail = cap_hit_with_call_open(
+                choice, response, max_tokens=MAX_TOKENS, offered=_toolset_names
+            )
+            if cap_hit:
+                cap_detail["game_seq"] = state.last_decision_seq
+                cap_detail["deterministic_decoding"] = create_kwargs.get("temperature") == 0
+                retrying = should_retry(
+                    state, cap_detail, logger=logger,
+                    temperature=create_kwargs.get("temperature"),
+                )
+                if game_log:
+                    # EMITTED ON EVERY OCCURRENCE, retry or not. The population was
+                    # invisible to every counter we had; a fix that also hid its own
+                    # trigger would leave it invisible after it stopped being fatal.
+                    game_log.emit(
+                        "completion_truncated",
+                        call_open=True,
+                        outcome="retry_after_cap" if retrying else "fatal_path",
+                        **cap_detail,
+                    )
+                if retrying:
+                    # Nothing appended to history: the redraw must see the same
+                    # prompt, or this becomes a prompt change wearing a retry's
+                    # clothes and the arm stops measuring one thing.
+                    continue
 
             if trace_log:
                 # Which DECISION this call is about. The writer's own `seq` is a dense

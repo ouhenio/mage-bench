@@ -48,6 +48,11 @@ class PilotLoopState:
     consecutive_pass_errors: int = 0
     last_pass_error_msg: str = ""
     consecutive_truncations: int = 0
+    # One cap-hit redraw per DECISION, not per call: a decision can take several
+    # calls, and a per-call budget would let a pathological decision retry without
+    # bound -- the failure the cap itself exists to stop.
+    cap_retry_used: bool = False
+    cap_retry_decision_seq: int | None = None
     consecutive_empty_errors: int = 0
     last_game_seq: int | None = None
     # The seq of the decision the CURRENT prompt is about, captured from the same
