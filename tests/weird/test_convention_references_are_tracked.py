@@ -25,6 +25,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.weird.test_convention_catalog import PROVISIONED, provisioned_at_launch
+
 REPO = Path(__file__).resolve().parents[2]
 
 
@@ -79,21 +81,43 @@ def test_every_config_preset_exists():
     assert not missing, "Configs reference unknown presets:\n  " + "\n  ".join(missing)
 
 
-def test_every_preset_prompt_is_tracked():
-    """Existence is not enough: the prompt must be IN THE REPO, not just on disk."""
-    tracked = _tracked()
-    presets = _load(REPO / "puppeteer" / "presets.json")["presets"]
+def untracked_prompt_refs(presets, tracked):
+    """The rule, separable from the repo so the marker can be tested both ways.
+
+    A prompt written at launch cannot be committed, so the preset DECLARES it -- same marker
+    as test_convention_catalog, and validated by the same function, so the two tests cannot
+    drift into honouring different spellings of it.
+    """
     missing = []
     for name, preset in presets.items():
+        if provisioned_at_launch(name, preset):
+            continue
         prompt = preset.get("system_prompt")
         if not prompt or prompt == "default":
             continue
         rel = f"puppeteer/prompts/{prompt}.md"
         if rel not in tracked:
             missing.append(f"{name} -> {rel}")
+    return missing
+
+
+def test_every_preset_prompt_is_tracked():
+    """Existence is not enough: the prompt must be IN THE REPO, not just on disk."""
+    presets = _load(REPO / "puppeteer" / "presets.json")["presets"]
+    missing = untracked_prompt_refs(presets, _tracked())
     assert not missing, (
         "Presets reference prompts that are not committed:\n  " + "\n  ".join(missing)
     )
+
+
+def test_untracked_prompt_without_the_marker_still_fails():
+    """See the twin in test_convention_catalog: the exemption must cost us nothing."""
+    assert untracked_prompt_refs({"forgot": {"system_prompt": "nope"}}, set()) == [
+        "forgot -> puppeteer/prompts/nope.md"
+    ]
+    assert untracked_prompt_refs(
+        {"declared": {"system_prompt": "nope", PROVISIONED: "pipelines/eval/run_p1.py"}}, set()
+    ) == []
 
 
 @pytest.mark.parametrize("path", ["puppeteer/presets.json", "puppeteer/models.json"])
