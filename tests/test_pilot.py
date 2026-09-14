@@ -23,6 +23,8 @@ from magebench.pilot.pilot import (
     run_pilot_loop,
 )
 from magebench.pilot.pilot_bridge import (
+    BRIDGE_TEARDOWN_MARKER,
+    _record_tool_execution_failure,
     build_pilot_decision,
     build_pilot_snapshot,
     execute_tool,
@@ -547,13 +549,49 @@ async def test_run_pilot_loop_logs_failed_tool_call_before_reraising():
         "error_code": "tool_execution_error",
         "retryable": False,
     }
+    # bridge_teardown=False IS THE ASSERTION, not ballast to make assert_any_call match.
+    # "bridge died" does not carry the teardown marker, so this is the fatal branch, and
+    # pinning the False here is what makes the True in the test below discriminating rather
+    # than decorative -- a field only ever asserted on one side of its own condition is a
+    # field nothing checks.
     game_log.emit.assert_any_call(
         "llm_error",
         error_type="ToolExecutionError",
         error_message="MCP tool choose_action failed: bridge died",
+        bridge_teardown=False,
     )
     log_error_mock.assert_called_once()
     assert log_error_mock.call_args.args[3] == "[pilot] Fatal tool error: MCP tool choose_action failed: bridge died"
+
+
+def test_a_teardown_error_is_recorded_as_teardown_and_is_not_fatal():
+    """The other side of `bridge_teardown`, which nothing asserted on.
+
+    The field was added as the production counter for the routing fix, and the suite carried
+    zero assertions on its value -- the same shape the fix's own docstring warns about, where
+    every check verifies behaviour conditional on reaching the code and none asks what the
+    code decided. Both branches are pinned here: marker present -> recorded, warned, and NOT
+    routed to errors.log; marker absent -> fatal (the test above).
+    """
+    game_log = MagicMock()
+    log_error_fn = MagicMock()
+    _record_tool_execution_failure(
+        ToolExecutionError(f"MCP tool get_game_state failed: {BRIDGE_TEARDOWN_MARKER}"),
+        "test-player",
+        Path("/tmp/test-game"),
+        game_log,
+        logger=logging.getLogger(__name__),
+        log_error_fn=log_error_fn,
+    )
+    game_log.emit.assert_any_call(
+        "llm_error",
+        error_type="ToolExecutionError",
+        error_message=f"MCP tool get_game_state failed: {BRIDGE_TEARDOWN_MARKER}",
+        bridge_teardown=True,
+    )
+    # Withheld from errors.log -- the whole point of the branch. A game that reaches game_end
+    # after this must not be discarded by the errors.log gate.
+    log_error_fn.assert_not_called()
 
 
 @pytest.mark.asyncio

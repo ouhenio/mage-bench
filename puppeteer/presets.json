@@ -462,17 +462,19 @@
    "model": "Qwen/Qwen3.8-27B",
    "status": "active",
    "system_prompt": "notalk-strategy",
+      "system_prompt_provisioned_by": "pipelines/eval/run_p1.py",
    "toolset": "notalk"
   },
   "p1-arm-s": {
    "model": "Qwen/Qwen3.8-27B",
    "status": "active",
    "system_prompt": "p1-arm-s",
+      "system_prompt_provisioned_by": "pipelines/eval/run_p1.py",
    "toolset": "notalk"
   },
   "q35-35b-a3b-local-strategy": {
    "model": "Qwen/Qwen3.5-35B-A3B",
-   "status": "inactive",
+   "status": "retired",
    "system_prompt": "notalk-strategy",
    "toolset": "notalk"
   }
