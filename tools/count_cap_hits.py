@@ -33,6 +33,20 @@ Columns, nested, each meaningless without the one above it:
 
 `undecidable` counts rows whose request carries no max_tokens: the condition
 cannot be evaluated there, which is not the same as evaluating to false.
+
+WHAT THESE COLUMNS ARE NOT, because three different denominators are now in play
+and they are not comparable without saying which:
+
+  * These count CALLS. karn-research's classifier counts out-of-schema NAMES, and
+    is conditioned on the name having reached the bridge and been REJECTED -- so
+    it is a subset of neither column here. Its question is "of the names that were
+    rejected, how many could a grammar have prevented", which is the guard's
+    question; these columns answer the retry's.
+  * `cap_hit_with_call` is not a count of failures. Most of these calls are
+    executed normally; the population is "a call was open when the cap landed".
+
+Put a denominator beside any of these before putting them in a table with
+someone else's.
 """
 
 from __future__ import annotations
@@ -44,7 +58,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from magebench.pilot.cap_retry import cap_hit_from_trace_row  # noqa: E402
+from magebench.pilot.cap_retry import PREDICATE_VERSION, cap_hit_from_trace_row  # noqa: E402
 
 
 def scan(path_str: str) -> collections.Counter:
@@ -130,7 +144,7 @@ def main(argv: list[str]) -> int:
         with Pool(8) as pool:
             for part in pool.map(scan, files, chunksize=2):
                 total.update(part)
-        print(f"\n### {root}   ({len(files)} traces)")
+        print(f"\n### {root}   ({len(files)} traces)   predicate {PREDICATE_VERSION}")
         for model in sorted({m for m, _ in total}):
             calls = total[(model, "calls")]
             if not calls:

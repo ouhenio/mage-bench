@@ -69,6 +69,15 @@ def _is_empty_arguments(arguments: object) -> bool:
     return False
 
 
+# THE VERSION OF THE PREDICATE ITSELF, recorded in every detail row and printed by
+# every census. A vendored copy is the right way to run a census without a built
+# tree -- but a vendored copy drifts silently, and "which version decided this
+# number" has to be answerable from the number rather than from a memory of when
+# somebody copied the file. Bump this whenever the three terms or the detail keys
+# change; never for a comment.
+PREDICATE_VERSION = "cap-hit/1"
+
+
 def classify(
     *,
     finish_reason: object,
@@ -93,6 +102,7 @@ def classify(
         name not offered OR args empty    something about the call is unfinished
     """
     detail: dict = {
+        "predicate_version": PREDICATE_VERSION,
         "finish_reason": finish_reason,
         "completion_tokens": completion_tokens,
         "max_tokens": max_tokens,
