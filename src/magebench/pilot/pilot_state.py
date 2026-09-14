@@ -48,6 +48,13 @@ class PilotLoopState:
     consecutive_pass_errors: int = 0
     last_pass_error_msg: str = ""
     consecutive_truncations: int = 0
+    # name -> {"calls", "ok", "failed"} over the whole game, SEEDED FROM THE OFFERED
+    # TOOLSET so a tool nobody called is a count of zero rather than a missing key.
+    # That distinction is the whole point of the field: `get_game_log` was offered
+    # for an entire corpus, carried a cursor for incremental updates, and was called
+    # 113 times across 929 games -- 112 of them after the bridge had closed. Nothing
+    # in any artifact said so, because "never called" had no representation.
+    tool_usage: dict[str, dict[str, int]] = field(default_factory=dict)
     consecutive_empty_errors: int = 0
     last_game_seq: int | None = None
     # The seq of the decision the CURRENT prompt is about, captured from the same
@@ -64,6 +71,13 @@ class PilotLoopState:
     # one decision can take several LLM turns (measured: 153 rows over 115 distinct
     # seqs in one game, seq=19 repeated 20 times).
     last_decision_seq: int | None = None
+
+    # THE LOG CURSOR, and whether the delta is on. Both live here because the cursor must
+    # survive across the auto-resolved decisions the harness answers itself -- with the
+    # auto-resolve flag on that is 46.6% of decisions, so a cursor that only advanced on
+    # shown frames would leave every shown frame repeating or skipping lines.
+    log_cursor: int | None = None
+    log_delta_on: bool = False
 
     # How many DECISIONS this pilot has been shown, which is what the rendered
     # header's "[Decision N]" is supposed to say. Counted here rather than derived
