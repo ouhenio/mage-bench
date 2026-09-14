@@ -1,0 +1,34 @@
+{
+  "title": "Bridge deck grammar rejects the EVENT: header, so 2 of the 950 \
+bundled sample decks cannot be loaded at all",
+  "description": "`BridgeClient.loadDeck` (BridgeClient.java:350-378) accepts \
+blank lines, `#`, `//`, `NAME:`, `AUTHOR:` and `LAYOUT `, and matches everything \
+else against DCK_CARD_LINE_PATTERN. A line beginning `EVENT:` matches none of \
+them, so it throws:\n\n\
+    Invalid deck line 4 in .../Wolf Run Ramp by Brian Sondag.dck: \
+EVENT: Star City Games Open Nashville 2011-OCT-08\n\n\
+The launch dies before the game starts. No game_end, no events file, and the \
+run log says only \"Game did not finish (killed or disconnected)\" — the actual \
+cause is in the pilot log as a Maven MojoExecutionException, several layers from \
+where anyone would look.\n\n\
+MEASURED across the bundled pool: 950 of 952 decks parse, 2 do not. Both \
+failures are the EVENT: header and both come from Star City Games event decks:\n\
+  - Mage.Client/release/sample-decks/2011/SOM-M12-ISD (Decks 2011)/Wolf Run Ramp \
+by Brian Sondag.dck\n\
+  - UW Aggro by Court Shuett.dck\n\n\
+Note 952 is also the period of the seed->deck-pair map, so these two decks are \
+reachable by 2/952 of all seeds on the corpus path.\n\n\
+Why it is worth fixing rather than routing around. AUTHOR: is already accepted \
+and skipped; EVENT: is the same kind of line from the same exporter, and \
+accepting it is a one-line change next to the existing prefix checks. As it \
+stands the failure is silent-ish and permanent for the affected decks: any \
+FROZEN eval suite that draws one gets a per-row failure on every checkpoint \
+forever, which reads as an eval problem rather than a deck problem.\n\n\
+Suggested fix: treat unknown `WORD:` headers as skippable metadata rather than \
+card lines, or add EVENT: to the accepted prefix list. The first is more robust \
+against the next exporter field; the second is minimal.\n\n\
+Workaround in use (mtg repo, pipelines/synth/build_eval_suite.py): the suite \
+builder transcribes this grammar and pre-filters the pool, so an unplayable deck \
+never enters a suite. That protects our eval and does nothing for anyone else.",
+  "labels": ["p2", "bridge", "decks"],
+}
