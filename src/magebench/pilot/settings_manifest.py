@@ -91,9 +91,10 @@ _RESOLVERS: dict[str, tuple[tuple[str, ...], Callable[[], Any]]] = {
     # keeps owning it, and through its accessor rather than an env read for the reason the
     # docstring gives: a second reconstruction can disagree with the first.
     #
-    # `enabled()` announces its provenance ONCE PER PROCESS, so being called from here as
-    # well as from the loop adds no second line -- it only moves the line earlier, to game
-    # start, which is where the rest of this manifest is decided anyway.
+    # `enabled()` is PURE -- it reads, validates and returns, and emits nothing. Its
+    # provenance line moved to `log_delta.announce()`, called by the pilot loop at the first
+    # real use, because an accessor this registry calls at game start must be safe to call
+    # twice and must not make the manifest the apparent cause of a log line.
     LOG_DELTA_SETTING: (("MAGEBENCH_OPPONENT_LOG_DELTA",), log_delta_enabled),
     "segment_budget_tokens": (("MTG_RL_SEGMENT_BUDGET",), segment_max_tokens),
 }

@@ -62,30 +62,49 @@ _announced = False
 
 
 def enabled() -> bool:
-    """Whether to push the delta. DEFAULT OFF, explicit ON, and it says which.
+    """Whether to push the delta. DEFAULT OFF, explicit ON. PURE: reads and validates, and
+    emits nothing.
 
     Off by default because the 2,429-game corpus and the three evals ran without it and must
     stay reproducible. A malformed value raises rather than falling back -- the deck-block
     defect was a script default silently beating an explicit setting.
+
+    THE ANNOUNCEMENT USED TO LIVE HERE and was moved to `announce()` at karn-interface's
+    request, and the reason generalises past this module: the settings manifest calls every
+    accessor in its registry at game start, so an accessor that also logs fires at a moment
+    its caller did not choose -- and the manifest, which exists to OBSERVE, becomes the
+    apparent cause. One line moving earlier was harmless; the rule "an accessor a registry
+    calls must be pure enough to call twice" is what keeps the next registered accessor from
+    caching, emitting or mutating at game start. Validation still refuses early, which is the
+    part the manifest's docstring actually promises.
     """
-    global _announced
-    # The provenance line is printed ONCE per process, not once per caller. Two call sites
-    # legitimately ask -- the loop, to set state, and the game_start emit, to record it -- and
-    # a line per ask would make a log look like the setting had changed.
-    announce, _announced = not _announced, True
     raw = os.environ.get("MAGEBENCH_OPPONENT_LOG_DELTA")
     if raw is None:
-        if announce:
-            logger.info("[log_delta] opponent log delta: OFF (DEFAULT; nothing explicit in the environment)")
         return False
     if raw not in ("0", "1"):
         raise ValueError(
             f"MAGEBENCH_OPPONENT_LOG_DELTA={raw!r} is neither '0' nor '1'. "
             "This decides what the model sees at every decision; it is not guessable.")
-    if announce:
-        logger.info("[log_delta] opponent log delta: %s (EXPLICIT, from the environment)",
-                    "ON" if raw == "1" else "OFF")
     return raw == "1"
+
+
+def announce() -> None:
+    """Log which arm this process is running, ONCE, at the first real use.
+
+    Once per process rather than once per caller: a line per ask would make a log look like
+    the setting had changed mid-game. Called from the pilot loop, where the value is first
+    acted on -- not from the manifest, which only records it.
+    """
+    global _announced
+    if _announced:
+        return
+    _announced = True
+    raw = os.environ.get("MAGEBENCH_OPPONENT_LOG_DELTA")
+    if raw is None:
+        logger.info("[log_delta] opponent log delta: OFF (DEFAULT; nothing explicit in the environment)")
+        return
+    logger.info("[log_delta] opponent log delta: %s (EXPLICIT, from the environment)",
+                "ON" if enabled() else "OFF")
 
 
 def max_chars() -> int:

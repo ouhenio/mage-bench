@@ -27,6 +27,7 @@ from magebench.game.game_log import GameLogWriter
 from magebench.pilot.deck_text import build_deck_block
 from magebench.pilot.auto_pass import auto_pass_loop
 from magebench.pilot.log_delta import fetch_and_inject
+from magebench.pilot.log_delta import announce as log_delta_announce
 from magebench.pilot.log_delta import enabled as log_delta_enabled
 from magebench.pilot.bridge_transport import build_bridge_launch_args, spawn_bridge_http
 from magebench.pilot.pilot_bridge import (
@@ -1100,6 +1101,10 @@ async def run_pilot_loop(
     # READ ONCE per game, not per decision: the provenance line should appear once in a log,
     # and a setting that could change mid-game would make half a transcript incomparable with
     # the other half.
+    # The first place the value is ACTED ON, and therefore where it is announced.
+    # `enabled()` is pure so the settings manifest can call it at game start without
+    # emitting anything; see log_delta.enabled's docstring.
+    log_delta_announce()
     state.log_delta_on = log_delta_enabled()
 
     while True:

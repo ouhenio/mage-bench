@@ -132,3 +132,64 @@ def module_path() -> str:
     from magebench.pilot import replay
 
     return replay.__file__
+
+
+# ---------------------------------------------------------------------------
+# opponent_log_delta, folded in from s/run-b-merge's top-level game_start key.
+# ---------------------------------------------------------------------------
+
+
+def test_the_log_delta_setting_is_resolved_and_not_reported_unread(monkeypatch):
+    """Both directions, and the unread field is the one that matters.
+
+    Before the registration, `MAGEBENCH_OPPONENT_LOG_DELTA` landed in
+    `requested_but_unread` -- correctly, since nothing in the registry claimed it. The
+    assertion that it is now ABSENT from that dict is a zero, so the companion test below
+    shows the same check returning non-zero.
+    """
+    from magebench.pilot.log_delta import SETTING_NAME
+
+    monkeypatch.setenv("MAGEBENCH_OPPONENT_LOG_DELTA", "1")
+    manifest = settings_manifest(driver="pilot")
+    assert manifest["resolved"][SETTING_NAME] is True
+    assert "MAGEBENCH_OPPONENT_LOG_DELTA" not in manifest["requested_but_unread"]
+
+    monkeypatch.delenv("MAGEBENCH_OPPONENT_LOG_DELTA")
+    assert settings_manifest(driver="pilot")["resolved"][SETTING_NAME] is False
+
+
+def test_an_unregistered_setting_is_still_reported_unread(monkeypatch):
+    """The positive control for the test above: this field can still return its bad state."""
+    monkeypatch.setenv("MAGEBENCH_NOT_A_REAL_SETTING", "1")
+    manifest = settings_manifest(driver="pilot")
+    assert manifest["requested_but_unread"]["MAGEBENCH_NOT_A_REAL_SETTING"] == "1"
+
+
+def test_the_manifest_emits_nothing_while_resolving(monkeypatch, caplog):
+    """An accessor this registry calls must be pure enough to call twice.
+
+    `log_delta.enabled()` used to print its provenance line, and registering it would have
+    made the manifest -- whose job is to observe -- the apparent cause of a log line at game
+    start. The general rule is what this pins: calling the manifest resolves values and emits
+    nothing, so the next accessor someone registers cannot smuggle a side effect into
+    game_start. `log_delta.announce()` is where the line lives, and the pilot loop calls it at
+    the first real use.
+    """
+    import logging
+
+    from magebench.pilot import log_delta
+
+    monkeypatch.setenv("MAGEBENCH_OPPONENT_LOG_DELTA", "1")
+    with caplog.at_level(logging.DEBUG):
+        settings_manifest(driver="pilot")
+        settings_manifest(driver="pilot")
+    assert [r.getMessage() for r in caplog.records if "log_delta" in r.getMessage()] == []
+
+    # And the announcement still happens, exactly once -- otherwise "emits nothing" would be
+    # satisfied by a line nobody prints at all.
+    log_delta._announced = False
+    with caplog.at_level(logging.INFO):
+        log_delta.announce()
+        log_delta.announce()
+    lines = [r.getMessage() for r in caplog.records if "opponent log delta" in r.getMessage()]
+    assert len(lines) == 1 and "ON (EXPLICIT" in lines[0]
