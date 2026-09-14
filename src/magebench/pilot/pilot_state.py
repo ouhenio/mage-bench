@@ -55,6 +55,11 @@ class PilotLoopState:
     # 113 times across 929 games -- 112 of them after the bridge had closed. Nothing
     # in any artifact said so, because "never called" had no representation.
     tool_usage: dict[str, dict[str, int]] = field(default_factory=dict)
+    # One cap-hit redraw per DECISION, not per call: a decision can take several
+    # calls, and a per-call budget would let a pathological decision retry without
+    # bound -- the failure the cap itself exists to stop.
+    cap_retry_used: bool = False
+    cap_retry_decision_seq: int | None = None
     consecutive_empty_errors: int = 0
     last_game_seq: int | None = None
     # The seq of the decision the CURRENT prompt is about, captured from the same
