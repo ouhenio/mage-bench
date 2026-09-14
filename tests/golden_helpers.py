@@ -41,6 +41,7 @@ from magebench.analysis.blunder.blunder_context import (
 )
 from magebench.analysis.blunder.blunder_eval_common import decision_index
 from magebench.analysis.blunder.extract_decisions import extract_decisions
+from magebench.common.bridge_session import BridgeSession
 from magebench.common.json5_utils import dumps_json5, loads_json5
 from magebench.common.port import find_available_port, wait_for_port
 from magebench.common.process_manager import jvm_oom_preexec_fn, kill_tree
@@ -326,80 +327,10 @@ _build_java_cmd = build_java_cmd
 # ---------------------------------------------------------------------------
 
 
-class BridgeSession:
-    """Persistent MCP bridge JVM accessed via JSON-RPC over HTTP.
-
-    Sends JSON-RPC requests to the bridge's MCP HTTP server and receives
-    responses with natural HTTP timeouts. Avoids the MCP SDK's subprocess
-    management so we can keep the JVM alive across multiple golden tests.
-    """
-
-    def __init__(self, url: str) -> None:
-        self._url = url
-        self._id = 0
-
-    def _rpc(self, method: str, params: dict | None = None, timeout: int = 120) -> dict:
-        self._id += 1
-        req: dict = {"jsonrpc": "2.0", "method": method, "id": self._id}
-        if params is not None:
-            req["params"] = params
-        body = json.dumps(req, separators=(",", ":")).encode("utf-8")
-        tool_name = (params or {}).get("name", "") if method == "tools/call" else ""
-        rpc_label = f"{method}({tool_name})" if tool_name else method
-        t0 = time.monotonic()
-        print(f"[RPC #{self._id}] -> {rpc_label}", flush=True)
-        http_req = urllib.request.Request(
-            self._url,
-            data=body,
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(http_req, timeout=timeout) as http_resp:
-                resp = json.loads(http_resp.read())
-        except urllib.error.URLError as e:
-            elapsed = time.monotonic() - t0
-            msg = f"Bridge RPC error after {elapsed:.1f}s for {rpc_label}: {e}"
-            print(f"[RPC #{self._id}] ERROR: {msg}", flush=True)
-            raise RuntimeError(msg) from e
-        elapsed = time.monotonic() - t0
-        if elapsed > 5:
-            print(f"[RPC #{self._id}] <- {rpc_label} OK ({elapsed:.1f}s)", flush=True)
-        if "error" in resp and resp["error"] is not None:
-            raise RuntimeError(f"MCP error: {resp['error']}")
-        return resp["result"]
-
-    def initialize(self) -> dict:
-        return self._rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}})
-
-    def list_tool_defs(self) -> list[dict]:
-        """Return raw MCP tool definitions."""
-        result = self._rpc("tools/list", {})
-        return result["tools"]
-
-    def list_tools(self) -> list[str]:
-        """Return names of available MCP tools."""
-        return [t["name"] for t in self.list_tool_defs()]
-
-    def call_tool(self, name: str, arguments: dict | None = None, timeout: int | None = None) -> str:
-        """Call an MCP tool and return the result text (matches execute_tool() return format)."""
-        kwargs: dict = {"name": name, "arguments": arguments or {}}
-        rpc_kwargs: dict = {}
-        if timeout is not None:
-            rpc_kwargs["timeout"] = timeout
-        result = self._rpc("tools/call", kwargs, **rpc_kwargs)
-        return result["content"][0]["text"]
-
-    def close(self) -> None:
-        pass
-
-    def is_responsive(self, timeout: int = 5) -> bool:
-        """Check if the bridge can respond to RPCs within the given timeout."""
-        try:
-            self._rpc("tools/list", {}, timeout=timeout)
-            return True
-        except (RuntimeError, json.JSONDecodeError):
-            return False
-
+# BridgeSession now lives in magebench.common.bridge_session -- the human-seat
+# adapter drives a bridge with it in production, and two copies of a transport
+# drift. Imported at the top of this file; the golden tests exercise the same
+# class the adapter runs.
 
 @dataclasses.dataclass(frozen=True)
 class BridgeLogOffsets:

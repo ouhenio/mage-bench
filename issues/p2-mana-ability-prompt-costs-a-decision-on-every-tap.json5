@@ -1,0 +1,49 @@
+{
+  "title": "Every tap of a multi-ability land costs a full decision, for the policy as well as the human",
+  "description": "A land with more than one mana ability (Sunken Citadel, Restless \
+Anchorage) produces a GAME_CHOOSE_ABILITY prompt on EACH tap during payment, and the \
+prompt is a full decision: the seat is asked \"Choose spell or ability to play: Sunken \
+Citadel\" with rows like \"{T}: Add one mana of the chosen color\" and \"{T}: Add two mana \
+... only to activate abilities of land sources\". Paying a three-pip cost from two such \
+lands asks twice, on every cast, all game. FOUND BY A HUMAN, then MEASURED ON THE POLICY. \
+Eugenio hit it in the first browser game of the play client (Azorius-Control, casting \
+Consult the Star Charts): \"asking me what mana to choose each time I want to tap it, while \
+I should choose only once\". The first hypothesis was that this was a human-seat gap -- that \
+the pilot's casts go through a mana-plan path (ChooseActionTool's example shows \
+`mana_plan_set: true, mana_plan_size: 3`) and the human seat's do not. THAT HYPOTHESIS IS \
+WRONG and the counting is why: GAME_CHOOSE_ABILITY events in three real pilot games from \
+the 2026-09-02 corpus, Qwen3.5-35B-A3B in the seat, are 11 (v2_953721/g1622), 4 \
+(v2_953725/g1624) and 0 (v2_953717/g1617), against 1 in a recorded human-seat game. The \
+seats are at PARITY; what differs is the DECK. Azorius-Control runs two-ability lands and \
+Boros-Aggro does not, which is why the corpus games that hit it are the ones whose decks \
+contain them. `mana_plan` and `auto_tap` are arguments to the same `choose_action` both \
+seats call, and `auto_tap` defaults to true for both -- there is no suppression path the \
+human seat is missing. CONSEQUENCE FOR TRAINING, which is the reason this is filed here \
+rather than in the play client: eleven decisions in one game spent choosing which ability \
+of a land to tap is prompt budget carrying no policy signal. A decision whose answer is \
+determined by the cost being paid is not a decision the model should be predicting, and it \
+competes for context with the ones that are. The same argument that put zero-choice \
+decisions behind auto_resolve applies here, one step weaker: these are not zero-choice, but \
+they are usually unambiguous. SUGGESTED SHAPE, not a patch: when a cast's payment has only \
+one legal assignment, pay it without asking; ask only when the choice is genuinely \
+ambiguous. Restricted mana is exactly the ambiguous case -- Citadel's second ability \
+produces mana usable only for land-source abilities, so an auto-pick there could be wrong, \
+and \"ambiguous -> ask\" is correct. \"Unambiguous -> ask anyway\" is the defect. WHETHER \
+`mana_plan` ALREADY SUPPRESSES IT IS UNTESTED. `choose_action` accepts mana_plan=\"p1,p5:1\" \
+where :N selects the ability on a multi-ability land, and that is sendable by any client \
+today, so one experiment would settle whether a pre-declared plan avoids the prompts or \
+merely answers them earlier. Nobody has run it; treat the field as a lead and not as the \
+fix. If it does work, the pilot should send it too, and the human seat's adapter can \
+build one from the cost.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "pilot-prompt",
+    "measured",
+    "play-client",
+    "mana",
+  ],
+  "created_at": "2026-09-02T23:40:00.000-04:00",
+  "updated_at": "2026-09-02T23:40:00.000-04:00",
+}

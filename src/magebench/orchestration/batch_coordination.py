@@ -27,6 +27,7 @@ from magebench.orchestration.game_processes import (
     start_observer_client,
     start_pilot_client,
     start_replay_client,
+    start_human_client,
     start_sleepwalker_client,
     wait_for_game_start,
     wait_for_spectator_table,
@@ -164,7 +165,11 @@ def launch_game(
             cross_game_format_picks=cross_game_format_picks,
         )
         if used_player_names is not None:
-            all_players = game_config.pilot_players + game_config.sleepwalker_players
+            all_players = (
+                game_config.pilot_players
+                + game_config.sleepwalker_players
+                + game_config.human_players
+            )
             for player in all_players:
                 assert player.name not in used_player_names, (
                     f"Duplicate player name {player.name!r} across parallel games — "
@@ -289,6 +294,20 @@ def start_policy_clients(
             ),
         ))
 
+    for human_player in game_config.human_players:
+        log_path = game_dir / f"{human_player.name}_human_seat.log"
+        logger.info(
+            "%sHuman seat (%s) log: %s -- browser at http://127.0.0.1:%s/seat/%s/events",
+            game_label, human_player.name, log_path, human_player.http_port, human_player.name,
+        )
+        procs.append((
+            human_player.name,
+            start_human_client(
+                pm, project_root, game_config, human_player, log_path,
+                game_dir=game_dir, table_id=table_id,
+            ),
+        ))
+
     for replay_player in game_config.replay_players:
         log_path = game_dir / f"{replay_player.name}_replay.log"
         logger.info("%sReplay (%s) log: %s", game_label, replay_player.name, log_path)
@@ -327,7 +346,10 @@ def attach_game(
     assert session.spectator_proc is not None, "attach_game requires a launched spectator"
 
     bridge_count = (
-        len(game_config.sleepwalker_players) + len(game_config.pilot_players) + len(game_config.replay_players)
+        len(game_config.sleepwalker_players)
+        + len(game_config.pilot_players)
+        + len(game_config.replay_players)
+        + len(game_config.human_players)
     )
     if bridge_count == 0:
         return
@@ -366,6 +388,7 @@ def await_game_start(session: GameSession, num_games: int) -> None:
         len(session.config.sleepwalker_players)
         + len(session.config.pilot_players)
         + len(session.config.replay_players)
+        + len(session.config.human_players)
     )
     if bridge_count == 0:
         return
