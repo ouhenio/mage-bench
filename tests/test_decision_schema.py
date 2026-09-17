@@ -145,3 +145,72 @@ def test_the_matcher_can_say_yes_and_no(compiled):
     yes = _accepts(xgr, grammar, _qwen_call(CHOICE_TOOL, CHOICE_FIELD, "a1"))
     no = _accepts(xgr, grammar, _qwen_call(CHOICE_TOOL, CHOICE_FIELD, "a9"))
     assert (yes, no) == (True, False)
+
+
+# ------------------------------------------------- which decisions can be bound at all
+# Shapes below are taken verbatim from `respond_with` strings observed in 4452/4056, not
+# invented: keying the rule on the engine's own declaration is only safe if the declarations
+# it was built against are the real ones.
+
+from magebench.pilot.decision_schema import bindable_enum  # noqa: E402
+
+
+def _result(respond_with, ids, **extra):
+    choices = [{"id": i} if i is not None else {"index": 0} for i in ids]
+    return {"respond_with": respond_with, "choices": choices, **extra}
+
+
+def test_ids_plus_the_declared_escape_when_one_is_offered():
+    """`no` is REQUIRED, not optional: 744 of 1,331 bound decisions in the corpus offer it,
+    and an enum of ids alone would make declining those impossible -- a legal pass turned
+    into silence, which becomes a nudge."""
+    enum, reason = bindable_enum(_result("choice=pN to play, or choice=no to pass", ["p1", "p2"]))
+    assert reason == ""
+    assert enum == ["p1", "p2", "no"]
+
+
+def test_ids_only_when_the_decision_is_required():
+    """The 397-case shape: a target that must be picked offers no escape, so the enum has none."""
+    enum, reason = bindable_enum(
+        _result("choice=pN — must pick a target", ["p3", "p4"], can_cancel=False, required=True)
+    )
+    assert reason == ""
+    assert enum == ["p3", "p4"]
+
+
+def test_yes_is_carried_too_when_declared():
+    enum, _ = bindable_enum(_result("choice=pN, or choice=yes to confirm", ["p1"]))
+    assert enum == ["p1", "yes"]
+
+
+@pytest.mark.parametrize(
+    "respond_with,ids,expect_in_reason",
+    [
+        # COMBAT MUST NOT BE BOUND. 302 attackers/blockers failures would have become
+        # unrepresentable under a global choice enum.
+        ("attackers=p1,p2,... or choice=yes (confirm) or choice=no (skip)", ["p1"], "attackers"),
+        ("blockers=p5:p1,p6:p2 (blocker:attacker) or choice=yes", ["p5"], "blockers"),
+        ("amount=N (min=0, max=2147483647)", ["p1"], "amount"),
+        ("choice=0, choice=1, etc. or text=Name (not yes/no)", ["p1"], "text"),
+        # index-shaped: choices carry no id
+        ("choice=0, choice=1, etc. (not yes/no)", [None, None], "carries no id"),
+        # nothing declared
+        (None, ["p1"], "no respond_with"),
+        ("", ["p1"], "no respond_with"),
+    ],
+)
+def test_these_decisions_are_left_unbound_with_a_reason(respond_with, ids, expect_in_reason):
+    enum, reason = bindable_enum(_result(respond_with, ids))
+    assert enum is None
+    assert expect_in_reason in reason
+
+
+def test_an_empty_choices_list_is_unbound_not_an_empty_enum():
+    enum, reason = bindable_enum(_result("choice=pN to play, or choice=no to pass", []))
+    assert enum is None and "empty" in reason
+
+
+def test_an_unrecognised_declaration_falls_to_unbound():
+    """Fail toward today's behaviour: no new constraint, rather than one nobody checked."""
+    enum, reason = bindable_enum(_result("pick something reasonable", ["p1"]))
+    assert enum is None and "declares no choice=id form" in reason

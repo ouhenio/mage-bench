@@ -155,3 +155,80 @@ def bound_tool_names(tag: dict) -> list[str]:
             name = begin[len("<tool_call>\n<function=") :].rstrip(">\n")
             out.append(name)
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# WHICH DECISIONS CAN BE BOUND AT ALL. Measured before this was written, over 72,023
+# `choose_action` calls across 4452 and both 4056 arms: 2,699 failed (3.75%), and a
+# choice-only enum applied to EVERY decision would have prevented 1,854 of them while making
+# 663 UNREPRESENTABLE -- 325 index-shaped, 302 attackers/blockers, 36 amount. The 302 is
+# combat: every declare-attackers and declare-blockers would become ungeneratable, the model
+# would fall silent, and silence in this harness becomes a nudge. That is D6's mute mode
+# created BY the fix, on the most consequential decisions in the game.
+#
+# So binding is per decision, and the engine is asked rather than inferred. `respond_with` is
+# the engine's own sentence stating the valid answer forms -- "choice=pN to play, or choice=no
+# to pass", "attackers=p1,p2,... or choice=yes (confirm)". `can_cancel` is NOT usable for
+# this: it is None on 538 of the 1,100+ results sampled, so a rule keyed on it would silently
+# treat "unknown" as "not cancellable" and drop the declared escape value.
+#
+# UNRECOGNISED FORMS ARE LEFT UNBOUND, with the reason recorded. That is today's behaviour, so
+# the failure direction is "no new constraint" rather than "a constraint nobody checked".
+# ---------------------------------------------------------------------------------------------
+
+# Keys other than `choice` that an answer may use. Any of these in `respond_with` means the
+# decision is not a single-choice decision and must not be bound.
+_OTHER_ANSWER_KEYS = ("attackers=", "blockers=", "amount=", "amounts=", "text=", "index=",
+                      "mana_plan=", "until=")
+
+# Literal `choice=` values that are words rather than ids -- the declared escapes. These MUST
+# be in the enum when the engine offers them: an enum of ids alone makes declining impossible,
+# which turns a legal pass into silence.
+_CHOICE_LITERAL_RE = __import__("re").compile(r"choice=(no|yes)\b")
+_CHOICE_ID_FORM_RE = __import__("re").compile(r"choice=(pN|\d)")
+
+
+def bindable_enum(choices_result: dict) -> tuple[list[str] | None, str]:
+    """The enum for this decision, or None with the reason it cannot be bound.
+
+    Returns `(enum, "")` when bindable and `(None, reason)` otherwise. The reason goes in the
+    artifact per decision: a null result is unreadable without knowing what fraction of
+    decisions the mechanism could apply to at all.
+    """
+    respond_with = choices_result.get("respond_with")
+    if not isinstance(respond_with, str) or not respond_with.strip():
+        return None, "no respond_with declaration"
+    for key in _OTHER_ANSWER_KEYS:
+        if key in respond_with:
+            return None, f"not single-choice: respond_with offers {key.rstrip('=')}"
+    if not _CHOICE_ID_FORM_RE.search(respond_with):
+        return None, f"respond_with declares no choice=id form: {respond_with[:40]!r}"
+
+    raw = choices_result.get("choices")
+    if not isinstance(raw, list) or not raw:
+        return None, "choices list is empty"
+    ids = [c.get("id") if isinstance(c, dict) else None for c in raw]
+    if any(i is None for i in ids):
+        # The index-shaped decisions ("choice=0, choice=1") have no ids. A follow-up may bind
+        # those to 0..len-1; today they stay unbound rather than being bound to a guess.
+        return None, "at least one choice carries no id"
+    if any(not isinstance(i, str) or not i for i in ids):
+        return None, "a choice id is not a non-empty string"
+
+    literals = sorted(set(_CHOICE_LITERAL_RE.findall(respond_with)))
+    enum = list(dict.fromkeys(list(ids) + literals))
+    if len(enum) != len(set(enum)):
+        return None, "an id collides with a declared escape literal"
+    return enum, ""
+
+
+def decision_coverage(choices_result: dict) -> dict:
+    """The per-decision artifact row: bound or not, and why not."""
+    enum, reason = bindable_enum(choices_result)
+    return {
+        "bound": enum is not None,
+        "reason": reason,
+        "n_enum": len(enum) if enum else 0,
+        "action_type": choices_result.get("action_type"),
+        "response_type": choices_result.get("response_type"),
+    }
