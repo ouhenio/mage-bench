@@ -1,0 +1,54 @@
+{
+  "title": "A single decision inflates the prompt ~40k tokens past the context \
+ceiling, seed-reproducibly",
+  "description": "Three games in run B died on the pilot's append-only prompt \
+assertion. Two of them, SEEDS 1100062 and 1100068, died the SAME WAY IN TWO \
+INDEPENDENT JOBS on the same seeds -- so this reproduces from the seed rather than \
+being a scheduling accident.\n\
+\n\
+    seed 1100062  ~185,140 tokens vs a 142,336 budget   overshoot 42,804\n\
+    seed 1100068  ~181,054                              overshoot 38,718\n\
+    seed 1100082  ~145,877                              overshoot  3,541\n\
+\n\
+WHY THE FIRST TWO ARE A HARNESS DEFECT AND NOT A BUDGET CHOICE. seed 1100062's last \
+SUCCESSFUL call had a prompt of 13,976 tokens. The next one asserted at ~185,140 -- a \
+13x jump in ONE decision, with ~128,000 tokens of headroom on the gradual path. No \
+completion-reserve or context-ceiling change can address that: the game had ample \
+room and one decision consumed all of it. Something renders a single decision frame \
+larger than the entire remaining budget.\n\
+\n\
+seed 1100082 is the contrasting case and is NOT this defect: it climbed steadily at a \
+median 1,036 tokens/call (125,581 -> 130,450 -> 135,347 -> 140,358) and walked into \
+the ceiling. That one is ordinary long-game growth.\n\
+\n\
+HOW IT PRESENTS, which is why it is easy to misfile. `errors.log` reads \"No errors \
+detected\"; there is no OutOfMemoryError; `server.log` ends unremarkably at \
+`GameView.assignShortIds`; the `exit` file says `launch exited`. The ONLY signature is \
+in `<seat>_pilot.log`:\n\
+\n\
+    AssertionError: append-only prompt ~185140 tokens exceeds 142336\n\
+      (serving ceiling 143360 minus 1024 reserved for the completion)\n\
+\n\
+Two separate investigators filed games of this class as 'no-signature' before reading \
+the pilot log.\n\
+\n\
+REPRODUCTION: run seeds 1100062 or 1100068 from the v3-sft-paired suite against the \
+35B teacher preset. Both failed in `teacher-runB-7927-resume-8016` and again in \
+`teacher-runB-7927-resume2-8849`.\n\
+\n\
+SUGGESTED FIRST LOOK: the decision frame immediately before the assertion, compared \
+with the one before it. A prompt that grows 13x in one step is rendering something \
+whose size is unbounded in game state -- the Cabal Therapy / mass-reveal family is the \
+obvious candidate. A per-frame render cap would convert a fatal overflow into a \
+degraded frame, which is the same trade the cap-retry makes for truncated tool calls.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "context",
+    "pilot",
+    "seed-reproducible",
+  ],
+  "created_at": "2026-09-16T20:30:00.000000-07:00",
+  "updated_at": "2026-09-16T20:30:00.000000-07:00",
+}
