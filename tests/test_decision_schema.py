@@ -214,3 +214,26 @@ def test_an_unrecognised_declaration_falls_to_unbound():
     """Fail toward today's behaviour: no new constraint, rather than one nobody checked."""
     enum, reason = bindable_enum(_result("pick something reasonable", ["p1"]))
     assert enum is None and "declares no choice=id form" in reason
+
+
+def test_the_bound_field_replaces_the_name_guard_field_totally():
+    """The wiring overwrites `extra_body["structured_outputs"]`, so the two fields must use
+    the SAME single key. If the name guard ever grew a sibling key, an overwrite would drop it
+    silently and the request would carry a tag nobody wrote -- so this pins the shape rather
+    than the ordering, which is the part a unit test can actually hold."""
+    from magebench.pilot.tool_name_guard import structured_outputs_field
+
+    guard_field = structured_outputs_field(TOOLS)
+    assert set(guard_field) == {"structural_tag"}
+    bound_field = {"structural_tag": json.dumps(decision_structural_tag(TOOLS, IDS))}
+    assert set(bound_field) == set(guard_field)
+
+
+def test_the_bound_tag_still_enumerates_every_offered_tool():
+    """Replacing the name guard's tag must not narrow the permitted NAMES: the bound tag is
+    the guard's tag plus one bound content, so every offered name is still a permitted tag."""
+    from magebench.pilot.tool_name_guard import tool_name_structural_tag
+
+    guard_names = [t["begin"] for t in tool_name_structural_tag(TOOLS)["format"]["tags"]]
+    bound_names = [t["begin"] for t in decision_structural_tag(TOOLS, IDS)["format"]["tags"]]
+    assert bound_names == guard_names

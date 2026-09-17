@@ -84,6 +84,11 @@ from magebench.pilot.mulligan import (
 )
 from magebench.pilot.cap_retry import cap_hit_with_call_open, should_retry
 from magebench.pilot.settings_manifest import settings_manifest, unread_warning
+from magebench.pilot.decision_schema import (
+    bindable_enum,
+    decision_schema_mode,
+    decision_structural_tag,
+)
 from magebench.pilot.tool_name_guard import (
     structured_outputs_field,
     tool_name_guard_mode,
@@ -1184,6 +1189,56 @@ async def run_pilot_loop(
             # records as available_tools.
             if tool_name_guard_mode() == "structural_tag":
                 extra_body["structured_outputs"] = structured_outputs_field(_toolset_names_list)
+            # BOUND CHOICE, one step past the name guard. The enum comes from the decision
+            # the harness ALREADY HOLDS: `pending_decision_blob` is the same JSON a
+            # `get_action_choices` result carries, it arrives as the previous tool call's
+            # result (seeded by `first_blob` before the loop), and render_for_pilot has
+            # already put its ids in the frame the model is about to answer. So nothing is
+            # fetched here and nothing is added to the prompt -- the constraint is built from
+            # data that was in hand either way, which is why this costs zero tokens.
+            #
+            # LAST, so it OVERWRITES the name guard's field rather than being overwritten by
+            # it: `decision_structural_tag` is the name guard's tag plus a bound content for
+            # one tool, so replacing it keeps every name-guard property. Ordering the other
+            # way would silently run the unguarded-argument arm while claiming this one.
+            decision_coverage_row: dict | None = None
+            if decision_schema_mode() == "bound_choice":
+                blob = state.pending_decision_blob
+                parsed_blob: dict | None = None
+                if blob is not None:
+                    try:
+                        loaded = json.loads(blob)
+                    except (json.JSONDecodeError, TypeError):
+                        loaded = None
+                    if isinstance(loaded, dict):
+                        parsed_blob = loaded
+                if parsed_blob is None:
+                    # No decision in hand: not an error, and not bindable. Recorded so the
+                    # artifact's coverage denominator is every LLM call, not just the ones
+                    # that happened to carry a decision.
+                    decision_coverage_row = {"bound": False, "reason": "no decision blob",
+                                             "n_enum": 0, "action_type": None,
+                                             "response_type": None}
+                else:
+                    enum, why_not = bindable_enum(parsed_blob)
+                    decision_coverage_row = {
+                        "bound": enum is not None,
+                        "reason": why_not,
+                        "n_enum": len(enum) if enum else 0,
+                        "action_type": parsed_blob.get("action_type"),
+                        "response_type": parsed_blob.get("response_type"),
+                    }
+                    if enum is not None:
+                        extra_body["structured_outputs"] = {
+                            "structural_tag": json.dumps(
+                                decision_structural_tag(_toolset_names_list, enum)
+                            )
+                        }
+                # PER DECISION, not per game. A null result is unreadable without knowing
+                # what fraction of decisions the mechanism could apply to at all, and a
+                # per-game roll-up cannot be re-cut by action_type afterwards.
+                if game_log:
+                    game_log.emit("decision_schema_coverage", **decision_coverage_row)
             if reasoning_effort:
                 extra_body["reasoning"] = {"effort": reasoning_effort}
             if ignore_providers or provider_order:
