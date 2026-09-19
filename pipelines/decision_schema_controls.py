@@ -190,7 +190,12 @@ def run_arm(frames, arm, draws, client, timeout, max_tokens, conc, raw_fh, enum_
             raw_fh.write(json.dumps({"arm": arm, "frame": i, "draw": d, "enum": enum,
                                      "tool": name, "choice": choice, "error": err,
                                      "wire": wire, "response": response}) + "\n")
-            out[i].append({"tool": name, "choice": choice, "enum": enum, "error": err})
+            # `wire` MUST be here and not only in the raw file: the verdict reads these rows,
+            # and without it every call looked as though it carried no tag. That produced an
+            # INCONCLUSIVE on a run where the raw records show the tag present 8/8 -- a false
+            # alarm in the safe direction, but a verdict that cannot see its own evidence.
+            out[i].append({"tool": name, "choice": choice, "enum": enum, "error": err,
+                           "wire": wire})
             # MEASURED RATE, printed early so the sbatch's --time can be set from it rather
             # than guessed. Prompts here run ~30k tokens, so this is prefill-bound and the
             # rate is not guessable from token counts alone.
@@ -285,9 +290,16 @@ def main() -> int:
     with (out / "raw_control_a.jsonl").open("w") as fh:
         res_a = run_arm(a_frames, "guarded", args.draws, client, args.timeout, args.max_tokens,
                         args.conc, fh, enum_of=lambda f: [f["_forced"]])
-    hits = sum(1 for i, rs in res_a.items()
-               for r in rs if r["choice"] == a_frames[i]["_forced"])
-    total_a = sum(len(rs) for rs in res_a.values())
+    # THE TAG CONSTRAINS ARGUMENTS, NOT TOOL CHOICE -- every offered name stays permitted, by
+    # design and by the name guard's own docstring. So the question control (a) asks is: WHEN
+    # `choose_action` was called, did the single permitted id come back? Counting a call that
+    # chose a different tool as a binding failure understates the constraint and would have
+    # reported 6/8 for a run in which every choose_action call obeyed the enum.
+    answered = [(i, r) for i, rs in res_a.items() for r in rs if r["tool"] == CHOICE_TOOL]
+    hits = sum(1 for i, r in answered if r["choice"] == a_frames[i]["_forced"])
+    total_a = len(answered)
+    all_calls = sum(len(rs) for rs in res_a.values())
+    other_tool = all_calls - total_a
     # A GATE MUST CHECK THE CALLS SUCCEEDED BEFORE IT READS THEIR CONTENT.
     # The first run of this control reported `FAIL: the enum does not bind on the live server`
     # for a job in which EVERY request returned HTTP 404. `hits == 0` was true and meant
@@ -298,9 +310,11 @@ def main() -> int:
     errs_a = sum(1 for rs in res_a.values() for r in rs if r["error"])
     no_tag = sum(1 for rs in res_a.values() for r in rs
                  if not (r.get("wire") or {}).get("structured_outputs_present"))
-    wrong_tool = sum(1 for rs in res_a.values() for r in rs if r["tool"] not in (CHOICE_TOOL, None))
-    silent = sum(1 for rs in res_a.values() for r in rs if r["tool"] is None)
-    print(f"  forced id emitted: {hits}/{total_a}   other tool: {wrong_tool}   no tool call: {silent}")
+    # A run in which the model never called choose_action says nothing either way.
+    if total_a == 0 and not errs_a:
+        errs_a = 0
+    print(f"  forced id emitted: {hits}/{total_a} choose_action calls   "
+          f"(other tool: {other_tool} of {all_calls} -- permitted, the tag binds arguments only)")
     print(f"  request errors: {errs_a}/{total_a}   calls whose WIRE BODY carried no "
           f"structured_outputs: {no_tag}/{total_a}")
     a_pass = total_a > 0 and errs_a == 0 and no_tag == 0 and hits == total_a
