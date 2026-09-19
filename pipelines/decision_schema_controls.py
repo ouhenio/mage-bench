@@ -41,9 +41,10 @@ import json
 import pathlib
 import sys
 import time
-import urllib.error
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+import httpx
+from openai import OpenAI, OpenAIError
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from magebench.pilot.decision_schema import (  # noqa: E402
@@ -54,14 +55,53 @@ from magebench.pilot.decision_schema import (  # noqa: E402
 )
 
 
-def post(base_url: str, body: dict, timeout: float) -> dict:
-    req = urllib.request.Request(
-        base_url.rstrip("/") + "/chat/completions",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read())
+# THE PRODUCTION PATH, NOT A HAND-ROLLED POST. The first run of this control sent
+# `{"extra_body": {"structured_outputs": ...}}` as raw JSON and the tag never reached vLLM:
+# `structured_outputs` is a TOP-LEVEL field on ChatCompletionRequest, `extra_body` is not a
+# field at all, and the model's `extra="allow"` swallows unknown keys silently. The pilot works
+# because the OpenAI *client* flattens `extra_body` into the body before sending.
+#
+# So the control goes through the same client the pilot uses. A control that exercises a
+# different transport proves a different program -- which is what 7866 established for the
+# name-level guard and what this run re-learned the expensive way.
+_WIRE: dict[int, bytes] = {}
+
+
+def _record_wire(request: httpx.Request) -> None:
+    """Capture what actually went over the wire, keyed by thread.
+
+    Recorded because "was the tag applied" must be answerable from the ARTIFACT. The previous
+    run could only answer it by reasoning about a comment in pilot.py, which is how a transport
+    bug got reported as a finding about vLLM.
+    """
+    import threading
+
+    _WIRE[threading.get_ident()] = request.content
+
+
+def make_client(base_url: str, timeout: float) -> OpenAI:
+    http = httpx.Client(timeout=timeout, event_hooks={"request": [_record_wire]})
+    return OpenAI(base_url=base_url, api_key="EMPTY", http_client=http, max_retries=0)
+
+
+def wire_tag_keys() -> dict:
+    """The tag-bearing keys of the body this thread just sent, for the raw record."""
+    import threading
+
+    raw = _WIRE.get(threading.get_ident())
+    if not raw:
+        return {"wire": "not captured"}
+    try:
+        body = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {"wire": "unparsable"}
+    so = body.get("structured_outputs")
+    return {
+        "top_level_keys": sorted(body),
+        "structured_outputs_present": so is not None,
+        "structural_tag_len": len((so or {}).get("structural_tag") or "") if isinstance(so, dict) else 0,
+        "extra_body_present": "extra_body" in body,
+    }
 
 
 def called(response: dict) -> tuple[str | None, str | None]:
@@ -108,13 +148,15 @@ def build(frame: dict, arm: str, seed: int, max_tokens: int, enum_override: list
     if enum is None:
         return body, None
     names = [n for n in tool_names(request) if n]
+    # `extra_body` is the CLIENT's parameter, not a wire field: the client merges its contents
+    # into the top level. This is byte-for-byte how pilot.py:1259 sends the name guard's tag.
     body["extra_body"] = {
         "structured_outputs": {"structural_tag": json.dumps(decision_structural_tag(names, enum))}
     }
     return body, enum
 
 
-def run_arm(frames, arm, draws, base_url, timeout, max_tokens, conc, raw_fh, enum_of=None):
+def run_arm(frames, arm, draws, client, timeout, max_tokens, conc, raw_fh, enum_of=None):
     """Returns per-frame results. Concurrent: the 16 calls per frame are independent."""
     jobs = []
     for i, frame in enumerate(frames):
@@ -132,20 +174,22 @@ def run_arm(frames, arm, draws, base_url, timeout, max_tokens, conc, raw_fh, enu
         frame = frames[i]
         override = enum_of(frame) if enum_of else None
         body, enum = build(frame, arm, seed, max_tokens, override)
+        extra = body.pop("extra_body", None)
         try:
-            response = post(base_url, body, timeout)
+            resp = client.chat.completions.create(**body, **({"extra_body": extra} if extra else {}))
+            response = resp.model_dump()
             err = None
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        except (OpenAIError, httpx.HTTPError, TimeoutError) as exc:
             response, err = {}, f"{type(exc).__name__}: {exc}"
         name, choice = called(response)
-        return i, d, enum, name, choice, err, response
+        return i, d, enum, name, choice, err, response, wire_tag_keys()
 
     with ThreadPoolExecutor(max_workers=conc) as pool:
-        for i, d, enum, name, choice, err, response in pool.map(one, jobs):
+        for i, d, enum, name, choice, err, response, wire in pool.map(one, jobs):
             done += 1
             raw_fh.write(json.dumps({"arm": arm, "frame": i, "draw": d, "enum": enum,
                                      "tool": name, "choice": choice, "error": err,
-                                     "response": response}) + "\n")
+                                     "wire": wire, "response": response}) + "\n")
             out[i].append({"tool": name, "choice": choice, "enum": enum, "error": err})
             # MEASURED RATE, printed early so the sbatch's --time can be set from it rather
             # than guessed. Prompts here run ~30k tokens, so this is prefill-bound and the
@@ -192,6 +236,7 @@ def main() -> int:
         return 2
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    client = make_client(args.base_url, args.timeout)
     print(f"frames: {len(frames)} of {total_in} in file   "
           f"attempt filter: {'all' if args.attempt < 0 else args.attempt}   "
           f"draws: {args.draws}   conc: {args.conc}")
@@ -213,23 +258,35 @@ def main() -> int:
         print("FATAL: no frame offers an id other than the one the model chose", file=sys.stderr)
         return 2
     with (out / "raw_control_a.jsonl").open("w") as fh:
-        res_a = run_arm(a_frames, "guarded", 1, args.base_url, args.timeout, args.max_tokens,
+        res_a = run_arm(a_frames, "guarded", args.draws, client, args.timeout, args.max_tokens,
                         args.conc, fh, enum_of=lambda f: [f["_forced"]])
     hits = sum(1 for i, rs in res_a.items()
                for r in rs if r["choice"] == a_frames[i]["_forced"])
     total_a = sum(len(rs) for rs in res_a.values())
+    # A GATE MUST CHECK THE CALLS SUCCEEDED BEFORE IT READS THEIR CONTENT.
+    # The first run of this control reported `FAIL: the enum does not bind on the live server`
+    # for a job in which EVERY request returned HTTP 404. `hits == 0` was true and meant
+    # nothing: there were no responses to have hits in. A control exists to be believed, so a
+    # control that can state a scientific conclusion from a transport failure is worse than no
+    # control. Errors and "did the tag reach the wire" are now checked FIRST and produce
+    # INCONCLUSIVE, which is a different word from FAIL on purpose.
+    errs_a = sum(1 for rs in res_a.values() for r in rs if r["error"])
+    no_tag = sum(1 for rs in res_a.values() for r in rs
+                 if not (r.get("wire") or {}).get("structured_outputs_present"))
     wrong_tool = sum(1 for rs in res_a.values() for r in rs if r["tool"] not in (CHOICE_TOOL, None))
     silent = sum(1 for rs in res_a.values() for r in rs if r["tool"] is None)
     print(f"  forced id emitted: {hits}/{total_a}   other tool: {wrong_tool}   no tool call: {silent}")
-    a_pass = total_a > 0 and hits == total_a
+    print(f"  request errors: {errs_a}/{total_a}   calls whose WIRE BODY carried no "
+          f"structured_outputs: {no_tag}/{total_a}")
+    a_pass = total_a > 0 and errs_a == 0 and no_tag == 0 and hits == total_a
 
     # ---------------------------------------------------------------- control (b)
     print("\n=== CONTROL (b): guarded vs unguarded on the out-of-range population ===", flush=True)
     with (out / "raw_control_b_unguarded.jsonl").open("w") as fh:
-        res_u = run_arm(frames, "unguarded", args.draws, args.base_url, args.timeout,
+        res_u = run_arm(frames, "unguarded", args.draws, client, args.timeout,
                         args.max_tokens, args.conc, fh)
     with (out / "raw_control_b_guarded.jsonl").open("w") as fh:
-        res_g = run_arm(frames, "guarded", args.draws, args.base_url, args.timeout,
+        res_g = run_arm(frames, "guarded", args.draws, client, args.timeout,
                         args.max_tokens, args.conc, fh)
 
     def out_of_range(results, frames):
@@ -259,8 +316,21 @@ def main() -> int:
                "unguarded_reproductions": bu, "unguarded_answers": nu,
                "guarded_out_of_range": bg, "guarded_answers": ng,
                "frames": len(frames), "draws": args.draws}
-    if not a_pass:
-        verdict["status"] = "FAIL: the enum does not bind on the live server"
+    verdict["control_a_errors"] = errs_a
+    verdict["control_a_calls_without_tag_on_wire"] = no_tag
+    if errs_a:
+        verdict["status"] = (f"INCONCLUSIVE -- transport: {errs_a} of {total_a} control-(a) "
+                             f"requests failed. Nothing is established about binding; fix the "
+                             f"transport and re-run.")
+        rc = 2
+    elif no_tag:
+        verdict["status"] = (f"INCONCLUSIVE -- the tag was not on the wire in {no_tag} of "
+                             f"{total_a} calls. The client did not send `structured_outputs`, "
+                             f"so the server was never asked to bind anything.")
+        rc = 2
+    elif not a_pass:
+        verdict["status"] = (f"FAIL: the tag reached the server on every call and the forced id "
+                             f"came back {hits}/{total_a} times. THIS is 'does not bind'.")
         rc = 1
     elif bu == 0:
         # The registered stopping rule. NOT a pass.

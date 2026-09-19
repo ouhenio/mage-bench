@@ -25,7 +25,12 @@ MTG=/workspace1/users/ouhenio/mtg
 WT=/workspace1/users/ouhenio/mb-wt-schema
 SERVE_VENV=/workspace1/users/ouhenio/vllm-serve2/.venv
 MODEL=$(ls -d /workspace1/projects/posttrainlatamgpt/hub/models--Qwen--Qwen3.5-4B/snapshots/* 2>/dev/null | head -1)
-PORT=8188
+# PORT FROM THE JOB ID, not a constant. Three chunks submitted together all hardcoded 8188,
+# raced for it, and one ended up POSTing to whatever answered -- every call returned 404 and the
+# verdict misread that as "the enum does not bind". An explicitly-numbered per-job resource is
+# also killable by identity rather than by name, which is the rule this repo already has for
+# displays.
+PORT=$(( 8200 + SLURM_JOB_ID % 300 ))
 
 FRAMES="${1:?usage: $0 <frames.jsonl> <label>}"
 LABEL="${2:?usage: $0 <frames.jsonl> <label>}"
@@ -115,9 +120,14 @@ curl -s -m 5 "http://127.0.0.1:$PORT/v1/models" >/dev/null || { echo "FATAL: ser
 # CONC 8: the draws are independent (seeds are per (frame, draw), not per order) and vLLM
 # batches, so this is prefill-bound at ~30k-token prompts. The runner prints its MEASURED rate
 # at 100/250/500 generations so the next chunk's --time comes from a number rather than a guess.
+# SMOKE MODE: --limit 1 runs control (a) on one frame with 8 draws and stops. It is a POSITIVE
+# control, not a liveness check -- the forced id must actually come back, which is the property
+# a "request returned 200" would not have caught last time.
+EXTRA=""
+[ "${SMOKE:-0}" = "1" ] && EXTRA="--limit 1"
 "$WT/.venv/bin/python" "$WT/pipelines/decision_schema_controls.py" \
     --frames "$FRAMES" --out "$OUT" --base-url "http://127.0.0.1:$PORT/v1" \
-    --draws 8 --conc 8
+    --draws 8 --conc 8 $EXTRA
 RC=$?
 echo "controls returned $RC -- the WRAPPER's code is not the verdict; read $OUT/verdict.json"
 
