@@ -73,6 +73,28 @@ if [ $GATE -ne 0 ]; then
 fi
 
 # --- serve ------------------------------------------------------------------------------------
+# HARNESS_REPO IS REQUIRED BY THE SERVE SCRIPTS AND IS NOT OPTIONAL. Jobs 9265/9266/9267 died
+# ~15 s in with `serve_student.sh: line 50: HARNESS_REPO: set HARNESS_REPO to the built harness
+# tree`, after the grammar gate had already passed -- and karn-research's 7863 died the same way
+# before that. serve_student.sh uses it for exactly one thing: reading SERVE_MIN_MODEL_LEN out of
+# that tree's venv to check the requested max-model-len against the harness floor. No jars are
+# involved, so a worktree with a venv is a valid HARNESS_REPO even though it cannot compile.
+#
+# It points at THIS branch's tree deliberately: the floor should come from the same code the
+# controls run, not from whichever built tree happened to be lying around.
+export HARNESS_REPO="$WT"
+# Serving does NOT consume this -- it is here because a later step in this family may compile,
+# and an unset MAVEN_REPO_LOCAL is how two jobs end up writing one local repo. Named so nobody
+# later concludes serving required it.
+export MAVEN_REPO_LOCAL=/workspace1/users/ouhenio/m2-schema
+
+# ASSERT THE PRECONDITION, NOT THE PATH. `[ -d "$HARNESS_REPO" ]` would pass for a tree whose
+# venv cannot import magebench, which is the failure one layer down and reads identically.
+FLOOR=$("$HARNESS_REPO/.venv/bin/python" -c \
+  "from magebench.pilot.context_segments import SERVE_MIN_MODEL_LEN as m; print(m)" 2>&1) || {
+  echo "FATAL: HARNESS_REPO=$HARNESS_REPO cannot read the harness floor:"; echo "  $FLOOR"; exit 1; }
+echo "harness floor: $FLOOR  (from $HARNESS_REPO)"
+
 export OPD_LOG_DIR=$OUT/serve; mkdir -p "$OPD_LOG_DIR"
 # serve_student.sh's signature is <gpu|slurm> <port> [model_dir] [served_name], and it
 # HARDCODES the 4B's served name -- that is why it is a separate file from serve_teacher.sh.
