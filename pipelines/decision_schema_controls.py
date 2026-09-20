@@ -118,7 +118,10 @@ def called(response: dict) -> tuple[str | None, str | None]:
                 args = json.loads(args)
             except json.JSONDecodeError:
                 args = {}
-        return fn.get("name"), (args or {}).get(CHOICE_FIELD)
+        value = (args or {}).get(CHOICE_FIELD)
+        # Stripped: the qwen_xml parameter block wraps values in newlines, so a correctly bound
+        # `p9` can arrive as `"\np9"`. Comparing unstripped scored bound answers as misses.
+        return fn.get("name"), (value.strip() if isinstance(value, str) else value)
     except (AttributeError, IndexError, TypeError):
         return None, None
 
