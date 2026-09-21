@@ -31,15 +31,25 @@
 # the readout says so -- the budget curve is a later decision and this eval does not pre-empt it.
 set -uo pipefail
 
-ARM="${1:?usage: $0 <guarded|unguarded>}"
+ARM="${1:?usage: $0 <guarded|unguarded> [game limit; 0 = all, 1 = the one-deal smoke]}"
 case "$ARM" in guarded|unguarded) : ;; *) echo "FATAL: arm must be guarded|unguarded"; exit 2 ;; esac
+# THE ONE-DEAL SMOKE IS THIS JOB WITH N=1, not a second script. Four submissions in a row died
+# only once games were launching -- no jars, a display collision, the base preset, an
+# unregistered model -- and every one of them would have shown itself in a single game. The
+# watchdog covers the first two minutes; a smoke covers the first GAME, and it must reach an
+# engine `game_end` to mean anything. Running it on this exact sbatch is the point: a smoke on
+# a different script proves that script works.
+LIMIT="${2:-0}"
+case "$LIMIT" in ''|*[!0-9]*) echo "FATAL: game limit must be a non-negative integer"; exit 2 ;; esac
 
 MTG=/workspace1/users/ouhenio/mtg
 SRC=$MTG
 WT=/workspace1/users/ouhenio/mb-wt-schema
 M=$(bash -c "source $MTG/env.sh >/dev/null 2>&1; echo \$MTG_DATA_ROOT")
 PY=$MTG/.venv/bin/python
-LABEL=schema-eval-$ARM-$SLURM_JOB_ID
+# LABEL IS SET AFTER THE COMPLEMENT, because whether this is a fresh run or a resume is a fact
+# about what the arm has already banked, not something the caller declares. A job that names
+# itself before it has looked can name itself wrong.
 
 # EVIDENCE UNDER THE DATA ROOT, which reopened on 2026-09-21 (445 GB free after a prune).
 #
@@ -49,9 +59,9 @@ LABEL=schema-eval-$ARM-$SLURM_JOB_ID
 # data root anyway and the flag gate afterwards looked in the empty place and said "no such
 # evidence dir". An env var the consumer does not read is indistinguishable from one that works
 # until something downstream reads the other path. This now names the runner's own path.
-E=$M/evidence/opd/$LABEL
-SERVE=$M/evidence/eval/$LABEL-serve
-[ -e "$E" ] && { echo "FATAL: $E exists"; exit 2; }
+# SERVE is keyed on the job id alone, so it exists before the label does and two jobs never
+# share it.
+SERVE=$M/evidence/eval/schema-eval-$ARM-$SLURM_JOB_ID-serve
 mkdir -p "$SERVE" || { echo "FATAL: cannot create $SERVE"; exit 1; }
 
 log() { echo "[schema-eval $(date +%H:%M:%S)] $*"; }
@@ -132,8 +142,8 @@ log "arm=$ARM  MAGEBENCH_DECISION_SCHEMA=${MAGEBENCH_DECISION_SCHEMA:-<unset>}  
 # --- 4452's seeds, sliced from 4452's own suite ------------------------------------------------
 SUITE_IN=$M/evidence/eval/v3-h2h-4452-serve/suite.json
 [ -f "$SUITE_IN" ] || { log "FATAL: 4452 suite unreadable at $SUITE_IN"; exit 1; }
-SUITE=$SERVE/suite.json
-$PY - "$SUITE_IN" "$SUITE" <<'PYEOF'
+SUITE_FULL=$SERVE/suite_full.json
+$PY - "$SUITE_IN" "$SUITE_FULL" <<'PYEOF'
 import json, sys
 s = json.load(open(sys.argv[1]))
 assert s["n_games"] == 200, f"expected 4452's 200 games, got {s['n_games']}"
@@ -159,6 +169,42 @@ json.dump(s, open(sys.argv[2], "w"), indent=1)
 print(f"suite: {s['n_games']} games, seeds {lo}-{hi}, mirror={s.get('mirror')}")
 PYEOF
 [ $? -eq 0 ] || { log "FATAL: suite slice"; exit 1; }
+
+# --- RESUME: the complement of what THIS ARM has already banked, by the engine record ---------
+# karn-research's run B pattern, generalised to an arm. A preemptible partition is only usable
+# for a 6-hour run if being killed at hour one costs a resubmission rather than the run, and
+# that is entirely a property of this block: without it the job refuses on "evidence dir
+# exists" and the banked games are stranded (run B, 7927).
+#
+# BANKED IS THE ENGINE'S `game_end`, never the `exit` marker, which run B measured wrong in both
+# directions. And the key is the GAME INDEX, not the seed: this suite is mirror-paired, two
+# games per seed, so a seed-keyed complement marks a seed done when either half finishes and
+# drops the other. Measured on 4452's evidence: 187 banked games over 98 seeds, and the
+# seed-keyed version called that 4 games unplayed instead of 13.
+SUITE=$SERVE/suite.json
+COMP_ARGS=(--arm "$ARM" --evidence-root "$M/evidence/opd" \
+           --score-suite-dir "$SRC/pipelines/eval" --base "$SUITE_FULL")
+UNPLAYED=$("$PY" "$WT/pipelines/schema_eval_complement.py" "${COMP_ARGS[@]}" --count 2>&1) \
+  || { log "FATAL: complement did not compute: $UNPLAYED"; exit 1; }
+case "$UNPLAYED" in ''|*[!0-9]*) log "FATAL: complement returned '$UNPLAYED'"; exit 1 ;; esac
+BANKED=$(( 200 - UNPLAYED ))
+log "arm=$ARM already banked $BANKED of 200 games; $UNPLAYED unplayed"
+if [ "$UNPLAYED" -eq 0 ]; then
+  log "arm=$ARM is COMPLETE -- nothing to run. Exiting 0 so a watchdog does not resubmit it."
+  exit 0
+fi
+"$PY" "$WT/pipelines/schema_eval_complement.py" "${COMP_ARGS[@]}" \
+      --out "$SUITE" --limit "$LIMIT" 2>&1 | sed 's/^/    /'
+[ "${PIPESTATUS[0]}" -eq 0 ] || { log "FATAL: complement suite"; exit 1; }
+
+# THE LABEL NOW SAYS WHICH IT IS, and a resume never reuses a dir -- the readout pools by seed
+# across every dir the arm owns, so each attempt's evidence has to stay separable.
+if [ "$BANKED" -gt 0 ]; then LABEL=schema-eval-$ARM-resume-$SLURM_JOB_ID
+else                         LABEL=schema-eval-$ARM-$SLURM_JOB_ID; fi
+[ "$LIMIT" -gt 0 ] && LABEL=$LABEL-smoke$LIMIT
+E=$M/evidence/opd/$LABEL
+[ -e "$E" ] && { log "FATAL: $E exists"; exit 2; }
+log "label $LABEL  evidence $E"
 
 # --- serve ckpt-265 -----------------------------------------------------------------------------
 . "$SRC/pipelines/resolve_venv.sh"
