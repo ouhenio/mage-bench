@@ -39,12 +39,16 @@ M=$(bash -c "source $MTG/env.sh >/dev/null 2>&1; echo \$MTG_DATA_ROOT")
 PY=$MTG/.venv/bin/python
 LABEL=schema-eval-$ARM-$SLURM_JOB_ID
 
-# EVIDENCE GOES TO THE OVERFLOW PATH. $MTG_DATA_ROOT's volume reached 100% with 4 KB free on
-# 2026-09-19 and nothing has been freed; a run that writes there banks nothing. The path is
-# recorded in CLAIMS.md and the plan doc.
-OVER=/workspace1/users/ouhenio/mtg-evidence-overflow
-E=$OVER/$LABEL
-SERVE=$OVER/$LABEL-serve
+# EVIDENCE UNDER THE DATA ROOT, which reopened on 2026-09-21 (445 GB free after a prune).
+#
+# AND THE PATH IS THE RUNNER'S, NOT MINE. Job 9396 exported MAGEBENCH_EVIDENCE_DIR expecting the
+# suite to land on an overflow path; `run_suite_slots.sh` derives its own from the label and the
+# data root and does not read that variable, so the redirection was INERT -- the run wrote to the
+# data root anyway and the flag gate afterwards looked in the empty place and said "no such
+# evidence dir". An env var the consumer does not read is indistinguishable from one that works
+# until something downstream reads the other path. This now names the runner's own path.
+E=$M/evidence/opd/$LABEL
+SERVE=$M/evidence/eval/$LABEL-serve
 [ -e "$E" ] && { echo "FATAL: $E exists"; exit 2; }
 mkdir -p "$SERVE" || { echo "FATAL: cannot create $SERVE"; exit 1; }
 
@@ -56,10 +60,10 @@ log() { echo "[schema-eval $(date +%H:%M:%S)] $*"; }
 # `df /workspace1` reports terabytes while this destination has its own 200 GB allocation, so
 # the check must run HERE. A job that dies at 80% of a 6-hour suite because the quota filled is
 # the worst version of the failure we already had at 2 MB.
-NEED_GB=14
-AVAIL_GB=$(( $(df --output=avail -k "$OVER" | tail -1 | tr -d ' ') / 1024 / 1024 ))
-log "free at $OVER: ${AVAIL_GB} GB (need >= ${NEED_GB} GB for one arm; 4452 measured 12 GB)"
-[ "$AVAIL_GB" -ge "$NEED_GB" ] || { log "FATAL: not enough room for one arm"; exit 1; }
+NEED_GB=30
+AVAIL_GB=$(( $(df --output=avail -k "$M" | tail -1 | tr -d ' ') / 1024 / 1024 ))
+log "free at $M: ${AVAIL_GB} GB (need >= ${NEED_GB}; 4452 measured 12 GB for this suite)"
+[ "$AVAIL_GB" -ge "$NEED_GB" ] || { log "FATAL: not enough room at the data root"; exit 1; }
 
 # --- provenance -------------------------------------------------------------------------------
 for f in src/magebench/pilot/decision_schema.py src/magebench/pilot/tool_name_guard.py; do
@@ -100,7 +104,23 @@ import json, sys
 s = json.load(open(sys.argv[1]))
 assert s["n_games"] == 200, f"expected 4452's 200 games, got {s['n_games']}"
 lo, hi = s["games"][0]["seed"], s["games"][-1]["seed"]
-s["derived_from"] = "v3-h2h-4452 suite, unmodified -- the pairing with 4452 IS the design"
+# STRIP THE SEATS. 4452 was a HEAD-TO-HEAD, so every game names two policy seats and the second
+# is `provider: local_b`. run_suite_slots.sh uses a suite's `players` verbatim when present --
+# deliberately, so a suite that names its seats owns them -- and this eval serves ONE model
+# against the engine, so `local_b` resolves to nothing: job 9396 died in 2.5 minutes with
+# `AssertionError: Unknown player provider 'local_b'` on all 36 games it launched.
+#
+# "4452's suite unmodified" was my phrase and it was wrong: what this eval reuses is 4452's
+# SEEDS AND DECKS, not its seating. Removing `players` makes the runner fall back to
+# pilot@local vs the XMage AI, which is the comparison registered.
+stripped = 0
+for g in s["games"]:
+    if g.pop("players", None) is not None:
+        stripped += 1
+print(f"stripped h2h seats from {stripped} games -> pilot@local vs XMage AI")
+assert stripped == s["n_games"], f"expected to strip all {s['n_games']}, stripped {stripped}"
+s["derived_from"] = ("v3-h2h-4452 suite: seeds and decks reused, h2h seats REMOVED so the "
+                     "runner seats ckpt-265 against the engine")
 json.dump(s, open(sys.argv[2], "w"), indent=1)
 print(f"suite: {s['n_games']} games, seeds {lo}-{hi}, mirror={s.get('mirror')}")
 PYEOF
@@ -120,13 +140,13 @@ log "ckpt-265 up on $PORT"; cat "$SERVE"/served_*.id 2>/dev/null | sed 's/^/    
 
 CONC=12
 export MAGEBENCH_DISP_WIDTH=$((CONC * 4))    # 4x, not 2x -- 4056 lost 64 games to lapping
-MTG_DATA_ROOT=$M MAGEBENCH_EVIDENCE_DIR=$E \
+MTG_DATA_ROOT=$M \
   bash "$SRC/pipelines/opd/run_suite_slots.sh" "$SUITE" "$LABEL" "$PORT" "$CONC" "$MAGEBENCH_DISP_WIDTH"
 rc=$?
 log "runner returned $rc -- the wrapper's code is NOT the verdict; read the artifacts"
 
 log "flag gate"; bash "$SRC/pipelines/synth/watch_autoresolve.sh" "$E" 2>&1 | sed 's/^/    /'
-log "free at $OVER after the run: $(df -h --output=avail "$OVER" | tail -1 | tr -d ' ')"
+log "free at $M after the run: $(df -h --output=avail "$M" | tail -1 | tr -d ' ')"
 log "schema eval end -- arm=$ARM evidence $E"
 PGID=$(cat "$SERVE/serve_$PORT.pgid" 2>/dev/null)
 [ -n "$PGID" ] && kill -- -"$PGID" 2>/dev/null
