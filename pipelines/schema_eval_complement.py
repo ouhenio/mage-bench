@@ -22,6 +22,13 @@ unplayed instead of 102. So the key is the game's index in the base suite, which
 what `run_suite_slots.sh` writes as `g{game:02d}`, and the dir's own `seed` file is asserted
 against the base suite's seed for that index so a drifted base cannot pass unnoticed.
 
+EVERY ROOT, OR NONE. An arm can run on both nodes -- lascar and ranokau have SEPARATE
+filesystems at the same path, so an arm's dirs are split between them and reachable from either
+side only over the cross-mount. A complement computed from one root under-counts what is banked
+and queues banked games for replay, which double-counts them at readout. So roots are passed
+explicitly, all of them, and a root that does not exist is a REFUSAL rather than a skip: the
+cross-mount being down is exactly when a silent skip does the damage.
+
 THE ARMS DO NOT SHARE A COMPLEMENT. Each arm's dirs are globbed separately and a seed banked by
 the unguarded arm says nothing about whether the guarded arm has played it. Pooling the two
 would silently shrink the guarded suite by whatever the unguarded arm happened to finish first,
@@ -70,14 +77,17 @@ def banked_by_game(arm_dirs: list[pathlib.Path], score_game,
                     f"pair the wrong games. Refusing.")
             # setdefault: the FIRST dir that banked a game owns it. A game banked twice is a
             # double-count at readout, and this is where it gets noticed rather than averaged.
-            banked.setdefault(idx, (d.name, seed))
+            # THE FULL PATH, not the basename: the same label can exist on both nodes and
+            # collapsing them would hide which node banked what.
+            banked.setdefault(idx, (str(d), seed))
     return banked
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, choices=["guarded", "unguarded"])
-    ap.add_argument("--evidence-root", required=True)
+    ap.add_argument("--evidence-root", required=True, action="append", metavar="DIR",
+                    help="repeat for every node's evidence/opd; a missing one refuses")
     ap.add_argument("--score-suite-dir", required=True,
                     help="the directory holding score_suite.py (it lives in the mtg repo)")
     ap.add_argument("--base", help="the full suite to take the complement of")
@@ -94,9 +104,12 @@ def main() -> int:
         print(f"cannot import score_suite from {args.score_suite_dir}: {exc}", file=sys.stderr)
         return 2
 
-    root = pathlib.Path(args.evidence_root)
-    if not root.is_dir():
-        print(f"no evidence root at {root}", file=sys.stderr)
+    roots = [pathlib.Path(r) for r in args.evidence_root]
+    missing = [r for r in roots if not r.is_dir()]
+    if missing:
+        print(f"evidence root(s) unreadable: {', '.join(map(str, missing))}. Refusing rather "
+              f"than computing a complement from a subset -- a root skipped is banked games "
+              f"counted as unplayed, replayed, and double-counted at readout.", file=sys.stderr)
         return 2
     if not args.base:
         print("--base is required: the complement has no denominator without it", file=sys.stderr)
@@ -105,7 +118,8 @@ def main() -> int:
     seed_of = {g["game"]: g["seed"] for g in base["games"]}
     assert len(seed_of) == len(base["games"]), "the base suite repeats a game index"
 
-    arm_dirs = sorted(d for d in root.glob(f"schema-eval-{args.arm}-*") if d.is_dir())
+    arm_dirs = sorted((d for r in roots for d in r.glob(f"schema-eval-{args.arm}-*") if d.is_dir()),
+                      key=lambda d: d.name)
     banked = banked_by_game(arm_dirs, score_game, seed_of)
     replay = [g for g in base["games"] if g["game"] not in banked]
 
@@ -121,7 +135,8 @@ def main() -> int:
 
     if not args.out:
         for d in arm_dirs:
-            print(f"   {d.name}: {sum(1 for v in banked.values() if v[0] == d.name)} banked")
+            n = sum(1 for v in banked.values() if v[0] == str(d))
+            print(f"   {d} : {n} banked")
         print(f"   arm={args.arm}  BANKED {len(banked)} games over "
               f"{len({s for _, s in banked.values()})} seeds; UNPLAYED {len(replay)}")
         return 0
@@ -134,11 +149,12 @@ def main() -> int:
     # this file's header describes.
     out["banked_elsewhere_games"] = sorted(banked)
     out["banked_elsewhere_seeds"] = sorted({s for _, s in banked.values()})
-    out["banked_by_dir"] = {d.name: sum(1 for v in banked.values() if v[0] == d.name)
+    out["banked_by_dir"] = {str(d): sum(1 for v in banked.values() if v[0] == str(d))
                             for d in arm_dirs}
+    out["evidence_roots"] = [str(r) for r in roots]
     out["derived_from"] = (
-        f"engine game_end across {len(arm_dirs)} dir(s) for arm={args.arm}: "
-        + ", ".join(d.name for d in arm_dirs)
+        f"engine game_end across {len(arm_dirs)} dir(s) in {len(roots)} root(s) "
+        f"for arm={args.arm}: " + ", ".join(str(d) for d in arm_dirs)
         + (f"; LIMITED to {args.limit} seed(s)" if args.limit else "")
     )
     pathlib.Path(args.out).write_text(json.dumps(out, indent=1) + "\n")

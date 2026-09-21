@@ -42,10 +42,68 @@ case "$ARM" in guarded|unguarded) : ;; *) echo "FATAL: arm must be guarded|ungua
 LIMIT="${2:-0}"
 case "$LIMIT" in ''|*[!0-9]*) echo "FATAL: game limit must be a non-negative integer"; exit 2 ;; esac
 
+# --- GPU BUDGET: AT MOST 2 RUNNING GPU JOBS ACROSS BOTH NODES --------------------------------
+# Eugenio, 2026-09-21, relayed by the orchestrator: "U can use at most 2 gpus." Queued twins are
+# fine; what is capped is what RUNS. lascar and ranokau are ONE slurm cluster, so a single
+# squeue sees both and no cross-node bookkeeping is needed.
+#
+# SUBMIT THIS JOB AS `-J schema-eval-<arm>`. `scontrol show job` does NOT carry a batch script's
+# arguments -- only its path -- so the arm is invisible to every check unless it is in the NAME.
+# An earlier version of the watchdog grepped `scontrol` for the arm, matched nothing, and would
+# have resubmitted an arm while its twin was running.
+BUDGET=2
+gpu_running() {   # our RUNNING GPU jobs, excluding this one
+  squeue -u "$USER" -h -t RUNNING -o '%i|%b' 2>/dev/null \
+    | awk -F'|' -v self="${SLURM_JOB_ID:-0}" '
+        $1 != self && $2 ~ /gpu/ { n=$2; sub(/.*gpu[:=]/,"",n); sub(/[^0-9].*/,"",n);
+                                   s += (n=="" ? 1 : n) } END { print s+0 }'
+}
+TWIN=$(squeue -u "$USER" -h -t RUNNING -n "schema-eval-$ARM" -o '%i' 2>/dev/null \
+         | grep -v "^${SLURM_JOB_ID:-0}$" | head -1)
+if [ -n "$TWIN" ]; then
+  echo "arm=$ARM is already RUNNING as job $TWIN -- I am the loser of the partition race."
+  echo "Exiting 0: this is not a failure and no watchdog should resubmit it."
+  exit 0
+fi
+RUN=$(gpu_running)
+if [ "$RUN" -ge "$BUDGET" ]; then
+  echo "FATAL: $RUN GPU job(s) of ours are RUNNING and the cap is $BUDGET."
+  echo "  Exiting NON-ZERO on purpose, so the afternotok watchdog resubmits this arm later"
+  echo "  rather than the arm being silently dropped."
+  exit 9
+fi
+echo "GPU budget: $RUN running of $BUDGET; taking one for arm=$ARM"
+
 MTG=/workspace1/users/ouhenio/mtg
 SRC=$MTG
-WT=/workspace1/users/ouhenio/mb-wt-schema
 M=$(bash -c "source $MTG/env.sh >/dev/null 2>&1; echo \$MTG_DATA_ROOT")
+
+# --- PER-NODE PATHS, RESOLVED AND REFUSED, NEVER GUESSED ---------------------------------------
+# lascar and ranokau have SEPARATE filesystems at the SAME paths, and each reaches the other only
+# over the cross-mount. Three things this job needs live on lascar and must be reached differently
+# depending on where it runs: the harness tree, its maven repo, and the checkpoint + 4452's suite.
+# Nothing here falls back -- a node this script has not been taught about refuses, because the
+# failure mode of guessing is reading the OTHER node's path and silently running other bytes.
+NODE=$(hostname -s)
+case "$NODE" in
+  lascar)
+    WT=/workspace1/users/ouhenio/mb-wt-schema
+    M2=/workspace1/users/ouhenio/m2-schema
+    MODEL_ROOT=$MTG/models
+    SUITE_SRC=$M                                  # 4452 lives on lascar's own data root
+    OTHER_OPD=/workspace1-ranokau/projects/posttrainlatamgpt/ouhenio/mtg/evidence/opd ;;
+  ranokau)
+    WT=/workspace1/users/ouhenio/mtg/wt-schema
+    M2=/workspace1/users/ouhenio/mtg/m2-schema
+    # vLLM reads weights over NFS; the load is slower and the job log records how much.
+    MODEL_ROOT=/workspace1-lascar/users/ouhenio/mtg/models
+    SUITE_SRC=/workspace1-lascar/projects/posttrainlatamgpt/users/ouhenio/mtg
+    OTHER_OPD=/workspace1-lascar/projects/posttrainlatamgpt/users/ouhenio/mtg/evidence/opd ;;
+  *) echo "FATAL: this script knows lascar and ranokau; it is running on '$NODE'"; exit 2 ;;
+esac
+[ -d "$WT" ] || { echo "FATAL: no harness tree at $WT on $NODE"; exit 2; }
+[ -d "$OTHER_OPD" ] || { echo "FATAL: the other node's evidence is unreadable at $OTHER_OPD."; \
+  echo "  The complement needs EVERY root: one skipped is banked games replayed."; exit 2; }
 PY=$MTG/.venv/bin/python
 # LABEL IS SET AFTER THE COMPLEMENT, because whether this is a fresh run or a resume is a fact
 # about what the arm has already banked, not something the caller declares. A job that names
@@ -84,7 +142,7 @@ for f in src/magebench/pilot/decision_schema.py src/magebench/pilot/tool_name_gu
 done
 log "harness $WT @ $(git -C "$WT" rev-parse --short HEAD) ($(git -C "$WT" rev-parse --abbrev-ref HEAD))"
 
-export HARNESS_REPO=$WT MAVEN_REPO_LOCAL=/workspace1/users/ouhenio/m2-schema
+export HARNESS_REPO=$WT MAVEN_REPO_LOCAL=$M2
 FLOOR=$("$HARNESS_REPO/.venv/bin/python" -c \
   "from magebench.pilot.context_segments import SERVE_MIN_MODEL_LEN as m; print(m)" 2>&1) \
   || { log "FATAL: HARNESS_REPO cannot read the harness floor: $FLOOR"; exit 1; }
@@ -140,7 +198,7 @@ fi
 log "arm=$ARM  MAGEBENCH_DECISION_SCHEMA=${MAGEBENCH_DECISION_SCHEMA:-<unset>}  guard=structural_tag"
 
 # --- 4452's seeds, sliced from 4452's own suite ------------------------------------------------
-SUITE_IN=$M/evidence/eval/v3-h2h-4452-serve/suite.json
+SUITE_IN=$SUITE_SRC/evidence/eval/v3-h2h-4452-serve/suite.json
 [ -f "$SUITE_IN" ] || { log "FATAL: 4452 suite unreadable at $SUITE_IN"; exit 1; }
 SUITE_FULL=$SERVE/suite_full.json
 $PY - "$SUITE_IN" "$SUITE_FULL" <<'PYEOF'
@@ -182,7 +240,7 @@ PYEOF
 # drops the other. Measured on 4452's evidence: 187 banked games over 98 seeds, and the
 # seed-keyed version called that 4 games unplayed instead of 13.
 SUITE=$SERVE/suite.json
-COMP_ARGS=(--arm "$ARM" --evidence-root "$M/evidence/opd" \
+COMP_ARGS=(--arm "$ARM" --evidence-root "$M/evidence/opd" --evidence-root "$OTHER_OPD" \
            --score-suite-dir "$SRC/pipelines/eval" --base "$SUITE_FULL")
 UNPLAYED=$("$PY" "$WT/pipelines/schema_eval_complement.py" "${COMP_ARGS[@]}" --count 2>&1) \
   || { log "FATAL: complement did not compute: $UNPLAYED"; exit 1; }
@@ -209,7 +267,7 @@ log "label $LABEL  evidence $E"
 # --- serve ckpt-265 -----------------------------------------------------------------------------
 . "$SRC/pipelines/resolve_venv.sh"
 SERVE_VENV=$(resolve_vllm_venv) || exit 3
-MODEL=$MTG/models/mtg-v3-sft-checkpoint-265
+MODEL=$MODEL_ROOT/mtg-v3-sft-checkpoint-265
 SERVED_NAME=mtg-ckpt-265
 PORT=$(( 8400 + SLURM_JOB_ID % 200 ))
 
@@ -234,7 +292,7 @@ log "preset $MTG_PILOT_PRESET -> model '$PRESET_MODEL'; this job serves '$SERVED
 MTG_SERVED_NAME=$SERVED_NAME OPD_LOG_DIR=$SERVE \
   bash "$SRC/pipelines/opd/serve_student.sh" slurm "$PORT" "$MODEL" \
   || { log "FATAL: serve"; exit 1; }
-log "ckpt-265 up on $PORT"; cat "$SERVE"/served_*.id 2>/dev/null | sed 's/^/    served: /'
+log "ckpt-265 up on $PORT (weights from $MODEL_ROOT; on ranokau that is NFS)"; cat "$SERVE"/served_*.id 2>/dev/null | sed 's/^/    served: /'
 
 CONC=12
 export MAGEBENCH_DISP_WIDTH=$((CONC * 4))    # 4x, not 2x -- 4056 lost 64 games to lapping

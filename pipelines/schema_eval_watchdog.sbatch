@@ -44,8 +44,11 @@ say() { echo "[schema-watchdog $ARM gen$GEN] $*"; }
 say "watching $JOB; state $(sacct -j "$JOB" -n -o State 2>/dev/null | head -1 | tr -d ' ')"
 
 # 1. Someone else may still be running this arm -- including the winner of a partition race.
-live=$(squeue -h -u "$USER" -n schema-eval -o '%i' 2>/dev/null | while read -r i; do
-         scontrol show job "$i" 2>/dev/null | grep -q "schema_eval_lascar.sbatch $ARM" && echo "$i"; done | wc -l)
+# BY NAME, NOT BY `scontrol`. A batch script's ARGUMENTS are not in `scontrol show job` -- only
+# its path is -- so the first version of this grepped for "schema_eval_lascar.sbatch $ARM",
+# matched nothing, and would have resubmitted an arm whose twin was running. The arm lives in
+# the job NAME now and every submission passes `-J schema-eval-<arm>`.
+live=$(squeue -h -u "$USER" -n "schema-eval-$ARM" -o '%i' 2>/dev/null | wc -l)
 if [ "${live:-0}" -gt 0 ]; then
   say "another $ARM job is still PENDING/RUNNING -- not my turn, exiting"; exit 0
 fi
@@ -93,8 +96,28 @@ fi
 
 # 4. Resubmit. The arm's sbatch recomputes the complement itself, so this passes no suite --
 #    one source for what is unplayed, which is the job that will run it.
+# THE GPU CAP IS 2 RUNNING ACROSS BOTH NODES (Eugenio, 2026-09-21). A watchdog that resubmits
+# into a full budget does not break the cap -- the arm's own gate refuses and exits 9 -- but it
+# burns a generation doing it, and the generation cap is what stops a loop. So wait instead:
+# requeue THIS watchdog with a delay and try again, which costs nothing and keeps the count.
+BUDGET=2
+RUN=$(squeue -u "$USER" -h -t RUNNING -o '%b' 2>/dev/null \
+      | awk '$0 ~ /gpu/ { n=$0; sub(/.*gpu[:=]/,"",n); sub(/[^0-9].*/,"",n);
+                          s += (n=="" ? 1 : n) } END { print s+0 }')
+say "GPU budget: $RUN running of $BUDGET"
+if [ "$RUN" -ge "$BUDGET" ]; then
+  if [ "$GEN" -ge "$GEN_MAX" ]; then
+    say "budget full and at the generation cap -- STOPPING rather than waiting forever"; exit 5
+  fi
+  say "budget full; requeueing myself in 30 min at the SAME generation (waiting is not a retry)"
+  sbatch --parsable --begin=now+30minutes "$WT/pipelines/schema_eval_watchdog.sbatch" \
+         "$JOB" "$ARM" "$GEN" && say "waiting watchdog queued"
+  exit 0
+fi
+
 say "resubmitting arm=$ARM (gen $((GEN+1)))"
-NEXT=$(sbatch --parsable "$WT/pipelines/schema_eval_lascar.sbatch" "$ARM") || { say "FATAL: sbatch"; exit 7; }
+NEXT=$(sbatch --parsable -J "schema-eval-$ARM" "$WT/pipelines/schema_eval_lascar.sbatch" "$ARM") \
+  || { say "FATAL: sbatch"; exit 7; }
 say "resubmitted as $NEXT"
 sbatch --parsable --dependency=afternotok:"$NEXT" "$WT/pipelines/schema_eval_watchdog.sbatch" \
        "$NEXT" "$ARM" $((GEN+1)) && say "next-generation watchdog chained"
