@@ -294,6 +294,36 @@ MTG_SERVED_NAME=$SERVED_NAME OPD_LOG_DIR=$SERVE \
   || { log "FATAL: serve"; exit 1; }
 log "ckpt-265 up on $PORT (weights from $MODEL_ROOT; on ranokau that is NFS)"; cat "$SERVE"/served_*.id 2>/dev/null | sed 's/^/    served: /'
 
+# --- PIN THE RUNNER BYTES THIS JOB ACTUALLY RAN ------------------------------------------------
+# The sbatch comes from $WT, whose commit is recorded above, but the RUNNER and its helpers come
+# from $SRC -- the executing node's TRUNK CHECKOUT, which no session here owns and which another
+# session may `pull` mid-run. "main @ <sha>" is not a record of what ran: trunk moves, and a job
+# runs whatever is on disk, committed or not.
+#
+# So the bytes are pinned two ways. A MANIFEST of blob hashes for every trunk script this job
+# invokes, and a verbatim COPY of the runner itself -- because a hash tells you the bytes
+# changed and a copy tells you what they were.
+PIN=$SERVE/runner-pin
+mkdir -p "$PIN"
+{
+  echo "node       $NODE"
+  echo "trunk      $SRC"
+  echo "trunk HEAD $(git -C "$SRC" rev-parse HEAD 2>/dev/null) ($(git -C "$SRC" rev-parse --abbrev-ref HEAD 2>/dev/null))"
+  echo "tracked files modified in trunk: $(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)"
+  echo "harness    $WT @ $(git -C "$WT" rev-parse HEAD)"
+  echo "--- blob of every trunk script this job invokes ---"
+  for f in pipelines/opd/run_suite_slots.sh pipelines/eval/run_suite.sh \
+           pipelines/opd/serve_student.sh pipelines/rlvr/check_servable.py \
+           pipelines/resolve_venv.sh pipelines/synth/watch_autoresolve.sh \
+           pipelines/eval/score_suite.py; do
+    printf "%-44s %s\n" "$f" "$(git -C "$SRC" hash-object "$SRC/$f" 2>/dev/null || echo MISSING)"
+  done
+} > "$PIN/manifest.txt"
+cp "$SRC/pipelines/opd/run_suite_slots.sh" "$PIN/run_suite_slots.sh.asrun" 2>/dev/null \
+  || log "WARNING: could not copy the runner into the pin"
+log "runner pinned at $PIN"
+sed 's/^/    /' "$PIN/manifest.txt"
+
 CONC=12
 export MAGEBENCH_DISP_WIDTH=$((CONC * 4))    # 4x, not 2x -- 4056 lost 64 games to lapping
 
@@ -315,6 +345,11 @@ MTG_DATA_ROOT=$M \
   bash "$SRC/pipelines/opd/run_suite_slots.sh" "$SUITE" "$LABEL" "$PORT" "$CONC" "$DISP0"
 rc=$?
 log "runner returned $rc -- the wrapper's code is NOT the verdict; read the artifacts"
+
+# The pin also lands IN the evidence dir, which is what a later reader opens. Best-effort and
+# after the fact, because the runner owns that dir and refuses if it already exists -- so
+# $SERVE/runner-pin above is the copy that is guaranteed to exist even if the job is preempted.
+[ -d "$E" ] && cp -r "$PIN" "$E/runner-pin" 2>/dev/null && log "pin copied into $E"
 
 log "flag gate"; bash "$SRC/pipelines/synth/watch_autoresolve.sh" "$E" 2>&1 | sed 's/^/    /'
 log "free at $M after the run: $(df -h --output=avail "$M" | tail -1 | tr -d ' ')"
