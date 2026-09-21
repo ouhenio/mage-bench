@@ -171,8 +171,8 @@ PORT=$(( 8400 + SLURM_JOB_ID % 200 ))
 # still serves, still launches games, and the disagreement surfaces only as a 404 per LLM
 # call (job 9396) -- or, if the wrong name happens to resolve, as 200 games of a model
 # nobody registered. A subject is not the subject because the serve log names it.
-PRESET_MODEL=$("$PY" "$WT/pipelines/preset_model.py" \
-                     "$WT/puppeteer/presets.json" "$MTG_PILOT_PRESET" 2>&1) \
+PRESET_MODEL=$("$WT/.venv/bin/python" "$WT/pipelines/preset_model.py" \
+                     "$WT" "$MTG_PILOT_PRESET" 2>&1) \
   || { log "FATAL: $PRESET_MODEL"; exit 1; }
 log "preset $MTG_PILOT_PRESET -> model '$PRESET_MODEL'; this job serves '$SERVED_NAME'"
 [ "$PRESET_MODEL" = "$SERVED_NAME" ] || {
