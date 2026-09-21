@@ -8,6 +8,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem-per-gpu=80G
 #SBATCH --time=08:00:00
+#SBATCH --no-requeue
+#SBATCH --open-mode=append
 #SBATCH --chdir=/workspace1/users/ouhenio/mtg
 #SBATCH --output=/workspace1/users/ouhenio/mtg/slurm-logs/slurm-%x-%j.out
 #
