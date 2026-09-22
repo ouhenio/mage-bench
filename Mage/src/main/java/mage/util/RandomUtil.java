@@ -20,6 +20,12 @@ public final class RandomUtil {
     // the live game and every concurrent rollout (Mage.Tests RolloutRngTest; the mtg repo's
     // docs/eval/instance-rng-estimate.md). Pools reuse threads, so this is set per TASK and
     // cleared in a finally -- withThreadSeed does both.
+    //
+    // DELIBERATE DEVIATION from the design sketch in instance-rng-estimate.md, which used
+    // ThreadLocal.withInitial(Random::new): that gives EVERY unseeded thread a fresh unseeded
+    // stream, so GameImpl's setSeed(gameSeed) would seed only the thread that called it and a
+    // seeded live game would stop being reproducible wherever it draws off that thread. Here an
+    // unseeded thread has no entry and draws from the process stream, exactly as before.
     private static final ThreadLocal<Random> threadRandom = new ThreadLocal<>();
 
     private static Random current() {
