@@ -10,6 +10,12 @@
 #SBATCH --time=08:00:00
 #SBATCH --no-requeue
 #SBATCH --open-mode=append
+# t2i OUTRANKS MTG BY CONSTRUCTION (CLAUDE.md 998f90d). The start-and-exit yield below hands a
+# freed card to whichever job slurm ranks next, not to t2i; a low priority is what actually
+# puts t2i first. The pending-t2i gate stays as belt-and-braces. Measured when this went in:
+# it moves this job's --test-only start estimate from 2026-09-22 08:21 to 2026-10-02 03:51,
+# because it ranks below every other tenant as well as below t2i. --nice=100 did not move it.
+#SBATCH --nice=10000
 #SBATCH --chdir=/workspace1/users/ouhenio/mtg
 #SBATCH --output=/workspace1/users/ouhenio/mtg/slurm-logs/slurm-%x-%j.out
 #
