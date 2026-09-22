@@ -183,9 +183,159 @@ def main() -> int:
         print("=" * 78)
         return 1
     print("gate PASSED — coverage established per game; the rest of the readout may run.")
-    print("Registered order from here: invention and off-menu ids -> mute mode -> casualties")
-    print("by class -> win rate LAST, with +/-7.1 stated as unresolvable by this n.")
+    rest(roots)
     return 0
+
+
+MARK = "not found in current choices"
+
+
+def _rows(f: pathlib.Path):
+    for line in f.open():
+        try:
+            yield json.loads(line)
+        except Exception:
+            continue
+
+
+def rest(roots: list[pathlib.Path]) -> None:
+    """Steps 2-5, in the registered order. Win rate is last on purpose."""
+    sys.path.insert(0, "/workspace1/users/ouhenio/mtg/pipelines/eval")
+    from score_suite import score_game  # the engine record; never the `exit` marker
+
+    print()
+    print("=" * 78)
+    print("STEP 2 — OFF-MENU IDS AND INVENTED TOOL NAMES")
+    print("=" * 78)
+    print("""  Read from the pilot's OWN records only. The control writes no coverage rows, and the
+  decision its pilot would have bound is not recoverable from the log: `auto_resolved`
+  records only what was SKIPPED, and a reconstruction from tool results disagreed with the
+  guarded arm's ground truth on 21% of decisions -- every one a DIFFERENT decision, never a
+  different verdict on the same one. So the control is a TOTAL and is not split by class.
+  Guarded answers are attributed by ORDER (coverage seq k -> response k+1 -> call k+2),
+  verified exact before use.""")
+    for arm in ("unguarded", "guarded"):
+        c = collections.Counter(); invented = 0
+        for d in arm_dirs(roots, arm):
+            for f in d.rglob("*_llm.jsonl"):
+                last_cov = None
+                for r in _rows(f):
+                    t = r.get("type")
+                    if t == "decision_schema_coverage":
+                        last_cov = r
+                    elif t == "tool_call":
+                        res = str(r.get("result") or "")
+                        if "Unknown tool" in res or "unknown tool" in res.lower():
+                            invented += 1
+                        if r.get("tool") != "choose_action":
+                            continue
+                        err = MARK in res
+                        if arm == "unguarded":
+                            key = "all answers"
+                        elif last_cov is None:
+                            # A choose_action with NO coverage row of its own: the 2nd..Nth call
+                            # of a multi-call response. Its request was bound to the FIRST
+                            # decision's enum; it lands on a later decision carrying ids from
+                            # the old menu. Not a leak past the enum it was built for, but an
+                            # off-menu id produced UNDER a present tag -- so it is its own class.
+                            key = "extra call in a multi-call response"
+                        else:
+                            key = "bound" if last_cov.get("bound") else "unbound (declined by design)"
+                        c[(key, err)] += 1
+                        last_cov = None
+        print(f"\n  arm={arm}")
+        for key in sorted({k for k, _ in c}):
+            n = c[(key, True)] + c[(key, False)]
+            e = c[(key, True)]
+            print(f"      {n:>7} answers  {e:>5} off-menu  {100*e/max(1,n):>6.2f}%   {key}")
+        tn = sum(c.values()); te = sum(v for (k, e), v in c.items() if e)
+        print(f"      {tn:>7} answers  {te:>5} off-menu  {100*te/max(1,tn):>6.2f}%   TOTAL")
+        print(f"      invented tool names: {invented}")
+
+    print()
+    print("=" * 78)
+    print("STEP 3 — MUTE MODE")
+    print("=" * 78)
+    print("""  Registered as nudge rate and `(none)` share. THERE IS NO NUDGE EVENT in these logs -- no
+  event type contains 'nudge' or 'remind' -- so the nudge rate is NOT MEASURABLE from what was
+  recorded and is not replaced by a proxy. `(none)` share is measured directly: responses that
+  contain no tool call.""")
+    for arm in ("unguarded", "guarded"):
+        resp = none = errs = 0
+        for d in arm_dirs(roots, arm):
+            for f in d.rglob("*_llm.jsonl"):
+                for r in _rows(f):
+                    if r.get("type") == "llm_response":
+                        resp += 1
+                        none += not (r.get("tool_calls") or [])
+                    elif r.get("type") == "llm_error":
+                        errs += 1
+        print(f"  arm={arm:<10} responses {resp:>7}   (none) {none:>5} = {100*none/max(1,resp):.2f}%"
+              f"   llm_error {errs}  (message field EMPTY: counted, not classifiable)")
+
+    print()
+    print("=" * 78)
+    print("STEP 4 — CASUALTIES BY CLASS")
+    print("=" * 78)
+    print("""  A casualty is a game with NO engine game_end. The launcher's `exit` marker is shown beside
+  it, never used as the count: run B measured it wrong in BOTH directions (84 vs 86, 96 vs 94).""")
+    print("""  PER DIR, because a pooled casualty count blends causes that mean opposite things. A game
+  killed by a deliberate `scancel` (9959 was cancelled to put both arms on identical bytes) is
+  not a harness failure, and five dirs from dead configurations were quarantined with an
+  INVALID- prefix on 2026-09-22 after one of them -- renamed with a SUFFIX -- had been
+  contributing 24 phantom casualties.""")
+    outcomes = {}
+    for arm in ("unguarded", "guarded"):
+        seen: dict[int, dict] = {}
+        print(f"\n  arm={arm}")
+        for d in arm_dirs(roots, arm):
+            started = ended = 0; cas = collections.Counter()
+            for g in sorted(d.glob("g*")):
+                if not g.is_dir():
+                    continue
+                row = score_game(g)
+                if not row.get("started"):
+                    continue
+                started += 1
+                if row.get("ended"):
+                    ended += 1
+                    idx = int(g.name[1:])
+                    # DEDUPED BY GAME INDEX: the complement should make a double bank
+                    # impossible, and it measured zero across both nodes -- but a readout that
+                    # silently double-counts if that ever stops being true is not a readout.
+                    if idx in seen:
+                        print(f"      WARNING: g{idx:02d} banked twice; keeping the first")
+                    else:
+                        seen[idx] = row
+                else:
+                    # NO MARKER IS NOT A DEATH WHILE THE JOB RUNS. The runner writes `exit` only
+                    # when a launch stops, so a started game without one is IN FLIGHT if its job
+                    # is still running, and was killed hard (e.g. by scancel) if it is not. A
+                    # readout run mid-flight that called these casualties would report a
+                    # progress bar as a failure rate -- score_suite already warns about exactly
+                    # that confusion between "not started" and "aborted".
+                    ex = ((g / "exit").read_text().strip() if (g / "exit").exists()
+                          else "(no marker: in flight if the job runs, else killed hard)")
+                    cas[ex] += 1
+            print(f"      {d.name:<44} started {started:>4}  game_end {ended:>4}  "
+                  f"casualties {started-ended:>3} {dict(cas) if cas else ''}")
+        outcomes[arm] = list(seen.values())
+        print(f"      {'distinct banked games':<44} {len(seen)}")
+
+    print()
+    print("=" * 78)
+    print("STEP 5 — WIN RATE  (last, by registration)")
+    print("=" * 78)
+    for arm in ("unguarded", "guarded"):
+        games = outcomes[arm]
+        n = len(games)
+        won = sum(1 for g in games if str(g.get("winner") or "").startswith("Eval") and not g.get("draw"))
+        draws = sum(1 for g in games if g.get("draw"))
+        print(f"  arm={arm:<10} {won}/{n} won ({100*won/max(1,n):.1f}%), {draws} draw(s)")
+    print("""
+  +/-7.1 points is the registered half-width at n=200: a guarded-vs-unguarded difference
+  inside it is UNRESOLVABLE BY DESIGN, not a null result. This eval was powered for the
+  off-menu comparison in step 2, not for win rate, and says so before anyone reads step 5.""")
 
 
 if __name__ == "__main__":
