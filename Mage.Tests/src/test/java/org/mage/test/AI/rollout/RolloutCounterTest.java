@@ -188,4 +188,50 @@ public class RolloutCounterTest extends CardTestPlayerBase {
         Assert.assertTrue("first nextInt(64) takes only " + first64.size() + " distinct values over " + n + " rollouts",
                 first64.size() >= 48);
     }
+
+    /**
+     * THE MAD CRITIC (minimax in every rollout seat, skill 1). Same contracts where they can hold:
+     * WIN reachable and tracking the board, same seed replays, and the live game untouched. The
+     * last is the one at risk: the mad search runs on ComputerPlayer6's shared AI-SIM-MAD pool,
+     * which has no rollout stream of its own, so without the seeded search task its draws would
+     * land on the process stream.
+     */
+    @Test
+    public void test_madCritic() {
+        addCard(Zone.BATTLEFIELD, playerA, "Mountain", 3);
+        addCard(Zone.BATTLEFIELD, playerA, "Hill Giant", 3);
+        addCard(Zone.BATTLEFIELD, playerB, "Swamp", 3);
+        setStopAt(3, PhaseStep.PRECOMBAT_MAIN);
+        execute();
+        RolloutCounter.Critic mad = RolloutCounter.Critic.mad(1);
+        String stateBefore = currentGame.getState().getValue(true, currentGame);
+        RandomUtil.setSeed(77);
+        int[] expected = new int[30];
+        for (int i = 0; i < expected.length; i++) {
+            expected[i] = RandomUtil.nextInt(1_000_000);
+        }
+        RandomUtil.setSeed(77);
+        int[] got = new int[30];
+        for (int i = 0; i < 15; i++) {
+            got[i] = RandomUtil.nextInt(1_000_000);
+        }
+        Result a = RolloutCounter.count(currentGame, playerA.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS, mad);
+        for (int i = 15; i < got.length; i++) {
+            got[i] = RandomUtil.nextInt(1_000_000);
+        }
+        Result b = RolloutCounter.count(currentGame, playerA.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS, mad);
+        System.out.println("ROLLOUT_COUNT mad critic, seat A (three giants): " + counts(a) + " " + ends(a));
+        for (Rollout x : a.rollouts) {
+            Assert.assertNotEquals("mad rollout " + x.index + " was cut", Outcome.NO_RESULT, x.outcome);
+            Assert.assertTrue("mad rollout " + x.index + " did not play past the position", x.endTurn > currentGame.getTurnNum());
+            Assert.assertEquals("mad seats do not count actions", -1, x.actions);
+        }
+        Assert.assertTrue("the favoured seat should mostly WIN under mad play too: " + counts(a), a.count(Outcome.WIN) > N / 2);
+        Assert.assertArrayEquals("the live game's stream moved during a mad count()", expected, got);
+        Assert.assertEquals(stateBefore, currentGame.getState().getValue(true, currentGame));
+        for (Outcome o : Outcome.values()) {
+            Assert.assertEquals("mad critic, same seed: count of " + o, a.count(o), b.count(o));
+        }
+        Assert.assertEquals("mad critic, same seed: transcripts", hashes(a), hashes(b));
+    }
 }

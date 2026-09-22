@@ -63,6 +63,47 @@ public final class RolloutCounter {
 
     public enum Outcome {WIN, LOSS, DRAW, NO_RESULT}
 
+    /**
+     * WHO PLAYS THE ROLLOUTS. RANDOM is SimulatedPlayerMCTS in every seat (uniform over playables,
+     * MCTS's own playout) -- the only critic until 2026-09-22, and NOT the XMage-AI critic
+     * position-environment.md s4 first registered (rollout-primitive-scoping.md, "DEVIATION").
+     * MAD puts ComputerPlayer7 (minimax) in every seat at the given skill; its node budget comes
+     * from -Dxmage.ai.nodes.<skill> as for any mad seat. Reached reflectively: this plugin has no
+     * compile-time dependency on Mage.Player.AI.MA, and Main.loadPlugin puts every plugin jar in
+     * one shared class loader (the HumanPlayer -> AiHintProvider precedent).
+     */
+    public static final class Critic {
+        public final String kind;
+        public final int skill;
+
+        private Critic(String kind, int skill) {
+            this.kind = kind;
+            this.skill = skill;
+        }
+
+        public static final Critic RANDOM = new Critic("random", 0);
+
+        public static Critic mad(int skill) {
+            return new Critic("mad", skill);
+        }
+
+        /** "random" or "mad:<skill>" -- nothing else, and no default */
+        public static Critic parse(String text) {
+            if (text.equals("random")) {
+                return RANDOM;
+            }
+            if (text.startsWith("mad:")) {
+                return mad(Integer.parseInt(text.substring(4)));
+            }
+            throw new IllegalArgumentException("critic must be random or mad:<skill>, got " + text);
+        }
+
+        @Override
+        public String toString() {
+            return kind.equals("random") ? "random" : "mad:" + skill;
+        }
+    }
+
     public static final class Rollout {
         public final int index;
         public final long seed;
@@ -146,6 +187,11 @@ public final class RolloutCounter {
      * -- the game thread, e.g. at a priority decision -- since the copy reads live state.
      */
     public static Result count(Game live, UUID seatId, long seedBase, int n, long budgetMillis, int threads) {
+        return count(live, seatId, seedBase, n, budgetMillis, threads, Critic.RANDOM);
+    }
+
+    public static Result count(Game live, UUID seatId, long seedBase, int n, long budgetMillis, int threads,
+                               Critic critic) {
         if (n < 1 || threads < 1) {
             throw new IllegalArgumentException("n and threads must be >= 1, got n=" + n + " threads=" + threads);
         }
@@ -170,7 +216,7 @@ public final class RolloutCounter {
                 final int index = k;
                 final long seed = rolloutSeed(seedBase, k);
                 futures.add(pool.submit(() -> RandomUtil.withThreadSeed(seed,
-                        () -> one(live, seatId, index, seed, budgetMillis, watchdog))));
+                        () -> one(live, seatId, index, seed, budgetMillis, watchdog, critic))));
             }
             List<Rollout> out = new ArrayList<>();
             for (Future<Rollout> f : futures) {
@@ -192,8 +238,8 @@ public final class RolloutCounter {
     }
 
     private static Rollout one(Game live, UUID seatId, int index, long seed, long budgetMillis,
-                               ScheduledExecutorService watchdog) {
-        Game sim = createSimulation(live, seatId);
+                               ScheduledExecutorService watchdog, Critic critic) {
+        Game sim = createSimulation(live, seatId, critic);
         TranscriptWatcher watcher = new TranscriptWatcher();
         sim.getState().addWatcher(watcher);
 
@@ -247,7 +293,9 @@ public final class RolloutCounter {
         }
         int actions = 0;
         for (Player p : sim.getState().getPlayers().values()) {
-            actions += ((SimulatedPlayerMCTS) p).getActionCount();
+            // mad seats do not count their actions; -1 marks "unknown", never 0
+            actions = p instanceof SimulatedPlayerMCTS && actions >= 0
+                    ? actions + ((SimulatedPlayerMCTS) p).getActionCount() : -1;
         }
         StringBuilder end = new StringBuilder();
         Player seat = sim.getPlayer(seatId);
@@ -279,10 +327,39 @@ public final class RolloutCounter {
         return sim;
     }
 
+    private static volatile java.lang.reflect.Constructor<?> madCtor;
+
+    /** A copy with every seat a ComputerPlayer7 at {@code skill}, keeping each seat's id. */
+    public static Game withMadSeats(Game live, int skill) {
+        if (madCtor == null) {
+            try {
+                madCtor = Class.forName("mage.player.ai.ComputerPlayer7", true, RolloutCounter.class.getClassLoader())
+                        .getConstructor(UUID.class, int.class);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("mad critic needs mage.player.ai.ComputerPlayer7(UUID, int)", e);
+            }
+        }
+        Game sim = live.createSimulationForAI();
+        sim.getOptions().stopOnTurn = null;
+        for (Player old : new ArrayList<>(sim.getState().getPlayers().values())) {
+            Player orig = live.getState().getPlayers().get(old.getId()).getRealPlayer().copy();
+            Player mad;
+            try {
+                mad = (Player) madCtor.newInstance(old.getId(), skill);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("could not build a mad seat", e);
+            }
+            mad.restore(orig);
+            mad.setMatchPlayer(new mage.game.match.MatchPlayer(old.getMatchPlayer(), mad));
+            sim.getState().getPlayers().put(old.getId(), mad);
+        }
+        return sim;
+    }
+
     // MCTSNode.createSimulation + randomizePlayers, but restoring from getRealPlayer() so a live
     // seat that wraps a PlayerImpl (as Mage.Tests' TestPlayer does) restores from the PlayerImpl.
-    static Game createSimulation(Game live, UUID seatId) {
-        Game sim = withRandomSeats(live);
+    static Game createSimulation(Game live, UUID seatId, Critic critic) {
+        Game sim = critic.kind.equals("random") ? withRandomSeats(live) : withMadSeats(live, critic.skill);
         for (Player player : sim.getState().getPlayers().values()) {
             if (!player.getId().equals(seatId)) {
                 int handSize = player.getHand().size();

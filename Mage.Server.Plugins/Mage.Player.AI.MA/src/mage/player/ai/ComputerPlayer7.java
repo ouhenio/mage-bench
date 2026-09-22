@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.UUID;
 
 /**
  * AI: server side bot with game simulations (mad bot, the latest version)
@@ -22,6 +23,11 @@ public class ComputerPlayer7 extends ComputerPlayer6 {
 
     public ComputerPlayer7(String name, RangeOfInfluence range, int skill) {
         super(name, range, skill);
+    }
+
+    /** A mad seat taking over an existing player's id; see ComputerPlayer6(UUID, int). */
+    public ComputerPlayer7(UUID id, int skill) {
+        super(id, skill);
     }
 
     public ComputerPlayer7(final ComputerPlayer7 player) {

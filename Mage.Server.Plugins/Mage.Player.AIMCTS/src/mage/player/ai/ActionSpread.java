@@ -88,6 +88,15 @@ public final class ActionSpread {
      * Returns null when the seat has fewer than two legal actions: there is no choice to measure.
      */
     public static Spread measure(Game live, UUID seatId, long seedBase, int n, long budgetMillis, int threads) {
+        return measure(live, seatId, seedBase, n, budgetMillis, threads, RolloutCounter.Critic.RANDOM);
+    }
+
+    /**
+     * With a chosen critic. Enumeration and application stay on RANDOM seats either way (they
+     * need MCTSPlayer); only the rollouts from each resulting state use the critic.
+     */
+    public static Spread measure(Game live, UUID seatId, long seedBase, int n, long budgetMillis, int threads,
+                                 RolloutCounter.Critic critic) {
         long t0 = System.nanoTime();
         Game enumCopy = RolloutCounter.withRandomSeats(live);
         List<Ability> actions = legalActions(enumCopy, seatId, RolloutCounter.mix(seedBase ^ 0x5EEDL));
@@ -100,7 +109,7 @@ public final class ActionSpread {
             Ability a = actions.get(i);
             boolean[] activated = {false};
             Game after = applied(enumCopy, seatId, a, RolloutCounter.mix(seedBase + 0xAC7L + i), activated);
-            RolloutCounter.Result r = RolloutCounter.count(after, seatId, seedBase, n, budgetMillis, threads);
+            RolloutCounter.Result r = RolloutCounter.count(after, seatId, seedBase, n, budgetMillis, threads, critic);
             ActionResult ar = new ActionResult(i, label(a, enumCopy), a instanceof PassAbility, activated[0], r);
             out.add(ar);
             if (ar.isPass && firstPass == null) {
@@ -116,7 +125,7 @@ public final class ActionSpread {
         List<ActionResult> placebos = new ArrayList<>();
         for (int j = 0; j < actions.size(); j++) {
             RolloutCounter.Result placebo = RolloutCounter.count(passAgain, seatId,
-                    RolloutCounter.mix((seedBase ^ 0x91ACEBL) + j), n, budgetMillis, threads);
+                    RolloutCounter.mix((seedBase ^ 0x91ACEBL) + j), n, budgetMillis, threads, critic);
             placebos.add(new ActionResult(firstPass.index, firstPass.action, true, passActivated[0], placebo));
         }
         return new Spread(out, placebos, (System.nanoTime() - t0) / 1_000_000L);

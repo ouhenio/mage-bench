@@ -39,6 +39,7 @@ logger = get_logger(__name__)
 # a measurement whose N or budget came from a default is not a registered measurement.
 ROLLOUT_PROBE_SETTINGS = (
     ("MAGEBENCH_ROLLOUT_MODE", "xmage.rollout.mode"),
+    ("MAGEBENCH_ROLLOUT_CRITIC", "xmage.rollout.critic"),
     ("MAGEBENCH_ROLLOUT_OUT", "xmage.rollout.out"),
     ("MAGEBENCH_ROLLOUT_POSITIONS", "xmage.rollout.positions"),
     ("MAGEBENCH_ROLLOUT_NS", "xmage.rollout.ns"),

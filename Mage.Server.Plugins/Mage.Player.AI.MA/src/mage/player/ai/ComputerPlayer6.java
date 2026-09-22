@@ -98,6 +98,20 @@ public class ComputerPlayer6 extends ComputerPlayer {
 
     public ComputerPlayer6(String name, RangeOfInfluence range, int skill) {
         super(name, range);
+        initBudgets(skill);
+    }
+
+    /**
+     * A mad seat that TAKES OVER an existing player's id, for a rollout copy whose seats are
+     * replaced by searched play (RolloutCounter's mad critic) -- the id is what the copied game's
+     * state keys everything on. Same budgets as the name/range constructor.
+     */
+    protected ComputerPlayer6(UUID id, int skill) {
+        super(id);
+        initBudgets(skill);
+    }
+
+    private void initBudgets(int skill) {
         if (skill < 4) {
             maxDepth = 4; // TODO: can be increased to support better calculations? (example = 8, skill * 2)
         } else {
@@ -670,7 +684,24 @@ public class ComputerPlayer6 extends ComputerPlayer {
         // TODO: all actions added and calculated one by one,
         //  multithreading do not supported here
         // run new game simulation in parallel thread
-        FutureTask<Integer> task = new FutureTask<>(() -> addActions(root, maxDepth, Integer.MIN_VALUE, Integer.MAX_VALUE));
+        // INSIDE A SEEDED ROLLOUT the search must not draw from the process stream: it runs on the
+        // shared AI-SIM-MAD pool, whose threads have no stream of their own, and the process stream
+        // is the live game's. So the task runs under a child seed drawn from the rollout's stream --
+        // deterministic given the rollout seed, and the live game's stream untouched. Everywhere
+        // else (no thread stream) this is exactly the previous task.
+        java.util.concurrent.Callable<Integer> search = () -> addActions(root, maxDepth, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        if (mage.util.RandomUtil.hasThreadStream()) {
+            long child = mage.util.RandomUtil.nextLong();
+            java.util.concurrent.Callable<Integer> unseeded = search;
+            search = () -> mage.util.RandomUtil.withThreadSeed(child, () -> {
+                try {
+                    return unseeded.call();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+        }
+        FutureTask<Integer> task = new FutureTask<>(search);
         threadPoolSimulations.execute(task);
         try {
             int maxSeconds = maxThinkTimeSecs;

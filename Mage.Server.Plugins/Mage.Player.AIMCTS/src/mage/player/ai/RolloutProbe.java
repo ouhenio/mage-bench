@@ -120,7 +120,8 @@ public final class RolloutProbe {
             int n = Integer.parseInt(nText.trim());
             for (int repeat = 0; repeat < repeats; repeat++) {
                 long base = seedBase(gameSeed, position, n, repeat);
-                RolloutCounter.Result r = RolloutCounter.count(game, playerId, base, n, budgetMs, threads);
+                RolloutCounter.Result r = RolloutCounter.count(game, playerId, base, n, budgetMs, threads,
+                        RolloutCounter.Critic.parse(required("xmage.rollout.critic")));
                 write(out, json(game, playerName, gameSeed, position, repeat, r));
             }
         }
@@ -165,13 +166,14 @@ public final class RolloutProbe {
         long gs = gameSeed(game);
         // the seat's name enters the seed so both probed seats of one game draw disjoint families
         long base = RolloutCounter.mix(seedBase(gs, done, n, 0) + seat.hashCode());
-        ActionSpread.Spread sp = ActionSpread.measure(game, playerId, base, n, budgetMs, threads);
+        RolloutCounter.Critic critic = RolloutCounter.Critic.parse(required("xmage.rollout.critic"));
+        ActionSpread.Spread sp = ActionSpread.measure(game, playerId, base, n, budgetMs, threads, critic);
         if (sp == null) {
             return; // one legal action: no choice to measure, not a position
         }
         spreadPositions.put(key, done + 1);
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"mode\":\"spread\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gs)
+        sb.append("{\"mode\":\"spread\",\"critic\":\"").append(critic).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gs)
                 .append(",\"seat\":\"").append(seat).append("\",\"position\":").append(done)
                 .append(",\"turn\":").append(game.getTurnNum())
                 .append(",\"step\":\"").append(game.getTurnStepType()).append('"')
@@ -222,7 +224,7 @@ public final class RolloutProbe {
 
     private static String json(Game game, String seat, long gameSeed, int position, int repeat, RolloutCounter.Result r) {
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gameSeed)
+        sb.append("{\"critic\":\"").append(System.getProperty("xmage.rollout.critic")).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gameSeed)
                 .append(",\"seat\":\"").append(seat).append("\",\"position\":").append(position)
                 .append(",\"turn\":").append(game.getTurnNum())
                 .append(",\"active_player\":\"").append(game.getPlayer(game.getActivePlayerId()).getName()).append('"')

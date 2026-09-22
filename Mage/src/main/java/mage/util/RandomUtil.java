@@ -52,6 +52,15 @@ public final class RandomUtil {
         return current().nextBoolean();
     }
 
+    public static long nextLong() {
+        return current().nextLong();
+    }
+
+    /** True inside a seeded rollout task (withThreadSeed), false on every other thread. */
+    public static boolean hasThreadStream() {
+        return threadRandom.get() != null;
+    }
+
     public static double nextDouble() {
         return current().nextDouble();
     }
