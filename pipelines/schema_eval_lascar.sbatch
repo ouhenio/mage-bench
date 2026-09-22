@@ -51,6 +51,34 @@ case "$LIMIT" in ''|*[!0-9]*) echo "FATAL: game limit must be a non-negative int
 # arguments -- only its path -- so the arm is invisible to every check unless it is in the NAME.
 # An earlier version of the watchdog grepped `scontrol` for the arm, matched nothing, and would
 # have resubmitted an arm while its twin was running.
+NODE=$(hostname -s)
+
+# --- T2I HAS PRIORITY ON THE NODE WE ARE ABOUT TO TAKE A CARD ON --------------------------------
+# Eugenio, verbatim: "2 for u, 2 for t2i (although they have the priority)". So an MTG GPU job
+# yields to a t2i job that is WAITING FOR CAPACITY. Running arms are never cancelled.
+#
+# "WAITING FOR CAPACITY" IS THE WHOLE CHECK, and a gate on "any t2i job PENDING" would be a
+# permanent block rather than a courtesy: measured at 22:2x, all EIGHT pending t2i jobs read
+# `(Dependency)` -- they are chained behind 9809 and are not competing for a card at all. That
+# chain always has pending dependents, so blocking on their existence would mean MTG never runs
+# again. Only the reasons that mean "there is no room" count.
+T2I_BLOCKING=$(squeue -u "$USER" -h -t PENDING -o '%i|%j|%R' 2>/dev/null \
+  | awk -F'|' '$2 ~ /^t2i/ && $3 ~ /^\((Resources|Priority|ReqNodeNotAvail|Nodes required)/ {print $1}' \
+  | while read -r i; do
+      req=$(scontrol show job "$i" 2>/dev/null | grep -oP 'ReqNodeList=\K[^ ]+')
+      case "${req:-any}" in "$NODE"|any|"(null)") echo "$i" ;; esac
+    done | tr '\n' ' ')
+if [ -n "${T2I_BLOCKING// /}" ]; then
+  echo "YIELDING: t2i job(s)${T2I_BLOCKING:+ }$T2I_BLOCKING are PENDING for capacity on $NODE and"
+  echo "  t2i has priority (Eugenio, 2026-09-21). Not taking a card."
+  echo "  Exiting NON-ZERO so the afternotok watchdog retries this arm when t2i is served."
+  echo "  NOTE: the instruction said 'exit 0; the watchdog retries'. Those are incompatible --"
+  echo "  an afternotok dependency does not fire on 0, so exit 0 would DROP the arm silently,"
+  echo "  which is LEDGER 75 exactly. Exit 0 is reserved for the race loser, where there is"
+  echo "  genuinely nothing left to do because the other instance is already running."
+  exit 10
+fi
+
 # THE CAP IS SCOPED TO MTG WORK, AND THE TOTAL IS RECORDED BESIDE IT.
 # Eugenio's words were "U can use at most 2 gpus"; the orchestrator scoped that to "RUNNING MTG
 # GPU jobs sum to <= 2 across both nodes". The same unix user also runs the t2i work, which held
@@ -96,7 +124,7 @@ M=$(bash -c "source $MTG/env.sh >/dev/null 2>&1; echo \$MTG_DATA_ROOT")
 # depending on where it runs: the harness tree, its maven repo, and the checkpoint + 4452's suite.
 # Nothing here falls back -- a node this script has not been taught about refuses, because the
 # failure mode of guessing is reading the OTHER node's path and silently running other bytes.
-NODE=$(hostname -s)
+# NODE was resolved above, for the t2i priority check.
 case "$NODE" in
   lascar)
     WT=/workspace1/users/ouhenio/mb-wt-schema

@@ -100,6 +100,24 @@ fi
 # into a full budget does not break the cap -- the arm's own gate refuses and exits 9 -- but it
 # burns a generation doing it, and the generation cap is what stops a loop. So wait instead:
 # requeue THIS watchdog with a delay and try again, which costs nothing and keeps the count.
+# T2I PRIORITY, CHECKED HERE TOO. The arm's own gate yields and exits 10, which is notok and
+# would fire the NEXT watchdog -- so resubmitting into a t2i wait burns a generation per attempt
+# and the generation cap, which exists to stop runaway loops, would instead stop the run. Waiting
+# is not a retry, so this waits at the SAME generation, exactly as it does for a full budget.
+# Only capacity-wait reasons count: every pending t2i job read `(Dependency)` on 2026-09-21, and
+# blocking on those would be permanent rather than polite.
+T2I=$(squeue -u "$USER" -h -t PENDING -o '%j|%R' 2>/dev/null \
+      | awk -F'|' '$1 ~ /^t2i/ && $2 ~ /^\((Resources|Priority|ReqNodeNotAvail|Nodes required)/' | wc -l)
+if [ "${T2I:-0}" -gt 0 ]; then
+  if [ "$GEN" -ge "$GEN_MAX" ]; then
+    say "t2i is waiting for capacity and I am at the generation cap -- STOPPING"; exit 5
+  fi
+  say "$T2I t2i job(s) waiting for capacity; t2i has priority. Waiting 30 min at gen $GEN."
+  sbatch --parsable --begin=now+30minutes "$WT/pipelines/schema_eval_watchdog.sbatch" \
+         "$JOB" "$ARM" "$GEN" && say "waiting watchdog queued"
+  exit 0
+fi
+
 BUDGET=2
 RUN=$(squeue -u "$USER" -h -t RUNNING -o '%b' 2>/dev/null \
       | awk '$0 ~ /gpu/ { n=$0; sub(/.*gpu[:=]/,"",n); sub(/[^0-9].*/,"",n);
