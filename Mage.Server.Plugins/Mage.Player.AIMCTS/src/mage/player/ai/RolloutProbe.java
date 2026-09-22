@@ -94,8 +94,16 @@ public final class RolloutProbe {
             return;
         }
         int maxPositions = Integer.parseInt(required("xmage.rollout.positions"));
+        int skip = Integer.parseInt(required("xmage.rollout.skip"));
         int done = positionsByGame.containsKey(gameId) ? positionsByGame.get(gameId) : 0;
-        if (done >= maxPositions) {
+        if (done >= skip + maxPositions) {
+            return;
+        }
+        if (done < skip) {
+            // CHUNKING: counted, not measured, so later positions keep the index (and seeds) an
+            // unchunked run would give them
+            lastTurnByGame.put(gameId, turn);
+            positionsByGame.put(gameId, done + 1);
             return;
         }
         String out = required("xmage.rollout.out");
@@ -151,8 +159,9 @@ public final class RolloutProbe {
             return;
         }
         int maxPositions = Integer.parseInt(required("xmage.rollout.positions"));
+        int skip = Integer.parseInt(required("xmage.rollout.skip"));
         int done = spreadPositions.containsKey(key) ? spreadPositions.get(key) : 0;
-        if (done >= maxPositions) {
+        if (done >= skip + maxPositions) {
             return;
         }
         String ns = required("xmage.rollout.ns");
@@ -167,6 +176,17 @@ public final class RolloutProbe {
         // the seat's name enters the seed so both probed seats of one game draw disjoint families
         long base = RolloutCounter.mix(seedBase(gs, done, n, 0) + seat.hashCode());
         RolloutCounter.Critic critic = RolloutCounter.Critic.parse(required("xmage.rollout.critic"));
+        if (done < skip) {
+            // CHUNKING: a position is one with more than one legal action, so a skipped position is
+            // still ENUMERATED (as measure() would, same seed) and counted -- positions after it keep
+            // the index and seeds an unchunked run gives them. The live game is untouched either way,
+            // which is what lets every chunk replay the same game.
+            Game enumCopy = RolloutCounter.withRandomSeats(game);
+            if (ActionSpread.legalActions(enumCopy, playerId, RolloutCounter.mix(base ^ 0x5EEDL)).size() >= 2) {
+                spreadPositions.put(key, done + 1);
+            }
+            return;
+        }
         ActionSpread.Spread sp = ActionSpread.measure(game, playerId, base, n, budgetMs, threads, critic);
         if (sp == null) {
             return; // one legal action: no choice to measure, not a position
@@ -206,7 +226,14 @@ public final class RolloutProbe {
         for (RolloutCounter.Outcome o : RolloutCounter.Outcome.values()) {
             sb.append(",\"").append(o.name().toLowerCase()).append("\":").append(a.result.count(o));
         }
-        sb.append(",\"wall_ms\":").append(a.result.wallMillis).append('}');
+        // per-rollout outcomes in rollout (k) order: the first n of them are an estimate at N=n,
+        // which is how SD_N at smaller N comes out of one N=64 run
+        sb.append(",\"seq\":\"");
+        for (RolloutCounter.Rollout x : a.result.rollouts) {
+            sb.append(x.outcome == RolloutCounter.Outcome.WIN ? 'W' : x.outcome == RolloutCounter.Outcome.LOSS ? 'L'
+                    : x.outcome == RolloutCounter.Outcome.DRAW ? 'D' : 'N');
+        }
+        sb.append("\",\"wall_ms\":").append(a.result.wallMillis).append('}');
     }
 
     private static String esc(String s) {
