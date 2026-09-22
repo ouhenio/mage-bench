@@ -42,10 +42,39 @@ public class ComputerPlayer7 extends ComputerPlayer6 {
 
     @Override
     public boolean priority(Game game) {
+        // ROLLOUT PROBE HOOK (mage.player.ai.RolloutProbe, Mage.Player.AIMCTS): positions from a seat
+        // that PLAYS. Every probed position before 2026-09-22 came from a sleepwalker seat, which
+        // never acts, so all of them were empty boards (LEDGER 78). On the game thread, before this
+        // decision's search starts and before the AI's clock runs: the live game is quiescent here.
+        rolloutProbe(game);
         game.resumeTimer(getTurnControlledBy());
         boolean result = priorityPlay(game);
         game.pauseTimer(getTurnControlledBy());
         return result;
+    }
+
+    // Reflective for the same reason as HumanPlayer's hook: no compile-time dependency between the
+    // AI plugins; Main.loadPlugin puts every plugin in one class loader. Off unless
+    // -Dxmage.rollout.seats is set; fatal if it is set and the probe cannot be reached.
+    private static volatile java.lang.reflect.Method rolloutProbeMethod;
+
+    private void rolloutProbe(Game game) {
+        if (System.getProperty("xmage.rollout.seats") == null) {
+            return;
+        }
+        if (rolloutProbeMethod == null) {
+            try {
+                rolloutProbeMethod = Class.forName("mage.player.ai.RolloutProbe", true, ComputerPlayer7.class.getClassLoader())
+                        .getMethod("probe", Game.class, UUID.class, String.class);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("xmage.rollout.seats is set but mage.player.ai.RolloutProbe could not be loaded", e);
+            }
+        }
+        try {
+            rolloutProbeMethod.invoke(null, game, getId(), getName());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("rollout probe invocation failed", e);
+        }
     }
 
     private boolean priorityPlay(Game game) {

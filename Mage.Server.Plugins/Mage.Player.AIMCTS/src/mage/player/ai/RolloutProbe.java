@@ -76,6 +76,16 @@ public final class RolloutProbe {
         if (!isProbedSeat(playerName)) {
             return;
         }
+        // A ROLLOUT'S OWN SEATS reach this hook too: the mad critic puts ComputerPlayer7 in every
+        // rollout seat, and it calls the probe at its priority. Only the live game is probed.
+        if (game.isSimulation()) {
+            return;
+        }
+        // POSITIVE CONTROL ON THE POSITION (LEDGER 78): a position is one where the probed seat
+        // has at least one permanent. The sleepwalker runs never met it once, and nothing refused.
+        if (game.getBattlefield().getAllActivePermanents(playerId).isEmpty()) {
+            return;
+        }
         String mode = required("xmage.rollout.mode");
         if (mode.equals("spread")) {
             spread(game, playerId, playerName);
@@ -130,7 +140,7 @@ public final class RolloutProbe {
                 long base = seedBase(gameSeed, position, n, repeat);
                 RolloutCounter.Result r = RolloutCounter.count(game, playerId, base, n, budgetMs, threads,
                         RolloutCounter.Critic.parse(required("xmage.rollout.critic")));
-                write(out, json(game, playerName, gameSeed, position, repeat, r));
+                write(out, json(game, playerName, gameSeed, position, repeat, r, playerId));
             }
         }
         logger.info("rollout probe: game " + gameId + " position " + position + " (turn " + turn + ") done in "
@@ -140,6 +150,13 @@ public final class RolloutProbe {
     // spread mode: per (game, seat) positions banked, and the (turn, step)s already looked at
     private static final Map<String, Integer> spreadPositions = new HashMap<>();
     private static final Set<String> spreadSeen = new HashSet<>();
+
+    // WHAT THE POSITION IS, on every record: the seat's permanents, the opponents', the seat's hand.
+    static String boardJson(Game game, UUID seat) {
+        int mine = game.getBattlefield().getAllActivePermanents(seat).size();
+        int theirs = game.getBattlefield().getAllActivePermanents().size() - mine;
+        return ",\"board\":" + mine + ",\"opp_board\":" + theirs + ",\"hand\":" + game.getPlayer(seat).getHand().size();
+    }
 
     private static long gameSeed(Game game) {
         Long gameSeed = game.getOptions().gameSeed;
@@ -199,7 +216,7 @@ public final class RolloutProbe {
                 .append(",\"turn\":").append(game.getTurnNum())
                 .append(",\"step\":\"").append(game.getTurnStepType()).append('"')
                 .append(",\"active_player\":\"").append(game.getPlayer(game.getActivePlayerId()).getName()).append('"')
-                .append(",\"stack\":").append(game.getStack().size())
+                .append(",\"stack\":").append(game.getStack().size()).append(boardJson(game, playerId))
                 .append(",\"n\":").append(n).append(",\"budget_ms\":").append(budgetMs).append(",\"threads\":").append(threads)
                 .append(",\"seed_base\":").append(base).append(",\"k\":").append(sp.actions.size())
                 .append(",\"wall_ms\":").append(sp.wallMillis).append(",\"actions\":[");
@@ -250,7 +267,7 @@ public final class RolloutProbe {
         return sb.toString();
     }
 
-    private static String json(Game game, String seat, long gameSeed, int position, int repeat, RolloutCounter.Result r) {
+    private static String json(Game game, String seat, long gameSeed, int position, int repeat, RolloutCounter.Result r, UUID seatId) {
         StringBuilder sb = new StringBuilder();
         // THE NODE CAP AS THIS JVM SEES IT -- the property ComputerPlayer6's constructor reads. That
         // knob has been inert three times (game_processes.ai_budget_props); a record that carries the
@@ -259,7 +276,7 @@ public final class RolloutProbe {
         String nodes = c.kind.equals("mad") ? String.valueOf(Integer.getInteger("xmage.ai.nodes." + c.skill)) : "n/a";
         sb.append("{\"critic\":\"").append(c).append("\",\"ai_nodes_prop\":\"").append(nodes).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gameSeed)
                 .append(",\"seat\":\"").append(seat).append("\",\"position\":").append(position)
-                .append(",\"turn\":").append(game.getTurnNum())
+                .append(",\"turn\":").append(game.getTurnNum()).append(boardJson(game, seatId))
                 .append(",\"active_player\":\"").append(game.getPlayer(game.getActivePlayerId()).getName()).append('"')
                 .append(",\"n\":").append(r.n).append(",\"repeat\":").append(repeat)
                 .append(",\"budget_ms\":").append(r.budgetMillis).append(",\"threads\":").append(r.threads)
