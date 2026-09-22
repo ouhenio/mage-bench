@@ -1131,6 +1131,18 @@ async def run_pilot_loop(
             # `choices` either, and is a real decision.
             if await _auto_resolve_forced_decision(session, state, game_log):
                 continue
+            # CAPTURED BEFORE THE MESSAGE BUILDER, because the builder CONSUMES it.
+            # `close_segment_if_needed`, which `_build_loop_messages` calls, reads
+            # `pending_decision_blob` and sets it to None whether or not it cuts -- deliberately,
+            # so a stalled turn does not re-price one decision on every LLM call. The binding
+            # site below used to read the field AFTER this line, so it saw None on every call:
+            # jobs 9960 measured 487 of 487 decisions as `no decision blob` and the "guarded"
+            # arm bound nothing at all, making it a second copy of the control.
+            #
+            # Two consumers, one mutable field, and the one that runs first nulls it. The
+            # controls could not have caught this: they replay recorded frames and hand the
+            # decision to the request builder directly, so they never traverse this loop.
+            decision_blob_for_binding = state.pending_decision_blob
             messages = await _build_loop_messages(
                 state, session, system_prompt, cache_control, game_log
             )
@@ -1203,7 +1215,7 @@ async def run_pilot_loop(
             # way would silently run the unguarded-argument arm while claiming this one.
             decision_coverage_row: dict | None = None
             if decision_schema_mode() == "bound_choice":
-                blob = state.pending_decision_blob
+                blob = decision_blob_for_binding
                 parsed_blob: dict | None = None
                 if blob is not None:
                     try:

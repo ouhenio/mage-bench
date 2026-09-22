@@ -391,6 +391,48 @@ log "runner returned $rc -- the wrapper's code is NOT the verdict; read the arti
 # $SERVE/runner-pin above is the copy that is guaranteed to exist even if the job is preempted.
 [ -d "$E" ] && cp -r "$PIN" "$E/runner-pin" 2>/dev/null && log "pin copied into $E"
 
+# --- A SMOKE MUST PROVE THE MECHANISM, NOT MERELY SURVIVE -------------------------------------
+# Job 9960 ran 200 games with MAGEBENCH_DECISION_SCHEMA=bound_choice and exited cleanly while
+# binding NOTHING -- 487 of 487 decisions recorded `no decision blob` -- so a "guarded" arm was a
+# second copy of the control. An `afterok` chain on that smoke would have been satisfied.
+#
+# So when this job is a smoke (LIMIT>0) on the guarded arm, it FAILS unless the coverage rows
+# show at least one bound decision. That makes exit 0 mean "the mechanism ran", which is the only
+# reading under which chaining the 200-deal arm behind it is honest. The unguarded arm emits no
+# coverage rows by design and is not checked.
+if [ "$LIMIT" -gt 0 ] && [ "$ARM" = guarded ]; then
+  BOUND=$("$PY" - "$E" <<'PYEOF'
+import json, pathlib, sys
+bound = unbound = 0
+reasons = {}
+for f in pathlib.Path(sys.argv[1]).rglob("*_llm.jsonl"):
+    for line in f.open():
+        try:
+            r = json.loads(line)
+        except Exception:
+            continue
+        if r.get("type") != "decision_schema_coverage":
+            continue
+        if r.get("bound"):
+            bound += 1
+        else:
+            unbound += 1
+            reasons[r.get("reason")] = reasons.get(r.get("reason"), 0) + 1
+print(f"{bound} {unbound} {json.dumps(reasons)}")
+PYEOF
+)
+  set -- $BOUND
+  log "smoke coverage: bound=$1 unbound=$2 reasons=${3:-{}}"
+  if [ "${1:-0}" -lt 1 ] ; then
+    log "FATAL: the guarded smoke bound ZERO decisions. The schema env was set and the"
+    log "  mechanism did not engage -- this is job 9960's defect, where the binding site read a"
+    log "  field the message builder had already consumed. Refusing to let an afterok chain"
+    log "  start a 200-deal arm that would measure the control twice."
+    exit 11
+  fi
+  log "smoke PROVED the mechanism: $1 bound decision(s) in one game"
+fi
+
 log "flag gate"; bash "$SRC/pipelines/synth/watch_autoresolve.sh" "$E" 2>&1 | sed 's/^/    /'
 log "free at $M after the run: $(df -h --output=avail "$M" | tail -1 | tr -d ' ')"
 log "schema eval end -- arm=$ARM evidence $E"
