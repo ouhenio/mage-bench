@@ -6,6 +6,10 @@ import org.apache.log4j.Logger;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -116,9 +120,9 @@ public final class RolloutProbe {
         if (done >= skip + maxPositions) {
             return;
         }
-        if (done < skip) {
-            // CHUNKING: counted, not measured, so later positions keep the index (and seeds) an
-            // unchunked run would give them
+        if (done < skip || alreadyBanked(playerName, done)) {
+            // CHUNKING or RESUME: counted, not measured, so later positions keep the index (and
+            // seeds) an unchunked run would give them
             lastTurnByGame.put(gameId, turn);
             positionsByGame.put(gameId, done + 1);
             return;
@@ -154,6 +158,58 @@ public final class RolloutProbe {
                 + (System.nanoTime() - t0) / 1_000_000L + " ms");
     }
 
+    /**
+     * POSITIONS ALREADY BANKED, so a resume replays a game and measures only what is missing.
+     * Window chunking alone could not do this: when a wave is cancelled mid-flight no window is
+     * complete, and resuming by window re-measures everything (2026-09-22: 63 of 360 positions
+     * banked, 0 complete windows). Valid because a replayed game with the same seed reproduces the
+     * same positions -- verified by fingerprint, and the probe never touches the live game's RNG.
+     *
+     * File: one "<seat> <position>" per line; '#' comments and blank lines ignored. The property is
+     * required (use "none" for a fresh run) and a missing file is FATAL, never an empty set: a
+     * typo'd path would silently re-measure everything and look like a fresh run.
+     */
+    private static volatile java.util.Set<String> banked;
+
+    public static java.util.Set<String> loadBanked(String path) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (path.equals("none")) {
+            return out;
+        }
+        Path p = Paths.get(path);
+        if (!Files.isReadable(p)) {
+            throw new IllegalStateException("xmage.rollout.banked=" + path + " is not readable");
+        }
+        try {
+            for (String line : Files.readAllLines(p, StandardCharsets.UTF_8)) {
+                String s = line.trim();
+                if (s.isEmpty() || s.startsWith("#")) {
+                    continue;
+                }
+                String[] parts = s.split("\\s+");
+                if (parts.length != 2) {
+                    throw new IllegalStateException("bad line in " + path + ": " + line);
+                }
+                out.add(parts[0] + "|" + Integer.parseInt(parts[1]));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("could not read " + path, e);
+        }
+        return out;
+    }
+
+    private static boolean alreadyBanked(String seat, int position) {
+        if (banked == null) {
+            synchronized (RolloutProbe.class) {
+                if (banked == null) {
+                    banked = loadBanked(required("xmage.rollout.banked"));
+                    logger.info("rollout probe: " + banked.size() + " position(s) already banked");
+                }
+            }
+        }
+        return banked.contains(seat + "|" + position);
+    }
+
     // spread mode: per (game, seat) positions banked, and the (turn, step)s already looked at
     private static final Map<String, Integer> spreadPositions = new HashMap<>();
     private static final Set<String> spreadSeen = new HashSet<>();
@@ -186,6 +242,12 @@ public final class RolloutProbe {
         int skip = Integer.parseInt(required("xmage.rollout.skip"));
         int done = spreadPositions.containsKey(key) ? spreadPositions.get(key) : 0;
         if (done >= skip + maxPositions) {
+            return;
+        }
+        if (alreadyBanked(seat, done)) {
+            // measured by an earlier job: counted so the indices (and seed families) of later
+            // positions are the ones an unchunked run would give them, then skipped
+            spreadPositions.put(key, done + 1);
             return;
         }
         String ns = required("xmage.rollout.ns");

@@ -157,4 +157,35 @@ public class ActionSpreadTest extends CardTestPlayerBase {
                         + "the game thread holds the monitor",
                 java.lang.reflect.Modifier.isSynchronized(probe.getModifiers()));
     }
+
+    /**
+     * The banked-positions file, which makes a resume per POSITION rather than per window. A
+     * missing file must be fatal: a typo'd path that returned an empty set would silently
+     * re-measure everything and look like a fresh run (2026-09-22, when a cancelled wave left 63
+     * banked positions and no complete window).
+     */
+    @Test
+    public void test_loadBanked() throws Exception {
+        java.nio.file.Path f = java.nio.file.Files.createTempFile("banked", ".txt");
+        java.nio.file.Files.write(f, java.util.Arrays.asList(
+                "# a comment", "", "EngineA 0", "EngineA 12", "EngineB 7"));
+        java.util.Set<String> got = mage.player.ai.RolloutProbe.loadBanked(f.toString());
+        Assert.assertEquals(new java.util.HashSet<>(java.util.Arrays.asList("EngineA|0", "EngineA|12", "EngineB|7")), got);
+        Assert.assertTrue("\"none\" is the explicit fresh-run value",
+                mage.player.ai.RolloutProbe.loadBanked("none").isEmpty());
+        try {
+            mage.player.ai.RolloutProbe.loadBanked(f.getParent().resolve("no-such-file").toString());
+            Assert.fail("a missing banked file must be fatal, not an empty set");
+        } catch (IllegalStateException expected) {
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("not readable"));
+        }
+        java.nio.file.Files.write(f, java.util.Collections.singletonList("EngineA 0 extra"));
+        try {
+            mage.player.ai.RolloutProbe.loadBanked(f.toString());
+            Assert.fail("a malformed line must be fatal");
+        } catch (IllegalStateException expected) {
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("bad line"));
+        }
+        java.nio.file.Files.deleteIfExists(f);
+    }
 }

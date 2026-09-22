@@ -43,6 +43,7 @@ ROLLOUT_PROBE_SETTINGS = (
     ("MAGEBENCH_ROLLOUT_OUT", "xmage.rollout.out"),
     ("MAGEBENCH_ROLLOUT_POSITIONS", "xmage.rollout.positions"),
     ("MAGEBENCH_ROLLOUT_SKIP", "xmage.rollout.skip"),
+    ("MAGEBENCH_ROLLOUT_BANKED", "xmage.rollout.banked"),
     ("MAGEBENCH_ROLLOUT_NS", "xmage.rollout.ns"),
     ("MAGEBENCH_ROLLOUT_REPEATS", "xmage.rollout.repeats"),
     ("MAGEBENCH_ROLLOUT_BUDGET_MS", "xmage.rollout.budgetMs"),
