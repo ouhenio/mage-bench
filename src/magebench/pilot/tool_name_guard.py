@@ -42,12 +42,14 @@ tokenizer, with xgrammar:
 The last two are the controls for "only the name": a constraint that also
 suppressed prose or reshaped arguments would fail them.
 
-FORMAT PROVENANCE. The trigger and the begin/end strings are the Qwen3 tool
-call syntax, taken verbatim from what vLLM's builder emits for this parser rather
-than hand-written from documentation. `test_tool_name_guard.py` re-derives them
-from vLLM when it is importable and asserts byte equality, so a serving-side
-change to the syntax fails a test here instead of silently producing a tag that
-never triggers -- which would look exactly like the guard working.
+FORMAT PROVENANCE. The trigger and begin strings are the Qwen3 tool call syntax,
+taken verbatim from what vLLM's builder emits for this parser rather than
+hand-written from documentation. `test_tool_name_guard.py` re-derives them from vLLM
+when it is importable and asserts byte equality, so a serving-side change to the
+syntax fails a test here instead of silently producing a tag that never triggers --
+which would look exactly like the guard working. END is the exception: a deliberate
+correction of vLLM's, documented at its definition, and the same test pins vLLM's
+value too, so an upstream fix would fail loudly and tell us to drop the deviation.
 """
 
 from __future__ import annotations
@@ -55,13 +57,36 @@ from __future__ import annotations
 import json
 import os
 
-# Verbatim from vllm.tool_parsers.structural_tag_registry's qwen_3_coder builder,
-# 0.27.1 and 0.26.0. A tag only constrains generation once its TRIGGER appears, so
-# a trigger that does not match what the model emits is a guard that never fires
-# and cannot be told apart from a guard with nothing to catch.
+# TRIGGER and BEGIN are verbatim from vllm.tool_parsers.structural_tag_registry's
+# qwen_3_coder builder, 0.27.1 and 0.26.0. A tag only constrains generation once its
+# TRIGGER appears, so a trigger that does not match what the model emits is a guard
+# that never fires and cannot be told apart from a guard with nothing to catch.
 TRIGGER = "<tool_call>\n<function="
 BEGIN_TEMPLATE = "<tool_call>\n<function={name}>\n"
-END = "\n</function>\n</tool_call>"
+
+# END IS A DELIBERATE, DOCUMENTED DEVIATION FROM vLLM -- the one string here that is not
+# verbatim, and the check that pins the other two pins this relationship instead.
+#
+# vLLM's builder emits VLLM_END, which BEGINS with "\n" -- the same newline BEGIN_TEMPLATE
+# already ends with. A zero-argument call is written `<function=NAME>\n</function>`: ONE
+# newline, which BEGIN consumes, so VLLM_END can never match there. The tag never closes,
+# its `any_text` body swallows the next call in the response unconstrained, and the tool
+# parser -- which splits on delimiters -- still extracts both. vLLM does this even for tools
+# it is told take no arguments (`properties: {}`), which is exactly the case that breaks.
+#
+# Measured, not argued (2026-09-22). The schema eval's g14 emitted a valid zero-argument
+# `get_action_choices` and then `(http://127.0.0.1:5000/api/v2/popular)` as a tool name; the
+# exact tag ACCEPTED the exact 49-token completion, and the invented call killed the pilot.
+# Over all ~28,700 traced completions from both eval arms, this END versus VLLM_END changes
+# exactly 97 verdicts and every one is a correct rejection: 94 bound `choose_action` choices
+# OUTSIDE their enum that the swallowing had let through, 2 invented tool names, and 1
+# hallucinated extra argument the engine silently ignored. No genuine completion is newly
+# rejected -- including bound `choose_action` calls, whose schema content supplies the newline.
+#
+# So the bug did not only leak invented names: it BYPASSED the bound choice constraint on the
+# second call of any response whose first call took no arguments.
+VLLM_END = "\n</function>\n</tool_call>"
+END = "</function>\n</tool_call>"
 
 _MODES = ("off", "structural_tag")
 
