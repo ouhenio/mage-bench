@@ -48,9 +48,19 @@ say "watching $JOB; state $(sacct -j "$JOB" -n -o State 2>/dev/null | head -1 | 
 # its path is -- so the first version of this grepped for "schema_eval_lascar.sbatch $ARM",
 # matched nothing, and would have resubmitted an arm whose twin was running. The arm lives in
 # the job NAME now and every submission passes `-J schema-eval-<arm>`.
-live=$(squeue -h -u "$USER" -n "schema-eval-$ARM" -o '%i' 2>/dev/null | wc -l)
+# RUNNING ONLY, NOT PENDING -- and this cost a real arm to learn. Counting PENDING made a twin
+# parked on a starved node suppress recovery permanently: when 9959 was cancelled on lascar, this
+# watchdog saw ranokau's 9953 sitting PENDING with NO start estimate at all (that node has 16 of
+# 240 CPUs free and the arm asks 32), declined as "not my turn", and left the unguarded arm
+# running nowhere. A job that cannot start is not a job that is covering the work.
+#
+# Mutual exclusion does not live here anyway: the ARM's own gate exits 0 when a same-arm job is
+# already RUNNING, so a redundant resubmission is harmless by construction. This watchdog's job
+# is to guarantee that at least one instance EXISTS; the arm's job is to guarantee at most one
+# RUNS. Putting both duties here is what produced a gap where neither held.
+live=$(squeue -h -u "$USER" -t RUNNING -n "schema-eval-$ARM" -o '%i' 2>/dev/null | wc -l)
 if [ "${live:-0}" -gt 0 ]; then
-  say "another $ARM job is still PENDING/RUNNING -- not my turn, exiting"; exit 0
+  say "another $ARM job is RUNNING -- not my turn, exiting"; exit 0
 fi
 
 # 2. THE BASE SUITE, rebuilt the same way the eval builds it, because the complement needs a
