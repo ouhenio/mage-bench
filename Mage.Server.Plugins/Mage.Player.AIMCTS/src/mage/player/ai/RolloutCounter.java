@@ -261,9 +261,12 @@ public final class RolloutCounter {
                 watcher.hash(outcome + "|turn=" + sim.getTurnNum()), playoutMillis, end.toString());
     }
 
-    // MCTSNode.createSimulation + randomizePlayers, but restoring from getRealPlayer() so a live
-    // seat that wraps a PlayerImpl (as Mage.Tests' TestPlayer does) restores from the PlayerImpl.
-    static Game createSimulation(Game live, UUID seatId) {
+    /**
+     * A copy of {@code live} with every seat replaced by SimulatedPlayerMCTS and NO hidden
+     * information resampled: the true state, playable by random seats. ActionSpread applies each
+     * action on one of these; the rollouts from the result then resample as usual.
+     */
+    public static Game withRandomSeats(Game live) {
         Game sim = live.createSimulationForAI();
         // a stop condition copied from the live game's options would halt the playout early
         sim.getOptions().stopOnTurn = null;
@@ -273,6 +276,13 @@ public final class RolloutCounter {
             random.restore(orig);
             sim.getState().getPlayers().put(old.getId(), random);
         }
+        return sim;
+    }
+
+    // MCTSNode.createSimulation + randomizePlayers, but restoring from getRealPlayer() so a live
+    // seat that wraps a PlayerImpl (as Mage.Tests' TestPlayer does) restores from the PlayerImpl.
+    static Game createSimulation(Game live, UUID seatId) {
+        Game sim = withRandomSeats(live);
         for (Player player : sim.getState().getPlayers().values()) {
             if (!player.getId().equals(seatId)) {
                 int handSize = player.getHand().size();
