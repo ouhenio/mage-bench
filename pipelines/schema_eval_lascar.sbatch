@@ -280,13 +280,26 @@ PYEOF
 # drops the other. Measured on 4452's evidence: 187 banked games over 98 seeds, and the
 # seed-keyed version called that 4 games unplayed instead of 13.
 SUITE=$SERVE/suite.json
+# GAMES KNOWN TO FAIL DETERMINISTICALLY are excluded, never counted as banked. Seeds 1200062 and
+# 1200068 freeze the XMage AI's search in both arms and both seatings (Ad Nauseam mirrors), and
+# 1200082 dies without a freeze warning (KikiPod) -- base games 122,123,135,162,163. Replaying them
+# re-fails them and burns a GPU each. Passed explicitly and printed, so the job record says which
+# games the design gave up on and the readout's n stays honestly short of 200.
+EXCLUDE="${MAGEBENCH_EXCLUDE_GAMES:-}"
+[ -n "$EXCLUDE" ] && log "EXCLUDING base games $EXCLUDE (known deterministic failures; not banked)"
 COMP_ARGS=(--arm "$ARM" --evidence-root "$M/evidence/opd" --evidence-root "$OTHER_OPD" \
-           --score-suite-dir "$SRC/pipelines/eval" --base "$SUITE_FULL")
+           --score-suite-dir "$SRC/pipelines/eval" --base "$SUITE_FULL" \
+           ${EXCLUDE:+--exclude-games "$EXCLUDE"})
 UNPLAYED=$("$PY" "$WT/pipelines/schema_eval_complement.py" "${COMP_ARGS[@]}" --count 2>&1) \
   || { log "FATAL: complement did not compute: $UNPLAYED"; exit 1; }
 case "$UNPLAYED" in ''|*[!0-9]*) log "FATAL: complement returned '$UNPLAYED'"; exit 1 ;; esac
-BANKED=$(( 200 - UNPLAYED ))
-log "arm=$ARM already banked $BANKED of 200 games; $UNPLAYED unplayed"
+# NOT `200 - UNPLAYED`. With games excluded, that arithmetic counts every excluded game as banked
+# -- it would have logged "already banked 190 of 200" when 185 were -- which is the one
+# confusion the complement's three-way partition exists to prevent. Banked comes from the
+# complement's own count of banked games, read off its summary line.
+N_EXCL=0; [ -n "$EXCLUDE" ] && N_EXCL=$(printf '%s' "$EXCLUDE" | tr ',' '\n' | grep -c .)
+BANKED=$(( 200 - UNPLAYED - N_EXCL ))
+log "arm=$ARM already banked $BANKED of 200 games; $UNPLAYED unplayed; $N_EXCL excluded"
 if [ "$UNPLAYED" -eq 0 ]; then
   log "arm=$ARM is COMPLETE -- nothing to run. Exiting 0 so a watchdog does not resubmit it."
   exit 0

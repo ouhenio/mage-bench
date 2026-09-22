@@ -95,6 +95,8 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0,
                     help="keep at most N seeds; 0 = all. N=1 is the one-deal smoke.")
     ap.add_argument("--count", action="store_true", help="print the unplayed count and nothing else")
+    ap.add_argument("--exclude-games", default="",
+                    help="comma-separated base game indices never to queue, each with a reason on record")
     args = ap.parse_args()
 
     sys.path.insert(0, args.score_suite_dir)
@@ -121,7 +123,23 @@ def main() -> int:
     arm_dirs = sorted((d for r in roots for d in r.glob(f"schema-eval-{args.arm}-*") if d.is_dir()),
                       key=lambda d: d.name)
     banked = banked_by_game(arm_dirs, score_game, seed_of)
-    replay = [g for g in base["games"] if g["game"] not in banked]
+    # EXCLUDED IS NOT BANKED, and the two are kept apart all the way through. A game excluded
+    # here is one KNOWN to fail deterministically -- seeds 1200062 and 1200068 freeze the XMage
+    # AI's search in both arms and both seatings (Ad Nauseam mirrors), 1200082 dies without a
+    # freeze warning (KikiPod). Queueing them again burns a GPU re-failing them. But they must
+    # never be counted as banked either: the readout's n has to show 195 of 200, not 200, so the
+    # design's shortfall stays visible instead of being absorbed into the partition.
+    excluded = {int(x) for x in args.exclude_games.split(",") if x.strip()}
+    unknown = excluded - set(seed_of)
+    if unknown:
+        print(f"--exclude-games names indices not in the base suite: {sorted(unknown)}", file=sys.stderr)
+        return 2
+    already = excluded & set(banked)
+    if already:
+        print(f"--exclude-games names games that are ALREADY BANKED: {sorted(already)}. Excluding a "
+              f"banked game would silently drop real evidence; refusing.", file=sys.stderr)
+        return 2
+    replay = [g for g in base["games"] if g["game"] not in banked and g["game"] not in excluded]
 
     if args.count:
         print(len(replay))
@@ -129,8 +147,10 @@ def main() -> int:
 
     # THE PARTITION IS ASSERTED, not assumed. Every base game is either banked or queued, never
     # both and never neither -- the two ways a resume silently changes the design's n.
-    assert len(replay) + len(banked) == len(base["games"]), (
-        f"partition does not cover the suite: {len(replay)} + {len(banked)} != {len(base['games'])}")
+    # The partition is now THREE-way, and still asserted: banked + excluded + queued = the suite.
+    assert len(replay) + len(banked) + len(excluded) == len(base["games"]), (
+        f"partition does not cover the suite: {len(replay)} queued + {len(banked)} banked + "
+        f"{len(excluded)} excluded != {len(base['games'])}")
     assert not ({g["game"] for g in replay} & set(banked)), "a banked game is queued for replay"
 
     if not args.out:
@@ -147,6 +167,7 @@ def main() -> int:
     # Both recorded: the games, which are what the design counts, and the seeds, which are what
     # the readout pairs on. They differ by the mirror factor and confusing them is the defect
     # this file's header describes.
+    out["excluded_games"] = sorted(excluded)
     out["banked_elsewhere_games"] = sorted(banked)
     out["banked_elsewhere_seeds"] = sorted({s for _, s in banked.values()})
     out["banked_by_dir"] = {str(d): sum(1 for v in banked.values() if v[0] == str(d))
