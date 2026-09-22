@@ -6,6 +6,7 @@ import mage.constants.PhaseStep;
 import mage.constants.WatcherScope;
 import mage.constants.Zone;
 import mage.game.Game;
+import mage.game.events.BatchEvent;
 import mage.game.events.GameEvent;
 import mage.player.ai.SimulatedPlayerMCTS;
 import mage.players.Player;
@@ -19,6 +20,7 @@ import org.mage.test.serverside.base.CardTestPlayerBase;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,10 +71,29 @@ public class RolloutRngTest extends CardTestPlayerBase {
 
         @Override
         public void watch(GameEvent event, Game game) {
-            lines.add(game.getTurnNum() + "|" + game.getTurnStepType() + "|" + event.getType()
+            // A BatchEvent refuses getTargetId() by design (it throws, and the engine's error
+            // handler then ENDS the game -- run 10108's "draw at turn 3"). Record its members.
+            //
+            // Members are SORTED: getEvents() is a HashSet of identity-hashed events, so its order
+            // differs run to run and would put recording noise into the hash. If the ENGINE's
+            // behaviour depends on that order, it still shows up in the events that follow.
+            if (event instanceof BatchEvent) {
+                List<String> members = new ArrayList<>();
+                for (Object member : ((BatchEvent<?>) event).getEvents()) {
+                    members.add(line((GameEvent) member, game));
+                }
+                Collections.sort(members);
+                lines.add(game.getTurnNum() + "|" + game.getTurnStepType() + "|" + event.getType() + "|batch" + members);
+                return;
+            }
+            lines.add(line(event, game));
+        }
+
+        private static String line(GameEvent event, Game game) {
+            return game.getTurnNum() + "|" + game.getTurnStepType() + "|" + event.getType()
                     + "|t=" + name(event.getTargetId(), game) + "|s=" + name(event.getSourceId(), game)
                     + "|p=" + name(event.getPlayerId(), game) + "|a=" + event.getAmount()
-                    + "|f=" + event.getFlag());
+                    + "|f=" + event.getFlag();
         }
 
         private static String name(UUID id, Game game) {
@@ -160,10 +181,47 @@ public class RolloutRngTest extends CardTestPlayerBase {
             }
             TranscriptWatcher watcher = new TranscriptWatcher();
             sim.getState().addWatcher(watcher);
+            String before = describe(sim);
+            Assert.assertFalse("the copied position is already over: " + before, sim.getState().isGameOver());
             sim.resume();
+            // POSITIVE CONTROL. Red run 10104 ended every rollout as a draw at turn 3 after 11
+            // events and the hasEnded() check alone passed it: "ended" is not "played". A playout
+            // that took no action is not a rollout, and hashes of it prove nothing.
+            int actions = 0;
+            for (Player player : sim.getState().getPlayers().values()) {
+                actions += ((SimulatedPlayerMCTS) player).getActionCount();
+            }
+            // ...and one action is not a playout either: 10108 passed "actions > 0" with every
+            // rollout ended by an exception after 1-3 actions. A random playout from 20 life ends
+            // with a LOSER on a later turn; the engine's error handler ends it as a draw instead.
+            boolean someoneLost = false;
+            for (Player player : sim.getState().getPlayers().values()) {
+                someoneLost |= player.hasLost();
+            }
+            Assert.assertTrue("the playout did not play to a result. before: " + before + " after: " + describe(sim)
+                    + " actions=" + actions + " transcript tail: "
+                    + watcher.lines.subList(Math.max(0, watcher.lines.size() - 10), watcher.lines.size()),
+                    actions > 0 && someoneLost && sim.getTurnNum() > position.getTurnNum());
             Assert.assertTrue("the playout must reach game end, not stop early", sim.hasEnded());
-            return new Transcript(watcher.lines, "winner=" + sim.getWinner() + " turn=" + sim.getTurnNum());
+            Transcript t = new Transcript(watcher.lines,
+                    "winner=" + sim.getWinner() + " turn=" + sim.getTurnNum() + " actions=" + actions);
+            // one line per rollout in the job log: the evidence that each one played, and how much
+            System.out.println("ROLLOUT seed=" + seed + " thread=" + Thread.currentThread().getName() + " " + t);
+            return t;
         });
+    }
+
+    private static String describe(Game sim) {
+        StringBuilder sb = new StringBuilder("turn=" + sim.getTurnNum() + " step=" + sim.getTurnStepType()
+                + " paused=" + sim.isPaused() + " over=" + sim.getState().isGameOver() + " ended=" + sim.hasEnded()
+                + " stopOnTurn=" + sim.getOptions().stopOnTurn);
+        for (Player player : sim.getState().getPlayers().values()) {
+            sb.append(" [").append(player.getName()).append(' ').append(player.getClass().getSimpleName())
+                    .append(" life=").append(player.getLife()).append(" left=").append(player.hasLeft())
+                    .append(" lost=").append(player.hasLost()).append(" lib=").append(player.getLibrary().size())
+                    .append(" hand=").append(player.getHand().size()).append(']');
+        }
+        return sb.toString();
     }
 
     private static ExecutorService simPool(int threads) {
@@ -284,5 +342,43 @@ public class RolloutRngTest extends CardTestPlayerBase {
             got[i] = RandomUtil.nextInt(1_000_000);
         }
         Assert.assertArrayEquals("the host's stream moved while a rollout was seeded", expected, got);
+    }
+
+    /**
+     * The pooled-thread hazards: a task that THROWS still clears its stream (else it leaks into
+     * the next task on that thread, which then refuses to seed), and reseeding the process
+     * stream from inside a rollout is refused rather than done.
+     */
+    @Test
+    public void test_streamClearedOnThrowAndProcessReseedRefused() throws Exception {
+        ExecutorService pool = simPool(1);
+        try {
+            Future<?> thrower = pool.submit(() -> RandomUtil.withThreadSeed(1L, () -> {
+                throw new IllegalArgumentException("task failed mid-rollout");
+            }));
+            try {
+                thrower.get(1, TimeUnit.MINUTES);
+                Assert.fail("the throwing task should have thrown");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                Assert.assertTrue(expected.getCause() instanceof IllegalArgumentException);
+            }
+            // same (only) pool thread: seeding again must succeed, i.e. the finally cleared it
+            int drawn = pool.submit(() -> RandomUtil.withThreadSeed(2L, () -> RandomUtil.nextInt(1000)))
+                    .get(1, TimeUnit.MINUTES);
+            Assert.assertEquals(new java.util.Random(2L).nextInt(1000), drawn);
+
+            Future<?> reseed = pool.submit(() -> RandomUtil.withThreadSeed(3L, () -> {
+                RandomUtil.setSeed(99L);
+                return null;
+            }));
+            try {
+                reseed.get(1, TimeUnit.MINUTES);
+                Assert.fail("setSeed inside a rollout must be refused");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                Assert.assertTrue(String.valueOf(expected.getCause()), expected.getCause() instanceof IllegalStateException);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 }

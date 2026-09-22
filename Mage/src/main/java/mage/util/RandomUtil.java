@@ -14,27 +14,40 @@ public final class RandomUtil {
 
     private static final Random random = new Random(); // thread safe with seed support
 
+    // A ROLLOUT'S OWN STREAM. A thread that seeded itself draws from here; every other thread
+    // draws from the process stream above, exactly as before this existed, so the live game and
+    // its setSeed(gameSeed) are unchanged. With only the global stream, seeding a rollout reseeded
+    // the live game and every concurrent rollout (Mage.Tests RolloutRngTest; the mtg repo's
+    // docs/eval/instance-rng-estimate.md). Pools reuse threads, so this is set per TASK and
+    // cleared in a finally -- withThreadSeed does both.
+    private static final ThreadLocal<Random> threadRandom = new ThreadLocal<>();
+
+    private static Random current() {
+        Random own = threadRandom.get();
+        return own != null ? own : random;
+    }
+
     private RandomUtil() {
     }
 
     public static Random getRandom() {
-        return random;
+        return current();
     }
 
     public static int nextInt() {
-        return random.nextInt();
+        return current().nextInt();
     }
 
     public static int nextInt(int max) {
-        return random.nextInt(max);
+        return current().nextInt(max);
     }
 
     public static boolean nextBoolean() {
-        return random.nextBoolean();
+        return current().nextBoolean();
     }
 
     public static double nextDouble() {
-        return random.nextDouble();
+        return current().nextDouble();
     }
 
     public static Color nextColor() {
@@ -42,17 +55,26 @@ public final class RandomUtil {
     }
 
     public static void setSeed(long newSeed) {
+        // Reseeding the PROCESS stream from inside a rollout is the exact bug this class had.
+        if (threadRandom.get() != null) {
+            throw new IllegalStateException("setSeed called on a thread with its own rollout stream: "
+                    + Thread.currentThread().getName() + " -- it would reseed the live game");
+        }
         random.setSeed(newSeed);
     }
 
-    // RED STUB, replaced in the next commit: today's semantics under the new names, so the rollout
-    // RNG test compiles against the unmodified engine and shows its failure. Seeding "this thread"
-    // here reseeds the one process-global stream, which is exactly what the test must reject.
     public static void seedThisThread(long seed) {
-        random.setSeed(seed);
+        // Already seeded means the previous task on this pooled thread never cleared: its stream
+        // would leak into this one. Refuse rather than silently replace it.
+        if (threadRandom.get() != null) {
+            throw new IllegalStateException("thread already has a rollout stream (not cleared by its last task): "
+                    + Thread.currentThread().getName());
+        }
+        threadRandom.set(new Random(seed));
     }
 
     public static void clearThisThread() {
+        threadRandom.remove();
     }
 
     public static <T> T withThreadSeed(long seed, Supplier<T> task) {
