@@ -1,0 +1,38 @@
+{
+  "title": "Consecutive java.util.Random seeds share their first draw; the AI's tie-break coin is correlated across searches",
+  "description": "java.util.Random's first LCG step moves seeds that differ by 1 apart by only \
+0x5DEECE66D in 2^48. So Randoms seeded with CONSECUTIVE values return the SAME first draw for \
+every power-of-two bound, nextBoolean() included. Measured by replicating the LCG: over 64 \
+consecutive seeds the first nextInt(2) was 1 every time, and over 16 the first nextInt(64) was \
+56 every time. The second draw is still partly shared. \
+\
+FOUND IN RolloutCounter (fixed on s/rollout-count): rollout k of a call was seeded \
+seedBase * 1_000_003 + k, so every rollout of a call drew the same first nextInt(2) (256 of 256, \
+red run 10134). The rollouts were correlated, and N rollouts were worth fewer than N. Symptom: \
+job 10133's between-repeat SD stayed at 0.049 from N=64 to N=128, with overdispersion 1.77 at \
+N=128 against a binomial 1.0. Fixed by seeding mix(seedBase + k) (SplitMix64), with \
+RolloutCounterTest.test_rolloutSeedsDecorrelateFirstDraw as the test. \
+\
+OPEN, NOT FIXED: ComputerPlayer6.beginTiebreakSequence seeds tiebreakRandom = \
+new Random(seed * 1_000_003L + ordinal), one per search ordinal, and the coin is \
+tiebreakRandom.nextBoolean(). Consecutive ordinals mean the FIRST tie-break coin of every search \
+in a game comes up the same way. It is deterministic, as intended, but it is not a coin: the \
+first tie of each search always breaks toward the same side. Fixing it (mix the seed) changes \
+which move the mad AI plays in tied positions, so every seeded corpus and eval regenerates \
+differently afterwards. That is a registration decision, not a drive-by fix. \
+\
+Mage.Tests RolloutRngTest's local rolloutSeed uses the same consecutive pattern. Its assertions \
+(replay per seed, difference across seeds, host stream) are unaffected, because they compare \
+transcripts, not independence.",
+  "status": "open",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "engine",
+    "rng",
+    "ai",
+    "determinism",
+  ],
+  "created_at": "2026-09-22T08:30:00.000-04:00",
+  "updated_at": "2026-09-22T08:30:00.000-04:00",
+}

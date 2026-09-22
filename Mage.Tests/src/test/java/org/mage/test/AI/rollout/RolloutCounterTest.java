@@ -162,4 +162,30 @@ public class RolloutCounterTest extends CardTestPlayerBase {
         Assert.assertTrue("the favoured seat should mostly WIN: " + counts(forA), forA.count(Outcome.WIN) > N / 2);
         Assert.assertTrue("the unfavoured seat should mostly LOSE: " + counts(forB), forB.count(Outcome.LOSS) > N / 2);
     }
+
+    /**
+     * ROLLOUT SEEDS MUST NOT SHARE THEIR FIRST DRAWS. java.util.Random seeded with CONSECUTIVE
+     * values returns the same first draw for every power-of-two bound (nextBoolean included): the
+     * LCG's first step moves adjacent seeds apart by only 0x5DEECE66D in 2^48. With the old
+     * rolloutSeed = seedBase * 1_000_003 + k, 256 of 256 rollouts (red run 10134; 64 of 64 in a
+     * direct replication) of one call drew the same first
+     * nextInt(2), so they were correlated and N rollouts were worth fewer than N -- the suspected
+     * cause of job 10133's between-repeat SD staying at 0.049 from N=64 to N=128 (overdispersion
+     * 1.77 at N=128). No game needed: this is a property of the seeds alone.
+     */
+    @Test
+    public void test_rolloutSeedsDecorrelateFirstDraw() {
+        int n = 256;
+        int ones = 0;
+        java.util.Set<Integer> first64 = new java.util.HashSet<>();
+        for (int k = 0; k < n; k++) {
+            ones += new java.util.Random(RolloutCounter.rolloutSeed(SEED_BASE, k)).nextInt(2);
+            first64.add(new java.util.Random(RolloutCounter.rolloutSeed(SEED_BASE, k)).nextInt(64));
+        }
+        // binomial(256, 0.5): mean 128, sd 8; +-40 is five sd
+        Assert.assertTrue("first nextInt(2) over " + n + " consecutive rollouts: " + ones + " ones",
+                ones > 88 && ones < 168);
+        Assert.assertTrue("first nextInt(64) takes only " + first64.size() + " distinct values over " + n + " rollouts",
+                first64.size() >= 48);
+    }
 }

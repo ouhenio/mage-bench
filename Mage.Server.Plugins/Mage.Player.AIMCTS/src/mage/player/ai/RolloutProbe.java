@@ -60,16 +60,9 @@ public final class RolloutProbe {
         return false;
     }
 
-    // SplitMix64 finaliser: disjoint seed families per (game, position, N, repeat)
-    private static long mix(long x) {
-        x += 0x9E3779B97F4A7C15L;
-        x = (x ^ (x >>> 30)) * 0xBF58476D1CE4E5B9L;
-        x = (x ^ (x >>> 27)) * 0x94D049BB133111EBL;
-        return x ^ (x >>> 31);
-    }
-
+    // disjoint seed families per (game, position, N, repeat)
     static long seedBase(long gameSeed, int position, int n, int repeat) {
-        return mix(mix(mix(mix(gameSeed) + position) + n) + repeat);
+        return RolloutCounter.mix(RolloutCounter.mix(RolloutCounter.mix(RolloutCounter.mix(gameSeed) + position) + n) + repeat);
     }
 
     public static synchronized void probe(Game game, UUID playerId, String playerName) {

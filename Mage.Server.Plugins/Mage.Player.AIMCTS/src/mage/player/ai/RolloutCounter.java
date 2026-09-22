@@ -42,8 +42,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * THREE CONTRACTS, each tested in Mage.Tests RolloutCounterTest:
  * <ul>
  * <li>SEEDED. Rollout k of a call runs on its own RandomUtil thread stream seeded
- * {@code seedBase * 1_000_003 + k}, so the same seedBase replays the same outcomes AND the same
- * per-rollout transcripts, and the live game's own stream does not move.</li>
+ * {@code mix(seedBase + k)} (SplitMix64), so the same seedBase replays the same outcomes AND the
+ * same per-rollout transcripts, and the live game's own stream does not move. MIXED, never
+ * consecutive: java.util.Random seeded with consecutive values gives the same first draw for
+ * every power-of-two bound, which made the rollouts of one call correlated (see
+ * {@link #rolloutSeed}).</li>
  * <li>BUDGETED, AND A CUT IS NOT A LOSS. Each rollout's playout gets {@code budgetMillis}; at the
  * deadline its thread is interrupted, which is the cut MCTS itself uses (invokeAll's timeout).
  * checkIfGameIsOver then returns true WITHOUT ending the game, so hasEnded() tells a result from a
@@ -119,8 +122,23 @@ public final class RolloutCounter {
     private RolloutCounter() {
     }
 
+    // SplitMix64 finaliser
+    public static long mix(long x) {
+        x += 0x9E3779B97F4A7C15L;
+        x = (x ^ (x >>> 30)) * 0xBF58476D1CE4E5B9L;
+        x = (x ^ (x >>> 27)) * 0x94D049BB133111EBL;
+        return x ^ (x >>> 31);
+    }
+
+    /**
+     * NOT {@code seedBase * 1_000_003 + k}, which this was until job 10133: java.util.Random's first
+     * LCG step moves adjacent seeds apart by only 0x5DEECE66D in 2^48, so consecutive seeds return
+     * the SAME first draw for every power-of-two bound -- 256 of 256 rollouts drew the same first
+     * nextInt(2) -- and the rollouts of one call were correlated. Mixing each seed removes it
+     * (RolloutCounterTest.test_rolloutSeedsDecorrelateFirstDraw).
+     */
     public static long rolloutSeed(long seedBase, int k) {
-        return seedBase * 1_000_003L + k;
+        return mix(seedBase + k);
     }
 
     /**
