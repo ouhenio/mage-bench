@@ -35,6 +35,27 @@ but AiDecisionRecorder wrote nothing -- cause not determined, so the recorder ca
 on for this diagnosis. \
 HANDLING IN THE EVAL: these five games are EXCLUDED from the resume (schema_eval_complement \
 --exclude-games) and never counted as banked, so the readout reports 195/200, not 200.",
+  "correction_2026_09_22": "ROOT CAUSE FOUND for the two Ad Nauseam seeds, and the candidates named \
+above were BOTH WRONG -- it is neither an MCP call blocking nor a launch/idle timeout. Found from the \
+existing eval logs with no GPU, by lining up the pilot's own timestamps: in every one of the 6 games \
+(1200062 g122/g123 and 1200068 g135, both arms) the PILOT PROCESS CRASHED -- run.log reads \
+\"[ERROR] Pilot 'Eval122' exited with code 1 -- aborting game\", 13-14 s after its last choose_action \
+had SUCCEEDED -- on pilot_rendering.py:591 render_context: \"AssertionError: append-only prompt ~185841 \
+tokens exceeds 141312 (serving ceiling 143360 minus 2048 reserved for the completion)\". The transcript \
+outgrew the served context (181k-186k tokens across the six) and the harness, correctly, refuses to \
+head-truncate an append-only prompt. That one cause explains every property previously attributed \
+elsewhere: engine-vs-engine completes because there is no pilot and so no context budget; it is \
+deterministic in both arms because transcript length depends on the deal, not the treatment; and \
+errors.log reads 'No errors detected' because the assertion fires in the PILOT process while errors.log \
+watches only the SERVER -- which is the no-signature shape, explained. The AI's 'thinks too long' timeout \
+is a CORRELATE, not a cause: the same combo deck that bloats the transcript also explodes the search. \
+STILL OPEN: 1200082 (KikiPod) shows NO overflow assertion and is a different cause. And across all 30 \
+casualties in the two arms, only 7 are context overflows; 20 have NO pilot traceback at all, and 3 a \
+different exception -- the true no-signature class is the majority and is not explained by this. \
+CONSEQUENCE BEYOND THIS EVAL: under MAGEBENCH_CONTEXT_LIMIT=143360 in full-context (append-only) mode, any \
+deal whose transcript exceeds ~141k tokens can never reach game_end. That is a structural ceiling on game \
+length, deck-dependent, and it silently removes long games from every eval that samples those decks. \
+The pilot-seat GPU replay named above is no longer needed for the Ad Nauseam seeds.",
   "priority": "p2",
   "status": "open",
   "found_in": "schema eval, jobs 9970 / 9972; replay 10081",
