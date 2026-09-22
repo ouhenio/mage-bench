@@ -30,6 +30,12 @@ import java.util.UUID;
  * empty stack, up to xmage.rollout.positions per game. One per turn, so the positions spread over
  * the game rather than bunching in the opening.
  * <p>
+ * FOCUS (both required): xmage.rollout.steps is a comma-separated list of step names
+ * ("Declare Attackers,Declare Blockers,Precombat Main") or "any"; xmage.rollout.minActions is the
+ * number of legal actions a position must have AFTER dropping mana abilities (1 = no filter).
+ * A position that fails either is not a position at all -- not counted, not indexed -- so a
+ * focused arm's indices are its own.
+ * <p>
  * MODES (xmage.rollout.mode, required): "count" is the above. "spread" runs {@link ActionSpread}
  * instead -- every legal action applied, N rollouts from each result -- at the first priority the
  * seat receives in each (turn, step), in ANY step, counting only positions with more than one
@@ -244,6 +250,19 @@ public final class RolloutProbe {
         if (done >= skip + maxPositions) {
             return;
         }
+        String steps = required("xmage.rollout.steps");
+        if (!steps.equals("any")) {
+            boolean hit = false;
+            for (String allowed : steps.split(",")) {
+                if (allowed.trim().equals(game.getTurnStepType().toString())) {
+                    hit = true;
+                    break;
+                }
+            }
+            if (!hit) {
+                return;   // not one of the focused steps: not a position
+            }
+        }
         if (alreadyBanked(seat, done)) {
             // measured by an earlier job: counted so the indices (and seed families) of later
             // positions are the ones an unchunked run would give them, then skipped
@@ -272,6 +291,16 @@ public final class RolloutProbe {
                 spreadPositions.put(key, done + 1);
             }
             return;
+        }
+        // The focus filter needs the enumeration, so it runs here rather than inside measure():
+        // a position below the minimum is not counted, so indices stay the focused arm's own.
+        int minActions = Integer.parseInt(required("xmage.rollout.minActions"));
+        if (minActions > 1) {
+            Game enumCopy = RolloutCounter.withRandomSeats(game);
+            if (ActionSpread.nonManaCount(ActionSpread.legalActions(enumCopy, playerId, RolloutCounter.mix(base ^ 0x5EEDL)))
+                    < minActions) {
+                return;   // too few real choices once mana abilities are dropped
+            }
         }
         ActionSpread.Spread sp = ActionSpread.measure(game, playerId, base, n, budgetMs, threads, critic);
         if (sp == null) {

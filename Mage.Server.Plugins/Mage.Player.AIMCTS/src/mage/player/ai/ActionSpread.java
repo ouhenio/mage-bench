@@ -81,6 +81,22 @@ public final class ActionSpread {
     private ActionSpread() {
     }
 
+    /**
+     * How many of these are not mana abilities. The readable cut of a spread drops mana abilities
+     * ("{T}: Add {R}"): they are legal actions and MCTS enumerates them, but tapping for mana that
+     * is then not spent changes nothing that survives the step, and they were the "best action" in
+     * 10 of 24 non-flat positions of the random arm. Typed, not matched on the label.
+     */
+    public static int nonManaCount(List<Ability> actions) {
+        int n = 0;
+        for (Ability a : actions) {
+            if (!(a instanceof mage.abilities.mana.ManaAbility)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     /** The legal actions at this priority position for the seat, as MCTS enumerates them. */
     public static List<Ability> legalActions(Game enumCopy, UUID seatId, long seed) {
         MCTSPlayer player = (MCTSPlayer) enumCopy.getPlayer(seatId);
