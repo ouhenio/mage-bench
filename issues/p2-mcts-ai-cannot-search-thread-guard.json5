@@ -1,0 +1,38 @@
+{
+  "title": "The Monte Carlo AI cannot search: its simulation threads fail the game-thread guard",
+  "description": "ThreadUtils.isRunGameThread whitelists GAME threads, AI-SIM-MAD simulation \
+threads and the unit-test main thread, but not AI-SIM-MCTS. ComputerPlayerMCTS runs its \
+search on a pool named AI-SIM-MCTS, and MCTSNode.expand resumes a simulated game there. \
+GameImpl.checkStateAndTriggered calls checkConcede(), which calls ensureRunInGameThread and \
+throws. So every expansion throws \"Wrong code usage: game related code must run in GAME \
+thread, but it used in AI-SIM-MCTS - N\", and no playout ever starts. The seat still plays a \
+game, but its search tree is never built. \
+\
+MEASURED (wt-timing, 2026-09-22), MCTS EngineA vs mad EngineB, skill 1. Job 10096: 665,411 \
+createSimulationForAI calls and ZERO MCTSNode.simulate calls in ~6 min, 224 guard stack \
+traces, turn 2. Job 10103 with this one-branch fix: 0 guard errors, 2,566 simulations, the \
+game finished at turn 18. \
+\
+Invisible until now because no harness seat could be COMPUTER_MONTE_CARLO. The cpu seat's \
+optional `ai` field (same branch, s/mcts-cpu-seat) is the first way to seat one. \
+\
+FIX: one branch in isRunGameThread for THREAD_PREFIX_AI_SIMULATION_MCTS, mirroring MAD. \
+The justification is the same as MAD's: both run a copied simulated game on their own thread, \
+never the live one. \
+\
+NOT FIXED here, recorded for whoever uses the seat: at skill 1 the search is mostly backing \
+up truncated games. 1,735 of 2,566 playouts (68%) were cut by the invokeAll deadline \
+(maxThinkTime = skill x 2 s, halved at some steps) rather than reaching a result. \
+checkIfGameIsOver returns true on an interrupted thread without calling end(), and \
+MCTSNode.simulate scores a playout without a winner as a loss (retVal = -1).",
+  "status": "closed",
+  "priority": 2,
+  "type": "bug",
+  "labels": [
+    "engine",
+    "ai",
+    "mcts",
+  ],
+  "created_at": "2026-09-22T05:40:00.000-04:00",
+  "updated_at": "2026-09-22T05:40:00.000-04:00",
+}

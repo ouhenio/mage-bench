@@ -111,6 +111,11 @@ public final class ThreadUtils {
         } else if (name.startsWith(THREAD_PREFIX_AI_SIMULATION_MAD)) {
             // ai simulation
             return true;
+        } else if (name.startsWith(THREAD_PREFIX_AI_SIMULATION_MCTS)) {
+            // ai simulation, Monte Carlo: runs a simulated game exactly as AI-SIM-MAD does. Without
+            // this every MCTSNode.expand throws in checkConcede and no playout ever starts; see
+            // issues/p2-mcts-ai-cannot-search-thread-guard.json5.
+            return true;
         } else if (name.equals("main")) {
             // unit test
             return true;
