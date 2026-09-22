@@ -34,6 +34,31 @@ MVN_REPO_ARGS = (
 logger = get_logger(__name__)
 
 
+# RolloutProbe (Mage.Player.AIMCTS), hooked on HumanPlayer.priority in the SERVER JVM. Seats is
+# the switch; once it is set every other setting is required, as the Java side also insists --
+# a measurement whose N or budget came from a default is not a registered measurement.
+ROLLOUT_PROBE_SETTINGS = (
+    ("MAGEBENCH_ROLLOUT_OUT", "xmage.rollout.out"),
+    ("MAGEBENCH_ROLLOUT_POSITIONS", "xmage.rollout.positions"),
+    ("MAGEBENCH_ROLLOUT_NS", "xmage.rollout.ns"),
+    ("MAGEBENCH_ROLLOUT_REPEATS", "xmage.rollout.repeats"),
+    ("MAGEBENCH_ROLLOUT_BUDGET_MS", "xmage.rollout.budgetMs"),
+    ("MAGEBENCH_ROLLOUT_THREADS", "xmage.rollout.threads"),
+)
+
+
+def rollout_probe_props(environ: dict[str, str]) -> list[str]:
+    """-D properties for the rollout probe, or none when MAGEBENCH_ROLLOUT_SEATS is unset."""
+    seats = environ.get("MAGEBENCH_ROLLOUT_SEATS")
+    if not seats:
+        return []
+    missing = [env for env, _ in ROLLOUT_PROBE_SETTINGS if not environ.get(env)]
+    assert not missing, f"MAGEBENCH_ROLLOUT_SEATS is set but {', '.join(missing)} is not"
+    return [f"-Dxmage.rollout.seats={seats}"] + [
+        f"-D{prop}={environ[env]}" for env, prop in ROLLOUT_PROBE_SETTINGS
+    ]
+
+
 def ai_budget_props(ai_nodes: str | None, ai_time: str | None) -> list[str]:
     """The per-skill search budgets, as -D properties FOR THE SERVER JVM.
 
@@ -246,6 +271,7 @@ def start_server(
             # process-global static -- so this is only sound with ONE game per
             # server JVM. Two games in one JVM would interleave their draws.
             *([f"-Dxmage.game.seed={game_seed}"] if game_seed else []),
+            *rollout_probe_props(dict(os.environ)),
             # Read by ComputerPlayer6, which runs HERE.
             *ai_budget_props(
                 env_or_none("MAGEBENCH_AI_NODES"), env_or_none("MAGEBENCH_AI_TIME")
