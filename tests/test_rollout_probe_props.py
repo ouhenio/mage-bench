@@ -6,6 +6,7 @@ from magebench.orchestration.game_processes import ROLLOUT_PROBE_SETTINGS, rollo
 
 FULL = {
     "MAGEBENCH_ROLLOUT_SEATS": "Sleepy",
+    "MAGEBENCH_ROLLOUT_MODE": "count",
     "MAGEBENCH_ROLLOUT_OUT": "/x/rollouts.jsonl",
     "MAGEBENCH_ROLLOUT_POSITIONS": "20",
     "MAGEBENCH_ROLLOUT_NS": "8,16,32",
@@ -23,6 +24,7 @@ def test_all_settings_pass_through():
     props = rollout_probe_props(FULL)
     assert props == [
         "-Dxmage.rollout.seats=Sleepy",
+        "-Dxmage.rollout.mode=count",
         "-Dxmage.rollout.out=/x/rollouts.jsonl",
         "-Dxmage.rollout.positions=20",
         "-Dxmage.rollout.ns=8,16,32",
