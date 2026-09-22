@@ -245,3 +245,60 @@ def should_retry(state, detail: dict, *, logger: Logger, temperature: float | No
         detail.get("max_tokens"), detail.get("arguments_empty"),
     )
     return True
+
+
+def unoffered_tool_calls(choice: object, *, offered: set[str]) -> list[str]:
+    """Every parsed tool-call NAME in the response that is not in the offered set, in order.
+
+    ALL calls, deliberately -- not `tool_calls[0]`, which is all `cap_hit_with_call_open`
+    inspects. The case this exists for is the second call of a response: g14 (schema eval,
+    guarded arm) emitted a valid `get_action_choices` and then `(http://127.0.0.1:5000/api/v2/
+    popular)` as a tool name, and a check on the first call alone would have passed it.
+    """
+    message = getattr(choice, "message", None)
+    tool_calls = getattr(message, "tool_calls", None) if message is not None else None
+    if not tool_calls:
+        # A response with no tool calls is a real case (a text-only reply), not a missing
+        # value to default over: it has, by definition, no unoffered name.
+        return []
+    out: list[str] = []
+    for tc in tool_calls:
+        fn = getattr(tc, "function", None)
+        name = getattr(fn, "name", None) if fn is not None else None
+        if name not in offered:
+            out.append(name)
+    return out
+
+
+def should_retry_unoffered(state, names: list[str], *, logger: Logger,
+                           temperature: float | None) -> bool:
+    """One redraw per decision for an unoffered tool name -- the SAME budget as `should_retry`.
+
+    WHY THIS IS NOT DEATH ANY MORE. The bridge answers a name it does not know with "Unknown
+    tool", the pilot raises ToolExecutionError, and the game aborts with no game_end -- while an
+    off-menu ID in the same position comes back as an error RESULT the model retries from. The
+    two are the same kind of mistake and were handled as opposite kinds of event.
+
+    WHY IT SHARES THE BUDGET rather than getting its own: the budget is keyed on the decision
+    and is one redraw whatever the cause, so a second cause cannot open an unbounded path. A
+    decision that already spent its redraw on a cap-hit falls through to the existing fatal path
+    here too -- which is unchanged, and still the backstop.
+
+    Own diagnostics, because the cap-hit message ("OUTPUT CUT OFF MID TOOL CALL") would
+    misdescribe a complete call with an invented name.
+    """
+    seq = state.last_decision_seq
+    if state.cap_retry_decision_seq == seq and state.cap_retry_used:
+        logger.warning(
+            "[pilot] unoffered tool name(s) %r AGAIN on decision %s after this decision's one "
+            "redraw was spent: the existing fatal path takes it from here.", names, seq,
+        )
+        return False
+    state.cap_retry_decision_seq = seq
+    state.cap_retry_used = True
+    if temperature == 0:
+        logger.warning("[pilot] unoffered-name retry at temperature 0: the redraw is the same "
+                       "draw. Recorded as deterministic_decoding.")
+    logger.warning("[pilot] UNOFFERED TOOL NAME(S) %r in one response (decision %s): not "
+                   "executed, redrawing once.", names, seq)
+    return True

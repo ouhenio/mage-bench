@@ -82,7 +82,12 @@ from magebench.pilot.mulligan import (
     mulligan_choice,
     mulligan_mode,
 )
-from magebench.pilot.cap_retry import cap_hit_with_call_open, should_retry
+from magebench.pilot.cap_retry import (
+    cap_hit_with_call_open,
+    should_retry,
+    should_retry_unoffered,
+    unoffered_tool_calls,
+)
 from magebench.pilot.settings_manifest import settings_manifest, unread_warning
 from magebench.pilot.decision_schema import (
     bindable_enum,
@@ -1359,6 +1364,35 @@ async def run_pilot_loop(
                     # Nothing appended to history: the redraw must see the same
                     # prompt, or this becomes a prompt change wearing a retry's
                     # clothes and the arm stops measuring one thing.
+                    continue
+
+            # AN UNOFFERED TOOL NAME, CHECKED ON EVERY CALL BEFORE ANY IS EXECUTED. Until now it
+            # reached the bridge, came back "Unknown tool", and killed the pilot: 2 of the schema
+            # eval's 30 casualties. It gets through the name guard because vLLM's Qwen3
+            # structural-tag END ("\n</function>\n</tool_call>") starts with the newline that
+            # BEGIN already consumed, so after a ZERO-ARGUMENT call the tag never closes and its
+            # `any_text` body swallows the next call unconstrained -- proven with xgrammar on g14's
+            # own tokens. That is the root cause and it is upstream; this is the backstop, so
+            # that whatever the grammar lets through costs one redraw instead of the game.
+            unoffered = unoffered_tool_calls(choice, offered=_toolset_names)
+            if unoffered:
+                retrying_unoffered = should_retry_unoffered(
+                    state, unoffered, logger=logger,
+                    temperature=create_kwargs.get("temperature"),
+                )
+                if game_log:
+                    # EVERY OCCURRENCE, retry or not -- the same rule as completion_truncated: a
+                    # fix that also hid its own trigger would leave the population invisible.
+                    game_log.emit(
+                        "unoffered_tool_call",
+                        names=unoffered,
+                        game_seq=state.last_decision_seq,
+                        # No fallback needed: `unoffered` is non-empty only if the response
+                        # carries at least one tool call, so tool_calls is present here.
+                        n_tool_calls=len(choice.message.tool_calls),
+                        outcome="retry" if retrying_unoffered else "fatal_path",
+                    )
+                if retrying_unoffered:
                     continue
 
             if trace_log:
