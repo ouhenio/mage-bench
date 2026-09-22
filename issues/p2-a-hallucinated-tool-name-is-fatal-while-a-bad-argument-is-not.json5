@@ -36,6 +36,29 @@ Making tool-name errors recoverable would both save the games and generate the t
 This is NOT an argument for swallowing errors -- the opposite. The valuable case is the loud, \
 informative, SURVIVABLE one, because the message is what the model reads and learns from. A \
 silent retry teaches nothing and a crash teaches nothing.",
+  "update_2026_09_22_karn_engine": "Appended by karn-engine; the original above is karn-ranokau-stable's \
+and is unchanged. TWO MORE OCCURRENCES, schema eval guarded arm (job 9970), each a pilot crash and a \
+game with no game_end: g14 `(http://127.0.0.1:5000/api/v2/popular)` -- a URL as the tool name -- and \
+g195 `get_api_state`. Unlike the corpus's `choose`, g14 happened under a structural tag that was ON \
+THE WIRE, so the name guard itself let it through. ROOT CAUSE, PROVEN: vLLM 0.27.1's Qwen3 structural-tag \
+builder emits END = \"\\n</function>\\n</tool_call>\", which BEGINS with the newline that BEGIN \
+(\"<tool_call>\\n<function=NAME>\\n\") already consumed. A zero-argument call is written with ONE newline \
+before </function>, so the tag never closes and its any_text body swallows the NEXT call unconstrained, \
+while the parser -- which splits on delimiters -- still extracts both. g14's raw completion (decoded from \
+the server's own token ids) is a valid zero-arg get_action_choices followed by the invented call. With \
+xgrammar on those exact 49 tokens: the exact tag ACCEPTS the exact completion; the same invented name as a \
+FIRST call is rejected at token 4; and when the first call carries the doubled newline END expects, the \
+invented second call is rejected at token 19. Our tool_name_guard copies the builder byte-for-byte by \
+design (pipelines/opd/check_guard_syntax.py asserts it), so fixing END is a deliberate revision of that \
+invariant plus an upstream report, not an edit. g195's fatal call is absent from its sampled trace, so its \
+mechanism is NOT confirmed -- only that it occurred under an unbound request, i.e. the guard's own tag. \
+FIX ON A BRANCH, not merged: mage-bench s/unoffered-tool-retry (f1d40a84) checks EVERY call's name against \
+the offered set before any is executed and redraws once under the existing one-per-decision budget. BUT \
+THIS ISSUE'S OWN EVIDENCE FAVOURS A DIFFERENT FIX: it shows the model reads error text and corrects \
+(g160, conc4/g16). A redraw resamples the same prompt and teaches the model nothing, and with the grammar \
+bug live it can reproduce the leak. Returning 'Unknown tool' to the model as a readable result -- as \
+argument errors already are -- removes the asymmetry at its source and would keep g14's valid first call. \
+That choice is open.",
   "status": "open",
   "priority": 2,
   "type": "bug",
