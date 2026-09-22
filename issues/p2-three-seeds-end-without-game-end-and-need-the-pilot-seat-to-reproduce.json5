@@ -56,6 +56,22 @@ CONSEQUENCE BEYOND THIS EVAL: under MAGEBENCH_CONTEXT_LIMIT=143360 in full-conte
 deal whose transcript exceeds ~141k tokens can never reach game_end. That is a structural ceiling on game \
 length, deck-dependent, and it silently removes long games from every eval that samples those decks. \
 The pilot-seat GPU replay named above is no longer needed for the Ad Nauseam seeds.",
+  "correction_2_2026_09_22": "KIKIPOD (1200082) IS NOT DETERMINISTIC, and the 'three seeds' framing was \
+wrong. g162 and g163 died at 19:40:09-10 run.log time (23:40 local) in BOTH arms -- inside a single node \
+event at 23:40:00 in which 15 in-flight games died in the same second across both arms, coincident with \
+t2i-qwen-p (9809) being PREEMPTED and other tenants' jobs 9837/9838 starting and being cancelled 20 s \
+later. The two arms launched together and advance through the same game indices in near-lockstep, so \
+whatever was in flight at 23:40 was the SAME games in both: that is why KikiPod looked shared. The earlier \
+'~1 overlap expected by chance (15x15/200)' was also wrong for the same reason -- it assumed casualties \
+independent across arms, and a simultaneous event makes them anything but. The mechanism by which the \
+event reached our game processes is NOT established: our arms were not preempted, the slice's two \
+cumulative oom_kills cannot account for fifteen deaths, and both arms resumed banking within a minute \
+(107 and 116 game_ends after 23:41), so the model servers survived. THE GENUINELY DETERMINISTIC SET IS \
+ONLY THE TWO AD NAUSEAM SEEDS (1200062, 1200068), both pilot context overflow -- and even 1200068 is \
+not fully deterministic: g134 overflowed in one arm and banked in the other. FULL CLASSIFICATION of all \
+30 casualties across both arms, from the pilot side, none unclassified: node event at 23:40 = 15; pilot \
+context overflow = 7; SIGTERM at ~7.5 min, sender unidentified, NOT the 3600 s game timeout (the games \
+ran 7-8 min) = 4; MCP tool error crashed the pilot = 3; XMage server failed to start in 240 s = 1.",
   "priority": "p2",
   "status": "open",
   "found_in": "schema eval, jobs 9970 / 9972; replay 10081",
