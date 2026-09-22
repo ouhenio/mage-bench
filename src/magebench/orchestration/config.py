@@ -122,9 +122,14 @@ class HumanPlayer:
     deck_strategy: str | None = None
 
 
+# The XMage AIs a cpu seat may name, as PlayerType enum names -- the observer maps the seat's
+# "ai" field through PlayerType.valueOf. COMPUTER_DRAFT_BOT is in the enum but plays no games.
+CPU_AI_TYPES = ("COMPUTER_MAD", "COMPUTER_MONTE_CARLO")
+
+
 @dataclass
 class CpuPlayer:
-    """XMage built-in COMPUTER_MAD AI."""
+    """XMage built-in AI: COMPUTER_MAD unless ``ai`` names another."""
 
     name: str
     deck: str | None = None  # Path to .dck file, relative to project root
@@ -138,6 +143,9 @@ class CpuPlayer:
     # games would otherwise give every game in the sequence the same skills --
     # the same defect the seed had, in the same place.
     skill: int | None = None
+    # None sends no "ai" key, and the observer's null branch makes the seat COMPUTER_MAD, so a
+    # config that never names an AI serializes exactly as it did before this field existed.
+    ai: str | None = None
 
 
 # Union type for all player types
@@ -762,7 +770,12 @@ class Config:
                 elif player_type == "replay":
                     self.replay_players.append(ReplayPlayer(name=name, deck=deck, script=player.get("script")))
                 elif player_type == "cpu":
-                    self.cpu_players.append(CpuPlayer(name=name, deck=deck, skill=player.get("skill")))
+                    ai = player.get("ai")
+                    assert ai is None or ai in CPU_AI_TYPES, (
+                        f"cpu player {name!r} has ai={ai!r}; valid: {', '.join(CPU_AI_TYPES)} "
+                        f"(or omit it for COMPUTER_MAD)"
+                    )
+                    self.cpu_players.append(CpuPlayer(name=name, deck=deck, skill=player.get("skill"), ai=ai))
                 elif player_type == "human":
                     # http_port is read, not .get()'d: a browser seat with no port
                     # is a config someone forgot to finish, and a default would
@@ -861,6 +874,8 @@ class Config:
             d = {"type": "cpu", "name": p.name}
             if p.deck:
                 d["deck"] = p.deck
+            if p.ai is not None:
+                d["ai"] = p.ai
             if p.skill is not None:
                 d["skill"] = p.skill
             players.append(d)
