@@ -1,0 +1,34 @@
+{
+  "title": "The bound-choice enum is built per request, but one response can answer many decisions -- calls 2..N carry the previous decision's menu",
+  "description": "Measured in the live schema eval (guarded arm, job 9970, ~150 of 200 games): on the decision \
+each enum was BUILT FOR, 0 off-menu ids in ~8,000 bound answers. The grammar holds. But 25 off-menu ids \
+were still produced UNDER A PRESENT TAG, and every one came from the same place: a response containing \
+MORE THAN ONE `choose_action` call. MECHANISM: pilot.py assembles one request per LLM call and binds it \
+to the single decision in hand (`decision_blob_for_binding`), so the structural tag's enum is that \
+decision's menu. The model is free to emit several tool calls in one response. The first answers the \
+decision the enum was built for. It is executed, the game advances to a NEW decision with a DIFFERENT \
+menu, and calls 2..N are then executed against that new decision while still carrying ids constrained \
+to the OLD menu -- which is precisely an off-menu id (`Object pN not found in current choices`). \
+EVIDENCE: 34 choose_action calls in the guarded arm have no coverage row of their own; 30 are \
+immediately preceded by another choose_action, and all 34 came from responses holding 2, 10 or 12 \
+choose_action calls (14 / 9 / 11 respectively). 25 of the 34 are off-menu -- 73.5%, against 0.00% on \
+calls that had their own coverage row. One example response emits `{\"choice\": \"p20\"}` twice. WHY IT \
+MATTERS: it is the only source of off-menu ids on the guarded arm outside the decision classes the rule \
+declines by design, so it is the entire residual defect of the mechanism -- small in count, total in \
+kind. It also means the guarded arm's off-menu total understates what binding alone achieves, and a \
+reader comparing totals would attribute to the enum a failure the enum did not have. The 10- and \
+12-call responses are themselves a loop mode worth its own look. SUGGESTED FIX, either: (a) constrain \
+the grammar to AT MOST ONE choose_action per response when the enum is bound, so the tag cannot \
+authorise answers to decisions it was not built for; or (b) execute only the first choose_action of a \
+bound response and return the rest to the model with the new decision attached, so each later answer \
+is re-bound. (a) is smaller and fails closed; (b) preserves throughput. Either way the fix is TESTED \
+by the readout's own class 'extra call in a multi-call response', which must go to zero. NOT FIXED: the \
+eval arms are running on the current behaviour and must finish on identical bytes; this is for after \
+the readout. Found by the readout's order-join, which attributes each answer to the coverage row that \
+preceded it -- a choose_action with no row of its own was the anomaly that exposed it.",
+  "priority": "p2",
+  "status": "open",
+  "found_in": "schema eval guarded arm, job 9970, 2026-09-22",
+  "found_by": "karn-engine",
+  "files": ["src/magebench/pilot/pilot.py", "src/magebench/pilot/decision_schema.py"],
+}
