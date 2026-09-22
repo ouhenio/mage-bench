@@ -1,0 +1,25 @@
+{
+  "title": "AiDecisionRecorder wrote nothing although MAGEBENCH_AI_RECORD_DIR was set and the property is passed",
+  "description": "Replay job 10081 (ranokau, tree wt-schema @ 7aabff22, engine-vs-engine, skill 1, 255 s, \
+reached game_end) set MAGEBENCH_AI_RECORD_DIR to an existing, writable directory. game_processes.py:219-239 \
+reads that variable (`env_flag_dir(\"MAGEBENCH_AI_RECORD_DIR\", needed_by=\"AiDecisionRecorder\")`) and \
+passes `-Dxmage.ai.recordDir=<dir>` onto the SERVER JVM, and \
+Mage.Server.Plugins/Mage.Player.AI.MA/src/mage/player/ai/AiDecisionRecorder.java is the consumer. After a \
+complete game in which the AI searched enough to time out TEN times, the directory was EMPTY. \
+NOT DETERMINED: whether the property reached the JVM (server.log does not print JVM properties, so this \
+could not be confirmed from the artifacts), whether the recorder only fires for some decision types or AI \
+classes, or whether it writes only on a path this game never took. A recorder whose empty output is \
+indistinguishable from 'nothing to record' cannot be used as evidence of absence. \
+WHY IT MATTERS: it was named as the instrument for diagnosing the deterministic no-game_end seeds \
+(issue p2-three-seeds-end-without-game-end...), and a diagnosis that relied on it would have read its \
+silence as 'the AI made no notable decisions'. SUGGESTED FIRST STEP: have AiDecisionRecorder write a \
+one-line header when it initialises with a directory, so an empty dir means 'never initialised' and a \
+header-only file means 'initialised, recorded nothing' -- the same two-states-need-two-signals fix the \
+timing scaffold needed.",
+  "priority": "p3",
+  "status": "open",
+  "found_in": "replay job 10081, 2026-09-22",
+  "found_by": "karn-engine",
+  "files": ["Mage.Server.Plugins/Mage.Player.AI.MA/src/mage/player/ai/AiDecisionRecorder.java",
+            "src/magebench/orchestration/game_processes.py"],
+}
