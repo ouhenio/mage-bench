@@ -48,6 +48,7 @@ class PilotLoopState:
     consecutive_pass_errors: int = 0
     last_pass_error_msg: str = ""
     consecutive_truncations: int = 0
+    consecutive_unoffered_rejections: int = 0
     # name -> {"calls", "ok", "failed"} over the whole game, SEEDED FROM THE OFFERED
     # TOOLSET so a tool nobody called is a count of zero rather than a missing key.
     # That distinction is the whole point of the field: `get_game_log` was offered

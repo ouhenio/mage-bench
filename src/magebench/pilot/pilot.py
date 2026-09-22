@@ -82,12 +82,7 @@ from magebench.pilot.mulligan import (
     mulligan_choice,
     mulligan_mode,
 )
-from magebench.pilot.cap_retry import (
-    cap_hit_with_call_open,
-    should_retry,
-    should_retry_unoffered,
-    unoffered_tool_calls,
-)
+from magebench.pilot.cap_retry import cap_hit_with_call_open, should_retry
 from magebench.pilot.settings_manifest import settings_manifest, unread_warning
 from magebench.pilot.decision_schema import (
     bindable_enum,
@@ -160,6 +155,10 @@ MAX_GAME_DURATION_SECS = 3 * 3600  # 3 hours absolute maximum
 MAX_TURNS_WITHOUT_PROGRESS = 20
 MAX_CONSECUTIVE_PASS_ERRORS = 3
 MAX_CONSECUTIVE_TRUNCATIONS = 3
+# A REJECTION NEVER REACHES THE ENGINE, so the engine's own per-turn interaction cap cannot see it:
+# without this, a model that keeps inventing names loops pilot-side until the game timeout.
+# Same value and same `>=` as the other consecutive-error caps beside it.
+MAX_CONSECUTIVE_UNOFFERED_REJECTIONS = 3
 MAX_CONSECUTIVE_EMPTY_ERRORS = 10  # bridge is dead if every tool returns empty error
 MAX_EMPTY_RESPONSES = 10
 MAX_CHAT_MESSAGES_PER_TURN = 2  # max send_chat_message calls per LLM iteration
@@ -735,6 +734,23 @@ def _tally_tool_call(state: PilotLoopState, name: str, *, ok: bool) -> None:
     row["ok" if ok else "failed"] += 1
 
 
+def _unoffered_tool_rejection(name: str, offered: set[str]) -> str | None:
+    """The rejection the model reads for a tool it was not offered, or None if it was offered.
+
+    Shaped like the engine's own argument errors -- `{"success": false, "error": ...}` -- because
+    the model is already shown to recover from those by reading the text (issue
+    p2-a-hallucinated-tool-name-is-fatal-while-a-bad-argument-is-not: g160, conc4/g16). The tool
+    list is the correction: it names what exists, not just what does not.
+    """
+    if name in offered:
+        return None
+    return json.dumps({
+        "success": False,
+        "error": f"Unknown tool: {name!r}. It does not exist. "
+                 f"Call one of the available tools instead: {sorted(offered)}.",
+    })
+
+
 async def _process_tool_calls(
     session: ClientSession,
     choice: _ChoiceLike,
@@ -743,6 +759,9 @@ async def _process_tool_calls(
     game_dir: Path | None,
     game_log: GameLogWriter | None,
     tool_calls: list | None = None,
+    *,
+    offered: set[str],
+    reject_unoffered: bool,
 ) -> tuple[bool, set[str]]:
     """Execute a single LLM tool-calling turn.
 
@@ -770,6 +789,44 @@ async def _process_tool_calls(
         if fn.name == "send_chat_message" and turn_state.chat_messages_this_turn >= MAX_CHAT_MESSAGES_PER_TURN:
             result_text = json.dumps({"success": False, "error": "Chat limit reached — focus on gameplay."})
             tool_latency_ms = 0
+        elif reject_unoffered and (rejection := _unoffered_tool_rejection(fn.name, offered)) is not None:
+            # A NAME THE MODEL WAS NOT OFFERED IS REJECTED WITH THE TOOL LIST, NOT FATAL -- the plan's
+            # recorded decision ("Wrong-tool-name should be a rejection with the tool list, same as
+            # wrong-argument", deck-general-plan.md), under "the error surface is curriculum": a
+            # recoverable error yields a training example of recovery, a fatal one a truncated row.
+            # Until now it reached the bridge, came back "Unknown tool", and the ToolExecutionError
+            # below was re-raised -- the game lost on the first occurrence.
+            #
+            # PER CALL, inside this loop, so a valid call earlier in the same response still runs.
+            # The schema eval's g14 emitted a valid `get_action_choices` and THEN an invented name;
+            # a redraw would have discarded the valid call and resampled a prompt that teaches the
+            # model nothing, where this answers each call on its own terms.
+            #
+            # It gets past the name guard at all because vLLM's Qwen3 structural-tag END begins with
+            # the newline BEGIN already consumed, so after a zero-argument call the tag never closes
+            # and swallows the next one. That is fixed separately; this is what makes a leak cost a
+            # turn instead of a game, whatever the grammar lets through.
+            state.consecutive_unoffered_rejections += 1
+            if state.consecutive_unoffered_rejections >= MAX_CONSECUTIVE_UNOFFERED_REJECTIONS:
+                # BOUNDED. A persistent invented name is a degenerate loop, not a mistake, and the
+                # existing fatal path takes it -- the same message the bridge would have raised, so
+                # everything downstream that classifies "Unknown tool" still recognises it.
+                raise ToolExecutionError(
+                    f"MCP tool {fn.name} failed: Unknown tool: {fn.name} "
+                    f"({state.consecutive_unoffered_rejections} consecutive unoffered names)"
+                )
+            result_text = rejection
+            tool_latency_ms = 0
+            _tally_tool_call(state, fn.name, ok=False)
+            if game_log:
+                # EVERY OCCURRENCE: a fix that also hid its own trigger would leave it uncountable.
+                game_log.emit(
+                    "unoffered_tool_call",
+                    call_id=tool_call.id,
+                    tool=fn.name,
+                    game_seq=state.last_game_seq,
+                    outcome="rejected_with_tool_list",
+                )
         else:
             if fn.name == "send_chat_message":
                 turn_state.chat_messages_this_turn += 1
@@ -792,6 +849,7 @@ async def _process_tool_calls(
                 raise
             tool_latency_ms = int((time.monotonic() - tool_start) * 1000)
             _tally_tool_call(state, fn.name, ok=True)
+            state.consecutive_unoffered_rejections = 0   # consecutive means consecutive
 
         result_data = _maybe_extract_result_dict(result_text)
         if result_data and "game_seq" in result_data:
@@ -1366,35 +1424,6 @@ async def run_pilot_loop(
                     # clothes and the arm stops measuring one thing.
                     continue
 
-            # AN UNOFFERED TOOL NAME, CHECKED ON EVERY CALL BEFORE ANY IS EXECUTED. Until now it
-            # reached the bridge, came back "Unknown tool", and killed the pilot: 2 of the schema
-            # eval's 30 casualties. It gets through the name guard because vLLM's Qwen3
-            # structural-tag END ("\n</function>\n</tool_call>") starts with the newline that
-            # BEGIN already consumed, so after a ZERO-ARGUMENT call the tag never closes and its
-            # `any_text` body swallows the next call unconstrained -- proven with xgrammar on g14's
-            # own tokens. That is the root cause and it is upstream; this is the backstop, so
-            # that whatever the grammar lets through costs one redraw instead of the game.
-            unoffered = unoffered_tool_calls(choice, offered=_toolset_names)
-            if unoffered:
-                retrying_unoffered = should_retry_unoffered(
-                    state, unoffered, logger=logger,
-                    temperature=create_kwargs.get("temperature"),
-                )
-                if game_log:
-                    # EVERY OCCURRENCE, retry or not -- the same rule as completion_truncated: a
-                    # fix that also hid its own trigger would leave the population invisible.
-                    game_log.emit(
-                        "unoffered_tool_call",
-                        names=unoffered,
-                        game_seq=state.last_decision_seq,
-                        # No fallback needed: `unoffered` is non-empty only if the response
-                        # carries at least one tool call, so tool_calls is present here.
-                        n_tool_calls=len(choice.message.tool_calls),
-                        outcome="retry" if retrying_unoffered else "fatal_path",
-                    )
-                if retrying_unoffered:
-                    continue
-
             if trace_log:
                 # Which DECISION this call is about. The writer's own `seq` is a dense
                 # per-file counter over policy calls; the server's decision stream is
@@ -1504,6 +1533,13 @@ async def run_pilot_loop(
                     game_dir,
                     game_log,
                     tool_calls=recovered,
+                    offered=_toolset_names,
+                    # NOT ON A CAP-HIT'S FALL-THROUGH. A name cut off at the token cap is already
+                    # handled by cap_retry's deliberate contract -- redraw once, then the fatal
+                    # path, "never a loop" -- and tests/test_cap_retry.py holds it. Rejecting that
+                    # stump here would quietly replace a bounded death with an unbounded redraw
+                    # loop; the suite caught exactly that on this change's first draft.
+                    reject_unoffered=not cap_hit,
                 )
                 if finished:
                     return
