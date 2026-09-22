@@ -173,7 +173,8 @@ public final class RolloutProbe {
         }
         spreadPositions.put(key, done + 1);
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"mode\":\"spread\",\"critic\":\"").append(critic).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gs)
+        String nodes = critic.kind.equals("mad") ? String.valueOf(Integer.getInteger("xmage.ai.nodes." + critic.skill)) : "n/a";
+        sb.append("{\"mode\":\"spread\",\"critic\":\"").append(critic).append("\",\"ai_nodes_prop\":\"").append(nodes).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gs)
                 .append(",\"seat\":\"").append(seat).append("\",\"position\":").append(done)
                 .append(",\"turn\":").append(game.getTurnNum())
                 .append(",\"step\":\"").append(game.getTurnStepType()).append('"')
@@ -224,7 +225,12 @@ public final class RolloutProbe {
 
     private static String json(Game game, String seat, long gameSeed, int position, int repeat, RolloutCounter.Result r) {
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"critic\":\"").append(System.getProperty("xmage.rollout.critic")).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gameSeed)
+        // THE NODE CAP AS THIS JVM SEES IT -- the property ComputerPlayer6's constructor reads. That
+        // knob has been inert three times (game_processes.ai_budget_props); a record that carries the
+        // value is how this run shows it was not a fourth.
+        RolloutCounter.Critic c = RolloutCounter.Critic.parse(System.getProperty("xmage.rollout.critic"));
+        String nodes = c.kind.equals("mad") ? String.valueOf(Integer.getInteger("xmage.ai.nodes." + c.skill)) : "n/a";
+        sb.append("{\"critic\":\"").append(c).append("\",\"ai_nodes_prop\":\"").append(nodes).append("\",\"game_id\":\"").append(game.getId()).append("\",\"game_seed\":").append(gameSeed)
                 .append(",\"seat\":\"").append(seat).append("\",\"position\":").append(position)
                 .append(",\"turn\":").append(game.getTurnNum())
                 .append(",\"active_player\":\"").append(game.getPlayer(game.getActivePlayerId()).getName()).append('"')
