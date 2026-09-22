@@ -35,6 +35,7 @@ import pytest
 from magebench.pilot.tool_name_guard import (
     BEGIN_TEMPLATE,
     END,
+    VLLM_END,
     TRIGGER,
     structured_outputs_field,
     tool_name_guard_mode,
@@ -125,7 +126,11 @@ def test_the_syntax_matches_what_vllm_builds_for_this_parser():
     fmt = built.model_dump()["format"]
     assert fmt["triggers"] == [TRIGGER]
     assert [t["begin"] for t in fmt["tags"]] == [BEGIN_TEMPLATE.format(name=n) for n in NAMES]
-    assert {t["end"] for t in fmt["tags"]} == {END}
+    # END IS THE DOCUMENTED EXCEPTION. vLLM must still emit VLLM_END -- if it ever stops, this
+    # fails and the deviation should be dropped, not kept as a fork of a string that no longer
+    # needs to differ -- and ours is that value without the newline BEGIN already consumed.
+    assert {t["end"] for t in fmt["tags"]} == {VLLM_END}, "vLLM's END changed: revisit the deviation"
+    assert END == VLLM_END[1:] and BEGIN_TEMPLATE.endswith("\n")
 
 
 def test_vllm_builds_nothing_without_strict_which_is_why_this_module_exists():
@@ -140,3 +145,14 @@ def test_vllm_builds_nothing_without_strict_which_is_why_this_module_exists():
     assert registry.get_model_structural_tag(
         model="qwen_3_coder", tools=request.tools,
         tool_choice="auto", reasoning=False) is None
+
+
+def test_END_does_not_re_consume_the_newline_BEGIN_already_ate():
+    """The whole correction in one line, and it runs in EVERY venv -- unlike the two vLLM-derivation
+    tests above, which skip wherever vLLM is not installed. A zero-argument call is written
+    `<function=NAME>\\n</function>`: one newline. BEGIN ends with it, so END must not start with
+    it, or the tag cannot close after such a call and swallows the next one (schema eval, g14)."""
+    assert BEGIN_TEMPLATE.endswith("\n")
+    assert not END.startswith("\n"), "END re-consumes BEGIN's newline: zero-arg calls never close"
+    zero_arg = BEGIN_TEMPLATE.format(name="get_action_choices") + END
+    assert zero_arg == "<tool_call>\n<function=get_action_choices>\n</function>\n</tool_call>"
