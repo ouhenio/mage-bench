@@ -22,11 +22,13 @@ import java.util.UUID;
  * resulting state share ONE seedBase, so actions are compared under common random numbers:
  * rollout k of every action starts from the same RNG stream.
  * <p>
- * PLACEBO: the pass action is counted a second time under a DIFFERENT seedBase. Its difference
- * from the first pass count is pure estimator noise, so over many positions it gives the
- * criterion's false-positive rate for two choices. The max-min spread of k noisy estimates grows
- * with k, so a flat position with many choices crosses a fixed threshold more often; the placebo
- * is what that is read against.
+ * PLACEBO: the pass action is counted k more times (k = the number of legal actions), each under
+ * its OWN seed family. The max-min over those k is the noise-only spread at this position's k --
+ * measured, not modelled. The max-min of k noisy estimates grows with k, so the registered
+ * criterion reads each real spread against the 95th percentile of the placebo spreads at the same
+ * k (position-environment.md s3, registered 2026-09-22; the fixed 2 x SD = 0.084 is superseded).
+ * The placebo families are independent, so its noise is UNCOUPLED; the real actions share seeds
+ * (CRN) and may be coupled, which is the reason the real comparison can beat the placebo.
  * <p>
  * Everything random on the calling thread (enumeration, the activation's cost payment by a random
  * seat) runs under RandomUtil.withThreadSeed, so the live game's stream does not move.
@@ -63,12 +65,12 @@ public final class ActionSpread {
 
     public static final class Spread {
         public final List<ActionResult> actions;
-        public final ActionResult placeboPass;   // pass again, different seedBase
+        public final List<ActionResult> placeboPasses;   // pass, k times, k independent seed families
         public final long wallMillis;
 
-        Spread(List<ActionResult> actions, ActionResult placeboPass, long wallMillis) {
+        Spread(List<ActionResult> actions, List<ActionResult> placeboPasses, long wallMillis) {
             this.actions = actions;
-            this.placeboPass = placeboPass;
+            this.placeboPasses = placeboPasses;
             this.wallMillis = wallMillis;
         }
     }
@@ -111,10 +113,13 @@ public final class ActionSpread {
         boolean[] passActivated = {false};
         Game passAgain = applied(enumCopy, seatId, actions.get(firstPass.index),
                 RolloutCounter.mix(seedBase + 0xAC7L + firstPass.index), passActivated);
-        RolloutCounter.Result placebo = RolloutCounter.count(passAgain, seatId, RolloutCounter.mix(seedBase ^ 0x91ACEBL),
-                n, budgetMillis, threads);
-        return new Spread(out, new ActionResult(firstPass.index, firstPass.action, true, passActivated[0], placebo),
-                (System.nanoTime() - t0) / 1_000_000L);
+        List<ActionResult> placebos = new ArrayList<>();
+        for (int j = 0; j < actions.size(); j++) {
+            RolloutCounter.Result placebo = RolloutCounter.count(passAgain, seatId,
+                    RolloutCounter.mix((seedBase ^ 0x91ACEBL) + j), n, budgetMillis, threads);
+            placebos.add(new ActionResult(firstPass.index, firstPass.action, true, passActivated[0], placebo));
+        }
+        return new Spread(out, placebos, (System.nanoTime() - t0) / 1_000_000L);
     }
 
     // PriorityNextAction's step: copy, activate the ability for the seat. Not resumed here --

@@ -186,9 +186,14 @@ public final class RolloutProbe {
             }
             actionJson(sb, sp.actions.get(i));
         }
-        sb.append("],\"placebo_pass\":");
-        actionJson(sb, sp.placeboPass);
-        sb.append('}');
+        sb.append("],\"placebo_passes\":[");
+        for (int i = 0; i < sp.placeboPasses.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            actionJson(sb, sp.placeboPasses.get(i));
+        }
+        sb.append("]}");
         write(out, sb.toString());
     }
 

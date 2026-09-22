@@ -48,7 +48,11 @@ public class ActionSpreadTest extends CardTestPlayerBase {
             out.add(String.format("[%d %s act=%s p=%.3f nr=%d]", a.index, a.action, a.activated, a.winProb(),
                     a.result.count(RolloutCounter.Outcome.NO_RESULT)));
         }
-        return out + String.format(" placebo p=%.3f", s.placeboPass.winProb());
+        List<String> placebo = new ArrayList<>();
+        for (ActionResult a : s.placeboPasses) {
+            placebo.add(String.format("%.3f", a.winProb()));
+        }
+        return out + " placebo " + placebo;
     }
 
     @Test
@@ -90,9 +94,19 @@ public class ActionSpreadTest extends CardTestPlayerBase {
                 Assert.assertEquals("action " + x.action + " count of " + o, x.result.count(o), y.result.count(o));
             }
         }
-        for (RolloutCounter.Outcome o : RolloutCounter.Outcome.values()) {
-            Assert.assertEquals("placebo count of " + o, a.placeboPass.result.count(o), b.placeboPass.result.count(o));
+        Assert.assertEquals("one placebo pass per legal action", a.actions.size(), a.placeboPasses.size());
+        for (int j = 0; j < a.placeboPasses.size(); j++) {
+            for (RolloutCounter.Outcome o : RolloutCounter.Outcome.values()) {
+                Assert.assertEquals("placebo " + j + " count of " + o,
+                        a.placeboPasses.get(j).result.count(o), b.placeboPasses.get(j).result.count(o));
+            }
         }
+        // independent families: the k placebo counts are not one count repeated
+        java.util.Set<String> distinct = new java.util.HashSet<>();
+        for (ActionResult x : a.placeboPasses) {
+            distinct.add(x.result.count(RolloutCounter.Outcome.WIN) + "/" + x.result.count(RolloutCounter.Outcome.LOSS));
+        }
+        Assert.assertTrue("placebo passes are all identical: " + distinct, distinct.size() > 1);
     }
 
     @Test
