@@ -22,9 +22,12 @@ import java.util.UUID;
  * resulting state share ONE seedBase, so actions are compared under common random numbers:
  * rollout k of every action starts from the same RNG stream.
  * <p>
- * PLACEBO: the pass action is counted k more times (k = the number of legal actions), each under
- * its OWN seed family. The max-min over those k is the noise-only spread at this position's k --
- * measured, not modelled. The max-min of k noisy estimates grows with k, so the registered
+ * PLACEBO: the pass action is counted 2k more times (k = the number of legal actions), each under
+ * its OWN seed family, in TWO groups of k. The first k build the cell thresholds; the second k are
+ * SCORED exactly like the real actions (max-min over k values against the threshold), so the
+ * held-out exceedance rate is the false-positive rate of the whole procedure, measured on the same
+ * run. Both groups hold k values because a max-min over fewer is systematically smaller: splitting
+ * one group of k in half would have understated the rate rather than measured it. The max-min of k noisy estimates grows with k, so the registered
  * criterion reads each real spread against the 95th percentile of the placebo spreads at the same
  * k (position-environment.md s3, registered 2026-09-22; the fixed 2 x SD = 0.084 is superseded).
  * The placebo families are independent, so its noise is UNCOUPLED; the real actions share seeds
@@ -123,7 +126,7 @@ public final class ActionSpread {
         Game passAgain = applied(enumCopy, seatId, actions.get(firstPass.index),
                 RolloutCounter.mix(seedBase + 0xAC7L + firstPass.index), passActivated);
         List<ActionResult> placebos = new ArrayList<>();
-        for (int j = 0; j < actions.size(); j++) {
+        for (int j = 0; j < 2 * actions.size(); j++) {
             RolloutCounter.Result placebo = RolloutCounter.count(passAgain, seatId,
                     RolloutCounter.mix((seedBase ^ 0x91ACEBL) + j), n, budgetMillis, threads, critic);
             placebos.add(new ActionResult(firstPass.index, firstPass.action, true, passActivated[0], placebo));

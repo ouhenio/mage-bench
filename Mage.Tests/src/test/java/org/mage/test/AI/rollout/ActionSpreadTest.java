@@ -94,7 +94,8 @@ public class ActionSpreadTest extends CardTestPlayerBase {
                 Assert.assertEquals("action " + x.action + " count of " + o, x.result.count(o), y.result.count(o));
             }
         }
-        Assert.assertEquals("one placebo pass per legal action", a.actions.size(), a.placeboPasses.size());
+        Assert.assertEquals("two placebo groups of k: thresholds and held-out scoring",
+                2 * a.actions.size(), a.placeboPasses.size());
         for (int j = 0; j < a.placeboPasses.size(); j++) {
             for (RolloutCounter.Outcome o : RolloutCounter.Outcome.values()) {
                 Assert.assertEquals("placebo " + j + " count of " + o,
@@ -139,5 +140,21 @@ public class ActionSpreadTest extends CardTestPlayerBase {
         execute();
         Spread s = ActionSpread.measure(currentGame, playerB.getId(), SEED_BASE, 8, UNCUT_BUDGET_MS, THREADS);
         Assert.assertNull("only pass is legal in upkeep with nothing to cast", s);
+    }
+
+    /**
+     * THE PROBE ENTRY MUST NOT HOLD A LOCK. RolloutProbe.probe was static synchronized, and the mad
+     * critic's rollout seats (ComputerPlayer7) call it at their own priority: they blocked at the
+     * METHOD ENTRY on the monitor the game thread held for the whole measurement, while the game
+     * thread waited for those rollouts. Nine jobs hung for two hours with ~3 min of CPU between
+     * them (2026-09-22). The isSimulation() refusal only works outside the lock.
+     */
+    @Test
+    public void test_probeEntryIsNotSynchronized() throws Exception {
+        java.lang.reflect.Method probe = Class.forName("mage.player.ai.RolloutProbe")
+                .getMethod("probe", mage.game.Game.class, java.util.UUID.class, String.class);
+        Assert.assertFalse("RolloutProbe.probe must not be synchronized: a rollout seat calls it while "
+                        + "the game thread holds the monitor",
+                java.lang.reflect.Modifier.isSynchronized(probe.getModifiers()));
     }
 }

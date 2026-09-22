@@ -72,15 +72,22 @@ public final class RolloutProbe {
         return RolloutCounter.mix(RolloutCounter.mix(RolloutCounter.mix(RolloutCounter.mix(gameSeed) + position) + n) + repeat);
     }
 
-    public static synchronized void probe(Game game, UUID playerId, String playerName) {
-        if (!isProbedSeat(playerName)) {
+    /**
+     * NOT SYNCHRONIZED, and that is the point. A rollout's own seats reach this hook: the mad
+     * critic puts ComputerPlayer7 in every rollout seat and it calls the probe at its priority.
+     * With the guard inside a synchronized method, those threads BLOCKED AT THE METHOD ENTRY,
+     * waiting for the monitor the game thread holds for the whole measurement, while the game
+     * thread waited for them -- a self-deadlock that hung nine jobs for two hours with ~3 minutes
+     * of CPU between them (2026-09-22). The refusals must be cheap and lock-free.
+     */
+    public static void probe(Game game, UUID playerId, String playerName) {
+        if (game.isSimulation() || !isProbedSeat(playerName)) {
             return;
         }
-        // A ROLLOUT'S OWN SEATS reach this hook too: the mad critic puts ComputerPlayer7 in every
-        // rollout seat, and it calls the probe at its priority. Only the live game is probed.
-        if (game.isSimulation()) {
-            return;
-        }
+        probeLiveGame(game, playerId, playerName);
+    }
+
+    private static synchronized void probeLiveGame(Game game, UUID playerId, String playerName) {
         // POSITIVE CONTROL ON THE POSITION (LEDGER 78): a position is one where the probed seat
         // has at least one permanent. The sleepwalker runs never met it once, and nothing refused.
         if (game.getBattlefield().getAllActivePermanents(playerId).isEmpty()) {
