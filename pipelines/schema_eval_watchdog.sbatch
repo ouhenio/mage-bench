@@ -144,7 +144,12 @@ if [ "$RUN" -ge "$BUDGET" ]; then
 fi
 
 say "resubmitting arm=$ARM (gen $((GEN+1)))"
-NEXT=$(sbatch --parsable -J "schema-eval-$ARM" "$WT/pipelines/schema_eval_lascar.sbatch" "$ARM") \
+# THROUGH THE WRAPPER, the one GPU submission this watchdog makes. A plain `sbatch` here would give
+# the resubmitted arm the base priority of its partition -- ~11.03M on lascar/latamgpt, 44x above
+# t2i's -- so the first automatic retry would break the rule the wrapper exists to enforce, with no
+# session watching. The three other sbatch calls in this file resubmit the WATCHDOG itself, which is
+# CPU-only and exempt.
+NEXT=$("$MTG/pipelines/sbatch_under_t2i.sh" -J "schema-eval-$ARM" "$WT/pipelines/schema_eval_lascar.sbatch" "$ARM") \
   || { say "FATAL: sbatch"; exit 7; }
 say "resubmitted as $NEXT"
 sbatch --parsable --dependency=afternotok:"$NEXT" "$WT/pipelines/schema_eval_watchdog.sbatch" \

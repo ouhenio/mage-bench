@@ -10,12 +10,13 @@
 #SBATCH --time=08:00:00
 #SBATCH --no-requeue
 #SBATCH --open-mode=append
-# t2i OUTRANKS MTG BY CONSTRUCTION (CLAUDE.md 998f90d). The start-and-exit yield below hands a
-# freed card to whichever job slurm ranks next, not to t2i; a low priority is what actually
-# puts t2i first. The pending-t2i gate stays as belt-and-braces. Measured when this went in:
-# it moves this job's --test-only start estimate from 2026-09-22 08:21 to 2026-10-02 03:51,
-# because it ranks below every other tenant as well as below t2i. --nice=100 did not move it.
-#SBATCH --nice=10000
+# PRIORITY IS SET AT SUBMISSION, NOT HERE: submit this ONLY through
+# pipelines/sbatch_under_t2i.sh, which ranks the job 1000 below the lowest pending t2i job.
+# The constant that used to be here (--nice=10000) is RETIRED and must not come back: measured
+# on lascar/latamgpt it left a job at ~11.03M against t2i's ~250k -- still 44x above -- because
+# the account's ASSOC factor alone is 10,000,000. A plain `sbatch` of this file gets its
+# partition's base priority; the pending-t2i START gate below is the only thing that still
+# yields in that case, which is why it stays.
 #SBATCH --chdir=/workspace1/users/ouhenio/mtg
 #SBATCH --output=/workspace1/users/ouhenio/mtg/slurm-logs/slurm-%x-%j.out
 #
