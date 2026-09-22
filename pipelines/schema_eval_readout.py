@@ -46,7 +46,8 @@ def per_game_coverage(d: pathlib.Path) -> dict[str, dict]:
     for g in sorted(d.glob("g*")):
         if not g.is_dir():
             continue
-        row = {"bound": 0, "unbound": 0, "reasons": collections.Counter()}
+        row = {"bound": 0, "unbound": 0, "reasons": collections.Counter(),
+               "by_class": collections.Counter()}
         seen = False
         for f in g.rglob("*_llm.jsonl"):
             seen = True
@@ -57,6 +58,13 @@ def per_game_coverage(d: pathlib.Path) -> dict[str, dict]:
                     continue
                 if r.get("type") != COVERAGE:
                     continue
+                # THE CLASS IS (action_type, response_type). The registered ~82% was measured
+                # on recorded frames, and the live decision MIX is the first candidate for any
+                # gap: the same rule applied to a different distribution of decisions gives a
+                # different coverage without anything being wrong. Splitting by class is what
+                # turns "68% vs 82%" from a discrepancy into an account of one.
+                cls = (r.get("action_type"), r.get("response_type"))
+                row["by_class"][(cls, bool(r.get("bound")))] += 1
                 if r.get("bound"):
                     row["bound"] += 1
                 else:
@@ -140,9 +148,30 @@ def main() -> int:
             print(f"  ok: every game bound at least one decision; per-game bound fraction "
                   f"min {per[0]:.2f} / median {per[len(per)//2]:.2f} / max {per[-1]:.2f}")
         reasons = collections.Counter()
+        classes: collections.Counter = collections.Counter()
         for g in games.values():
             reasons.update(g["reasons"])
-        print(f"  unbound by reason: {dict(reasons.most_common(6))}")
+            classes.update(g["by_class"])
+        print("  unbound by reason:")
+        for why, k in reasons.most_common():
+            print(f"      {k:>6}  {why}")
+
+        # THE CLASS SPLIT, which is what the 82% has to be compared against.
+        per_class: dict = {}
+        for (cls, was_bound), k in classes.items():
+            d = per_class.setdefault(cls, {True: 0, False: 0})
+            d[was_bound] += k
+        print(f"  coverage by (action_type, response_type) — {len(per_class)} class(es), "
+              f"most frequent first:")
+        print(f"      {'bound':>6}{'total':>7}{'  cov':>7}  class")
+        for cls, d in sorted(per_class.items(), key=lambda kv: -(kv[1][True] + kv[1][False])):
+            tot = d[True] + d[False]
+            at, rt = cls
+            print(f"      {d[True]:>6}{tot:>7}{100*d[True]/tot:>6.0f}%  "
+                  f"action={at!r} respond_with={rt!r}")
+        unbindable = sum(t[False] for t in per_class.values() if t[True] == 0)
+        print(f"  UNBINDABLE-BY-DESIGN share: {unbindable}/{n} "
+              f"({100*unbindable/n:.1f}%) sit in classes where nothing binds at all")
 
     print()
     if not gate_ok:

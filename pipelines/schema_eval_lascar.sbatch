@@ -418,19 +418,27 @@ for f in pathlib.Path(sys.argv[1]).rglob("*_llm.jsonl"):
         else:
             unbound += 1
             reasons[r.get("reason")] = reasons.get(r.get("reason"), 0) + 1
-print(f"{bound} {unbound} {json.dumps(reasons)}")
+# TWO LINES, not one: the reasons are JSON and JSON contains spaces. Printed on one line and
+# split with `set --`, `{"respond_with declares no choice=id form": 5}` became `{"respond_with`
+# in the job log -- the count was parsed correctly and the human-readable half was silently
+# truncated at the first space. A log that is wrong in a way the code does not notice is the
+# shape this whole eval keeps tripping over.
+print(f"{bound} {unbound}")
+print(json.dumps(reasons))
 PYEOF
 )
-  set -- $BOUND
-  log "smoke coverage: bound=$1 unbound=$2 reasons=${3:-{}}"
-  if [ "${1:-0}" -lt 1 ] ; then
+  BOUND_N=$(printf '%s\n' "$BOUND" | sed -n 1p | cut -d' ' -f1)
+  UNBOUND_N=$(printf '%s\n' "$BOUND" | sed -n 1p | cut -d' ' -f2)
+  log "smoke coverage: bound=$BOUND_N unbound=$UNBOUND_N"
+  log "smoke unbound reasons: $(printf '%s\n' "$BOUND" | sed -n 2p)"
+  if [ "${BOUND_N:-0}" -lt 1 ] ; then
     log "FATAL: the guarded smoke bound ZERO decisions. The schema env was set and the"
     log "  mechanism did not engage -- this is job 9960's defect, where the binding site read a"
     log "  field the message builder had already consumed. Refusing to let an afterok chain"
     log "  start a 200-deal arm that would measure the control twice."
     exit 11
   fi
-  log "smoke PROVED the mechanism: $1 bound decision(s) in one game"
+  log "smoke PROVED the mechanism: $BOUND_N bound decision(s) in one game"
 fi
 
 log "flag gate"; bash "$SRC/pipelines/synth/watch_autoresolve.sh" "$E" 2>&1 | sed 's/^/    /'
