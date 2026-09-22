@@ -1,0 +1,46 @@
+{
+  "title": "Three seeds end with no engine game_end in BOTH schema-eval arms; the XMage AI's search timeout is present but NOT sufficient -- the pilot seat is required",
+  "description": "OBSERVED: the schema eval (jobs 9970 guarded, 9972 unguarded, 200 mirror-paired games each) \
+banked 185/200 per arm with exactly 15 `launch exited` casualties each. 5 of those are the SAME game \
+indices in both arms -- 122, 123, 135, 162, 163 -- collapsing onto three seeds because 122/123 and \
+162/163 are mirror pairs: 1200062 and 1200068 (both Ad Nauseam mirrors: JD Nir's Ad Nauseam; Rodrigo \
+Togores's Ad Nauseam Tendrils) and 1200082 (Brandon Remley's KikiPod). By chance ~1 overlap is expected \
+(15x15/200). The treatment is irrelevant: it fails in both arms and both seatings. In every one the \
+launcher printed a clean cost summary, errors.log reads 'No errors detected', and the engine never wrote \
+game_end -- the no-signature shape. \
+WHAT THE LOGS SHOW: for 1200062 and 1200068 the XMage AI's own detector fired -- ComputerPlayer6 \
+`task.get(maxSeconds)` timed out, logging 'AI player thinks too long (report it to github)' and a freeze \
+chain, followed within 25-50 s by the launch exiting with no game_end (for 1200062 the timeout is the \
+server's LAST log line). 1200062 froze at TURN 2 with 2 permanents and an empty stack; 1200068 at turn 12 \
+with a fetchland on the stack. 1200082 shows NO timeout and died while the pilot was mid-MCP call. \
+WHAT IS REFUTED, which is the finding: (1) An AI search timeout is NOT sufficient to kill a game. Across \
+the vs-engine corpora 31 games ENDED despite one, and all 50 no-game_end games there had NO timeout. \
+(2) An engine-vs-engine replay of 1200062 (job 10081, ranokau, eval's own tree wt-schema, skill 1, same \
+seed and deck, the XMage AI kept in seat 2) REACHED game_end in 255 s despite TEN timeouts, whose chains \
+now name the cards: Scalding Tarn (fetch), Cabal Therapy, Lion's Eye Diamond, Infernal Tutor -- library \
+searches and branching choices. The deck reliably explodes the search; the engine survives it. (3) The \
+replay did NOT reproduce the eval's state: with an engine in seat 1 instead of the pilot, the board \
+diverged from turn 1, and the first timeout came at turn 33, not turn 2. (4) It is NOT the census's h2h \
+no-signature bucket: 4452 was head-to-head with no AI seat, so this detector cannot fire there, and none \
+of its 200 games shows it. \
+CONCLUSION, stated at its real strength: the deaths REQUIRE THE PILOT SEAT. The AI timeout is present on \
+two of three seeds and absent on the third; the common factor is the pilot/bridge side, and 1200082 died \
+mid-MCP call. Most likely candidates, NOT tested: the pilot's MCP call blocking while the engine is \
+stuck, and the harness's idle/launch timeout firing before a game_end is written. \
+NEXT STEP: replay 1200062 WITH the pilot in seat 1 (one GPU, 2 games) with DEBUG on mage.player.ai -- \
+the shipped log4j.properties holds that package at WARN, which is why the eval shows only the timeout \
+line. A pass-through exists in the wt-timing scaffolding tree only. \
+ALSO NOTED: MAGEBENCH_AI_RECORD_DIR was set for 10081 and the property is passed by game_processes.py, \
+but AiDecisionRecorder wrote nothing -- cause not determined, so the recorder cannot currently be relied \
+on for this diagnosis. \
+HANDLING IN THE EVAL: these five games are EXCLUDED from the resume (schema_eval_complement \
+--exclude-games) and never counted as banked, so the readout reports 195/200, not 200.",
+  "priority": "p2",
+  "status": "open",
+  "found_in": "schema eval, jobs 9970 / 9972; replay 10081",
+  "found_by": "karn-engine",
+  "seeds": [1200062, 1200068, 1200082],
+  "games": [122, 123, 135, 162, 163],
+  "files": ["Mage.Server.Plugins/Mage.Player.AI.MA/src/mage/player/ai/ComputerPlayer6.java",
+            "Mage.Server/src/main/resources/log4j.properties"],
+}
