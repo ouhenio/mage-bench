@@ -1233,12 +1233,49 @@ public class HumanPlayer extends PlayerImpl {
         }
     }
 
+    // --- rollout probe hook ----------------------------------------------------
+    // Same shape as aiHint, for mage.player.ai.RolloutProbe (Mage.Player.AIMCTS): counts rollout
+    // outcomes from this seat's position for the reward measurement. Off entirely unless
+    // -Dxmage.rollout.seats is set; reflective for the same class-loader reason as aiHint, and
+    // fatal if the property is set but the class cannot be reached.
+    private static volatile java.lang.reflect.Method rolloutProbeMethod;
+    private static volatile boolean rolloutProbeLookupDone;
+
+    private void rolloutProbe(Game game) {
+        if (System.getProperty("xmage.rollout.seats") == null) {
+            return;
+        }
+        if (!rolloutProbeLookupDone) {
+            synchronized (HumanPlayer.class) {
+                if (!rolloutProbeLookupDone) {
+                    try {
+                        Class<?> c = Class.forName("mage.player.ai.RolloutProbe", true,
+                                HumanPlayer.class.getClassLoader());
+                        rolloutProbeMethod = c.getMethod("probe", Game.class, UUID.class, String.class);
+                    } catch (ReflectiveOperationException e) {
+                        throw new IllegalStateException("xmage.rollout.seats is set but "
+                                + "mage.player.ai.RolloutProbe could not be loaded", e);
+                    } finally {
+                        rolloutProbeLookupDone = true;
+                    }
+                }
+            }
+        }
+        try {
+            rolloutProbeMethod.invoke(null, game, getId(), getName());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("rollout probe invocation failed", e);
+        }
+    }
+
     @Override
     public boolean priority(Game game) {
         // Hooked at BOTH sites, tagged, so one game measures which is right against the
         // server's own published-decision count. Entry fires before 16 skip branches;
         // publish fires per query actually sent.
         aiHint(game, "priority", "entry");
+        // game thread, priority entry: the live game is quiescent here
+        rolloutProbe(game);
         passed = false;
         // TODO: fix problems with turn under out control:
         // TODO: change pass and other states like passedUntilStackResolved for controlling player, not for "this"
