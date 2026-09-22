@@ -51,12 +51,22 @@ case "$LIMIT" in ''|*[!0-9]*) echo "FATAL: game limit must be a non-negative int
 # arguments -- only its path -- so the arm is invisible to every check unless it is in the NAME.
 # An earlier version of the watchdog grepped `scontrol` for the arm, matched nothing, and would
 # have resubmitted an arm while its twin was running.
+# THE CAP IS SCOPED TO MTG WORK, AND THE TOTAL IS RECORDED BESIDE IT.
+# Eugenio's words were "U can use at most 2 gpus"; the orchestrator scoped that to "RUNNING MTG
+# GPU jobs sum to <= 2 across both nodes". The same unix user also runs the t2i work, which held
+# one GPU when these arms were submitted -- so the two readings differ by exactly that job and
+# the difference decides whether the second arm may start. This gate enforces the scoped reading
+# and LOGS BOTH NUMBERS, so if the total was meant, the evidence says so in the job's own record
+# rather than having to be reconstructed.
 BUDGET=2
-gpu_running() {   # our RUNNING GPU jobs, excluding this one
-  squeue -u "$USER" -h -t RUNNING -o '%i|%b' 2>/dev/null \
-    | awk -F'|' -v self="${SLURM_JOB_ID:-0}" '
-        $1 != self && $2 ~ /gpu/ { n=$2; sub(/.*gpu[:=]/,"",n); sub(/[^0-9].*/,"",n);
-                                   s += (n=="" ? 1 : n) } END { print s+0 }'
+MTG_JOB_RE='^(schema-eval|budget-curve|teacher-|corpus-|opd-|prepare-harness)'
+gpu_running() {   # $1 = "mtg" or "all"; our RUNNING GPU jobs, excluding this one
+  squeue -u "$USER" -h -t RUNNING -o '%i|%j|%b' 2>/dev/null \
+    | awk -F'|' -v self="${SLURM_JOB_ID:-0}" -v scope="$1" -v re="$MTG_JOB_RE" '
+        $1 == self || $3 !~ /gpu/ { next }
+        scope == "mtg" && $2 !~ re { next }
+        { n=$3; sub(/.*gpu[:=]/,"",n); sub(/[^0-9].*/,"",n); s += (n=="" ? 1 : n) }
+        END { print s+0 }'
 }
 TWIN=$(squeue -u "$USER" -h -t RUNNING -n "schema-eval-$ARM" -o '%i' 2>/dev/null \
          | grep -v "^${SLURM_JOB_ID:-0}$" | head -1)
@@ -65,14 +75,16 @@ if [ -n "$TWIN" ]; then
   echo "Exiting 0: this is not a failure and no watchdog should resubmit it."
   exit 0
 fi
-RUN=$(gpu_running)
+RUN=$(gpu_running mtg)
+ALL=$(gpu_running all)
+echo "GPU in use by this user: $RUN MTG, $ALL total (cap $BUDGET, scoped to MTG)"
 if [ "$RUN" -ge "$BUDGET" ]; then
-  echo "FATAL: $RUN GPU job(s) of ours are RUNNING and the cap is $BUDGET."
+  echo "FATAL: $RUN MTG GPU job(s) are RUNNING and the cap is $BUDGET."
   echo "  Exiting NON-ZERO on purpose, so the afternotok watchdog resubmits this arm later"
   echo "  rather than the arm being silently dropped."
   exit 9
 fi
-echo "GPU budget: $RUN running of $BUDGET; taking one for arm=$ARM"
+echo "GPU budget: $RUN MTG running of $BUDGET ($ALL total incl. other projects); taking one for arm=$ARM"
 
 MTG=/workspace1/users/ouhenio/mtg
 SRC=$MTG
