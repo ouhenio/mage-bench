@@ -141,6 +141,7 @@ public final class RolloutProbe {
             sb.append("{\"k\":").append(x.index).append(",\"outcome\":\"").append(x.outcome.name().toLowerCase())
                     .append("\",\"cut\":\"").append(x.cutReason).append("\",\"end_turn\":").append(x.endTurn)
                     .append(",\"actions\":").append(x.actions).append(",\"playout_ms\":").append(x.playoutMillis)
+                    .append(",\"end\":\"").append(x.endState).append('"')
                     .append(",\"hash\":\"").append(x.transcriptHash, 0, 16).append("\"}");
         }
         sb.append("]}");

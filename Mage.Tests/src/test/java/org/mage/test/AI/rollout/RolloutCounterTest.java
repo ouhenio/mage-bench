@@ -47,6 +47,14 @@ public class RolloutCounterTest extends CardTestPlayerBase {
         return out;
     }
 
+    private static List<String> ends(Result r) {
+        List<String> out = new ArrayList<>();
+        for (Rollout x : r.rollouts) {
+            out.add(x.outcome + "@T" + x.endTurn + "[" + x.endState + "]");
+        }
+        return out;
+    }
+
     private static String counts(Result r) {
         return "W" + r.count(Outcome.WIN) + " L" + r.count(Outcome.LOSS) + " D" + r.count(Outcome.DRAW)
                 + " NR" + r.count(Outcome.NO_RESULT) + " wall=" + r.wallMillis + "ms";
@@ -66,7 +74,7 @@ public class RolloutCounterTest extends CardTestPlayerBase {
         Game position = position();
         Result a = RolloutCounter.count(position, playerA.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS);
         Result b = RolloutCounter.count(position, playerA.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS);
-        System.out.println("ROLLOUT_COUNT same-seed a: " + counts(a) + " " + hashes(a));
+        System.out.println("ROLLOUT_COUNT same-seed a: " + counts(a) + " " + ends(a));
         System.out.println("ROLLOUT_COUNT same-seed b: " + counts(b) + " " + hashes(b));
         assertPlayed(a, position.getTurnNum());
         assertPlayed(b, position.getTurnNum());
@@ -129,5 +137,29 @@ public class RolloutCounterTest extends CardTestPlayerBase {
         Assert.assertEquals("the live game's state changed during count()", stateBefore,
                 position.getState().getValue(true, position));
         Assert.assertEquals(turnBefore, position.getTurnNum());
+    }
+
+    /**
+     * WIN MUST BE REACHABLE. The default test deck is 71 Mountains, so the board above never gains
+     * a creature, and every rollout so far has been a LOSS for the seat (two 2/2s against a 3/3).
+     * That may be the position's true value, or a counter that cannot score a win. Lopsided boards
+     * each way tell them apart: the seat with three Hill Giants against nothing must mostly win,
+     * and the reverse must mostly lose.
+     */
+    @Test
+    public void test_outcomeTracksTheBoard() {
+        addCard(Zone.BATTLEFIELD, playerA, "Mountain", 3);
+        addCard(Zone.BATTLEFIELD, playerA, "Hill Giant", 3);
+        addCard(Zone.BATTLEFIELD, playerB, "Swamp", 3);
+        setStopAt(3, PhaseStep.PRECOMBAT_MAIN);
+        execute();
+        Result forA = RolloutCounter.count(currentGame, playerA.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS);
+        Result forB = RolloutCounter.count(currentGame, playerB.getId(), SEED_BASE, N, UNCUT_BUDGET_MS, THREADS);
+        System.out.println("ROLLOUT_COUNT lopsided, seat A (three giants): " + counts(forA) + " " + ends(forA));
+        System.out.println("ROLLOUT_COUNT lopsided, seat B (empty board): " + counts(forB) + " " + ends(forB));
+        assertPlayed(forA, currentGame.getTurnNum());
+        assertPlayed(forB, currentGame.getTurnNum());
+        Assert.assertTrue("the favoured seat should mostly WIN: " + counts(forA), forA.count(Outcome.WIN) > N / 2);
+        Assert.assertTrue("the unfavoured seat should mostly LOSE: " + counts(forB), forB.count(Outcome.LOSS) > N / 2);
     }
 }

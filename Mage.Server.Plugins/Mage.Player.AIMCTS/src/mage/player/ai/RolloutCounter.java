@@ -70,9 +70,11 @@ public final class RolloutCounter {
         public final int events;
         public final String transcriptHash;
         public final long playoutMillis;
+        // "name:life/library;..." at the end, seat first: says HOW a result was reached
+        public final String endState;
 
         Rollout(int index, long seed, Outcome outcome, String cutReason, int actions, int endTurn,
-                int events, String transcriptHash, long playoutMillis) {
+                int events, String transcriptHash, long playoutMillis, String endState) {
             this.index = index;
             this.seed = seed;
             this.outcome = outcome;
@@ -82,6 +84,7 @@ public final class RolloutCounter {
             this.events = events;
             this.transcriptHash = transcriptHash;
             this.playoutMillis = playoutMillis;
+            this.endState = endState;
         }
     }
 
@@ -228,8 +231,16 @@ public final class RolloutCounter {
         for (Player p : sim.getState().getPlayers().values()) {
             actions += ((SimulatedPlayerMCTS) p).getActionCount();
         }
+        StringBuilder end = new StringBuilder();
+        Player seat = sim.getPlayer(seatId);
+        end.append(seat.getName()).append(':').append(seat.getLife()).append('/').append(seat.getLibrary().size());
+        for (Player p : sim.getState().getPlayers().values()) {
+            if (!p.getId().equals(seatId)) {
+                end.append(';').append(p.getName()).append(':').append(p.getLife()).append('/').append(p.getLibrary().size());
+            }
+        }
         return new Rollout(index, seed, outcome, cutReason, actions, sim.getTurnNum(), watcher.lines.size(),
-                watcher.hash(outcome + "|turn=" + sim.getTurnNum()), playoutMillis);
+                watcher.hash(outcome + "|turn=" + sim.getTurnNum()), playoutMillis, end.toString());
     }
 
     // MCTSNode.createSimulation + randomizePlayers, but restoring from getRealPlayer() so a live
