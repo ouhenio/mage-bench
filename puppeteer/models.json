@@ -477,13 +477,15 @@
    "id": "anthropic/claude-sonnet-5",
    "name": "Claude Sonnet 5",
    "name_part": "Son5",
+   "_input_per_m": 2.0,
+   "_output_per_m": 10.0,
    "_context_k": 1000,
    "_thinking": true,
    "_tier": "mid",
    "cache_control": {
     "type": "ephemeral"
    },
-   "_notes": "Teacher-screen candidate. THE ALIAS, deliberately: a dated pin exists but the sources disagree on it, so the id is the alias and api_screen.sbatch records the model id the API echoes back on its first response -- the record says what answered rather than what was asked for. No _input_per_m/_output_per_m: I do not have the provider's published numbers and will not carry a guessed price, since nothing reads these fields (they are documentation) and the cost accounting resolves the price from OpenRouter at startup. api_screen.sbatch refuses unless the id resolves EXACTLY in load_prices(), so an unpriced or mistyped id cannot run under a spend cap."
+   "_notes": "Teacher-screen candidate. PRICE PROVENANCE: $2/$10 per 1M from Anthropic's announcement as reported this month (made permanent in August), relayed by the orchestrator; I did not read the provider page myself, and nothing bills from this field -- the run prices from the exact-id OpenRouter lookup, which refuses a mismatch. THE ALIAS, deliberately: a dated pin exists but the sources disagree on it, so the id is the alias and api_screen.sbatch records the model id the API echoes back on its first response -- the record says what answered rather than what was asked for. No _input_per_m/_output_per_m: I do not have the provider's published numbers and will not carry a guessed price, since nothing reads these fields (they are documentation) and the cost accounting resolves the price from OpenRouter at startup. api_screen.sbatch refuses unless the id resolves EXACTLY in load_prices(), so an unpriced or mistyped id cannot run under a spend cap."
   },
   {
    "id": "anthropic/claude-sonnet-5-5",
