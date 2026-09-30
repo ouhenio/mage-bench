@@ -472,6 +472,24 @@
       "system_prompt_provisioned_by": "pipelines/eval/run_p1.py",
    "toolset": "notalk"
   },
+  "q38-27b-local-strategy": {
+   "model": "Qwen/Qwen3.8-27B",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
+  "q36-27b-local-strategy": {
+   "model": "Qwen/Qwen3.6-27B",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
+  "q35-122b-a10b-local-strategy": {
+   "model": "Qwen/Qwen3.5-122B-A10B",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
   "q35-35b-a3b-local-strategy": {
    "model": "Qwen/Qwen3.5-35B-A3B",
    "status": "retired",

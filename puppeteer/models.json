@@ -554,6 +554,28 @@
    "_notes": "Locally served via vLLM on lascar and ranokau for the P1 prompt experiment. Free. Emits XML tool calls -- its server needs --tool-call-parser qwen3_xml, not hermes. Served at 143360 context (the harness floor SERVE_MIN_MODEL_LEN), not the model's 262k, because that is what the KV budget seats at TP2."
   },
   {
+   "id": "Qwen/Qwen3.6-27B",
+   "name": "Qwen3.6 27B",
+   "name_part": "Q3627B",
+   "_input_per_m": 0.0,
+   "_output_per_m": 0.0,
+   "_context_k": 143,
+   "_thinking": false,
+   "_tier": "cheap",
+   "_notes": "Teacher-screen candidate, 52 G in the hub, DENSE 27B (64 layers, hidden 5120), class Qwen3_5ForConditionalGeneration. TP=2. Tool-call contract VERIFIED identical to the 35B; its chat template differs only in a preserve_thinking history flag and in how a PAST tool call's string arguments are serialised, neither of which touches the wire format the model emits."
+  },
+  {
+   "id": "Qwen/Qwen3.5-122B-A10B",
+   "name": "Qwen3.5 122B-A10B",
+   "name_part": "Q35122",
+   "_input_per_m": 0.0,
+   "_output_per_m": 0.0,
+   "_context_k": 143,
+   "_thinking": false,
+   "_tier": "cheap",
+   "_notes": "Teacher-screen candidate, 234 G in the hub, MoE (48 layers, hidden 3072, 256 experts), class Qwen3_5MoeForConditionalGeneration -- the same class check_servable already knows. TP=4. Its chat template is BYTE-IDENTICAL to the 35B's (sha1 f54c154d3de0), so parser and structural tag apply with no question. name_part is 6 chars deliberately: 'Q35122B' (7) plus the longest personality part (7) would exceed the 14-char username limit."
+  },
+  {
    "id": "Qwen/Qwen3.5-35B-A3B",
    "name": "Qwen3.5 35B-A3B",
    "name_part": "Q3535B",
