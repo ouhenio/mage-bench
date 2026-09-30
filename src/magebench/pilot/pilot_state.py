@@ -40,6 +40,10 @@ class PilotLoopState:
     history: list[dict]
     state_summary: str = ""
     cumulative_cost: float = 0.0
+    # beside the quote: every input token at full price (the cap's number), and how much of the
+    # input the provider said came from cache (0 on a long prefix means caching is not working)
+    cumulative_uncached_bound: float = 0.0
+    cumulative_cached_tokens: int = 0
     empty_responses: int = 0
     last_was_empty: bool = False
     consecutive_timeouts: int = 0

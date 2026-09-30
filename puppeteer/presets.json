@@ -472,6 +472,24 @@
       "system_prompt_provisioned_by": "pipelines/eval/run_p1.py",
    "toolset": "notalk"
   },
+  "sonnet5-strategy": {
+   "model": "anthropic/claude-sonnet-5",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
+  "sonnet55-strategy": {
+   "model": "anthropic/claude-sonnet-5-5",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
+  "luna-strategy": {
+   "model": "openai/gpt-5.6-luna",
+   "status": "active",
+   "system_prompt": "notalk-strategy",
+   "toolset": "notalk"
+  },
   "q35-35b-a3b-local-strategy": {
    "model": "Qwen/Qwen3.5-35B-A3B",
    "status": "retired",

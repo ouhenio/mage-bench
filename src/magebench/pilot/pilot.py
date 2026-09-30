@@ -20,6 +20,7 @@ from magebench.common.llm_cost import (
     llm_base_url,
     load_prices,
     required_api_key_env,
+    call_cost as cost_of_call,
     write_cost_file,
 )
 from magebench.common.log import get_logger, log_error, setup_logging
@@ -1324,12 +1325,21 @@ async def run_pilot_loop(
 
             call_cost = 0.0
             if response.usage and model_price is not None:
-                input_cost = (response.usage.prompt_tokens or 0) * model_price[0] / 1_000_000
-                output_cost = (response.usage.completion_tokens or 0) * model_price[1] / 1_000_000
-                call_cost = input_cost + output_cost
+                # QUOTE vs BOUND: cached input bills at 0.1x and this workload is 97.8% cached
+                # prefix, so charging every prompt token at 1.0x overstated the invoice ~20x. The
+                # bound is kept beside it because a spend cap must not trust the discount.
+                call_cost, call_bound, cached_tokens = cost_of_call(response.usage, model_price)
                 state.cumulative_cost += call_cost
+                state.cumulative_uncached_bound += call_bound
+                state.cumulative_cached_tokens += cached_tokens
                 if game_dir:
-                    write_cost_file(game_dir, username, state.cumulative_cost)
+                    write_cost_file(
+                        game_dir,
+                        username,
+                        state.cumulative_cost,
+                        state.cumulative_uncached_bound,
+                        state.cumulative_cached_tokens,
+                    )
 
             if game_log:
                 llm_event = {"reasoning": choice.message.content}
